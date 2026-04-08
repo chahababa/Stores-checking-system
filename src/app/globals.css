@@ -1,0 +1,23 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: light;
+}
+
+body {
+  @apply bg-cream text-ink;
+  background-image:
+    radial-gradient(circle at top left, rgba(201, 123, 58, 0.14), transparent 30%),
+    radial-gradient(circle at bottom right, rgba(74, 55, 40, 0.08), transparent 25%);
+  min-height: 100vh;
+}
+
+a {
+  @apply text-inherit no-underline;
+}
+
+button:disabled {
+  @apply cursor-not-allowed opacity-60;
+}
