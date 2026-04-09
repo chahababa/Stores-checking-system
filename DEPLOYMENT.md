@@ -23,6 +23,7 @@ Apply SQL files in this order:
 2. `supabase/migrations/20260408_000002_inspections.sql`
 3. `supabase/migrations/20260408_000003_inspection_photos.sql`
 4. `supabase/migrations/20260408_000004_audit_logs.sql`
+5. `supabase/migrations/20260410_000005_localize_seed_content.sql`
 5. `supabase/seed.sql`
 
 Before production:

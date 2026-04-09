@@ -3,19 +3,20 @@ import { NextResponse } from "next/server";
 import { getCurrentUserProfile } from "@/lib/auth";
 import { getAuditLogs } from "@/lib/inspection";
 import { csvEscape } from "@/lib/reporting";
+import { getAuditActionLabel, getAuditEntityLabel } from "@/lib/ui-labels";
 
 export async function GET() {
   const profile = await getCurrentUserProfile();
   if (!profile || (profile.role !== "owner" && profile.role !== "manager")) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    return NextResponse.json({ error: "未授權" }, { status: 401 });
   }
 
   const logs = await getAuditLogs();
   const lines = [
-    "time,actor,action,entity_type,entity_id,details",
+    "時間,操作者,動作,對象類型,對象編號,內容",
     ...logs.map(
       (log) =>
-        `${csvEscape(log.createdAt)},${csvEscape(log.actorEmail ?? "-")},${csvEscape(log.action)},${csvEscape(log.entityType)},${csvEscape(log.entityId)},${csvEscape(JSON.stringify(log.details))}`,
+        `${csvEscape(log.createdAt)},${csvEscape(log.actorEmail ?? "-")},${csvEscape(getAuditActionLabel(log.action))},${csvEscape(getAuditEntityLabel(log.entityType))},${csvEscape(log.entityId)},${csvEscape(JSON.stringify(log.details))}`,
     ),
   ];
 

@@ -29,13 +29,13 @@ export function LoginButton() {
       }
 
       if (!data?.url) {
-        throw new Error("Unable to start Google sign-in. No redirect URL was returned.");
+        throw new Error("無法啟動 Google 登入流程，系統沒有取得跳轉網址。");
       }
 
       window.location.assign(data.url);
     } catch (error) {
       console.error("Google sign-in failed", error);
-      setErrorMessage(error instanceof Error ? error.message : "Unable to start Google sign-in.");
+      setErrorMessage(error instanceof Error ? error.message : "無法啟動 Google 登入流程。");
       setLoading(false);
     }
   }
@@ -48,7 +48,7 @@ export function LoginButton() {
         className="w-full rounded-full bg-warm px-6 py-3 text-base font-medium text-white transition hover:brightness-105 disabled:cursor-not-allowed disabled:opacity-80"
         type="button"
       >
-        {loading ? "Redirecting..." : "Sign in with Google"}
+        {loading ? "跳轉中..." : "使用 Google 帳號登入"}
       </button>
       {errorMessage ? <p className="text-sm text-red-700">{errorMessage}</p> : null}
     </div>

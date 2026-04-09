@@ -2,18 +2,19 @@ import Link from "next/link";
 import { PropsWithChildren } from "react";
 
 import { UserProfile } from "@/lib/auth";
+import { getRoleLabel } from "@/lib/ui-labels";
 import { cn } from "@/lib/utils";
 
 const links = [
-  { href: "/inspection/new", label: "New Inspection", roles: ["owner", "manager"] },
-  { href: "/inspection/history", label: "Inspection History", roles: ["owner", "manager", "leader"] },
-  { href: "/inspection/improvements", label: "Improvements", roles: ["owner", "manager", "leader"] },
-  { href: "/inspection/reports", label: "Reports", roles: ["owner", "manager", "leader"] },
-  { href: "/audit", label: "Audit", roles: ["owner", "manager"] },
-  { href: "/settings/users", label: "User Access", roles: ["owner"] },
-  { href: "/settings/staff", label: "Staff", roles: ["owner", "manager", "leader"] },
-  { href: "/settings/items", label: "Items", roles: ["owner"] },
-  { href: "/settings/focus-items", label: "Focus Items", roles: ["owner", "manager"] },
+  { href: "/inspection/new", label: "新增巡店", roles: ["owner", "manager"] },
+  { href: "/inspection/history", label: "巡店紀錄", roles: ["owner", "manager", "leader"] },
+  { href: "/inspection/improvements", label: "改善追蹤", roles: ["owner", "manager", "leader"] },
+  { href: "/inspection/reports", label: "巡店報表", roles: ["owner", "manager", "leader"] },
+  { href: "/audit", label: "操作紀錄", roles: ["owner", "manager"] },
+  { href: "/settings/users", label: "帳號權限", roles: ["owner"] },
+  { href: "/settings/staff", label: "組員管理", roles: ["owner", "manager", "leader"] },
+  { href: "/settings/items", label: "題目管理", roles: ["owner"] },
+  { href: "/settings/focus-items", label: "重點項目", roles: ["owner", "manager"] },
 ];
 
 export function AppShell({
@@ -26,13 +27,13 @@ export function AppShell({
       <header className="border-b border-ink/10 bg-cream/90 backdrop-blur">
         <div className="mx-auto flex max-w-6xl flex-col gap-4 px-4 py-5 md:flex-row md:items-center md:justify-between">
           <div>
-            <p className="font-lora text-sm uppercase tracking-[0.3em] text-warm">Stores Checking</p>
-            <h1 className="font-serifTc text-2xl font-semibold">Store Inspection System</h1>
+            <p className="font-lora text-sm uppercase tracking-[0.3em] text-warm">門市巡檢作業</p>
+            <h1 className="font-serifTc text-2xl font-semibold">門市巡檢系統</h1>
           </div>
           <div className="rounded-2xl bg-soft px-4 py-3 text-sm shadow-card">
             <p>{profile.name || profile.email}</p>
             <p className="text-ink/70">
-              {profile.role}
+              {getRoleLabel(profile.role)}
               {profile.store_id ? ` / ${profile.store_id}` : ""}
             </p>
           </div>
@@ -53,7 +54,7 @@ export function AppShell({
               </Link>
             ))}
           <Link href="/" className="rounded-full bg-white/70 px-4 py-2 text-sm hover:bg-soft">
-            Home
+            首頁
           </Link>
         </nav>
       </header>

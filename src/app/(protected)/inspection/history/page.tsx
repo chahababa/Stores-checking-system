@@ -49,7 +49,7 @@ export default async function InspectionHistoryPage({
   ]);
 
   if (storesError || inspectionsError) {
-    throw new Error(storesError?.message || inspectionsError?.message || "Failed to load inspection history.");
+    throw new Error(storesError?.message || inspectionsError?.message || "載入巡店紀錄失敗。");
   }
 
   const totalInspections = inspections?.length ?? 0;
@@ -66,31 +66,31 @@ export default async function InspectionHistoryPage({
     <div className="grid gap-6">
       <div className="flex flex-col gap-4 rounded-[28px] border border-ink/10 bg-white/85 p-6 shadow-card md:flex-row md:items-center md:justify-between">
         <div>
-          <p className="font-lora text-sm uppercase tracking-[0.25em] text-warm">Inspection History</p>
-          <h1 className="mt-2 font-serifTc text-3xl font-semibold">Inspection Records</h1>
+          <p className="font-lora text-sm uppercase tracking-[0.25em] text-warm">巡店紀錄</p>
+          <h1 className="mt-2 font-serifTc text-3xl font-semibold">巡店紀錄</h1>
         </div>
         {(profile.role === "owner" || profile.role === "manager") && (
           <Link href="/inspection/new" className="rounded-full bg-warm px-5 py-3 text-sm text-white">
-            New Inspection
+            新增巡店
           </Link>
         )}
       </div>
 
       <div className="grid gap-6 lg:grid-cols-[1.2fr_0.8fr]">
         <div className="rounded-[28px] border border-ink/10 bg-white/85 p-6 shadow-card">
-          <p className="font-lora text-sm uppercase tracking-[0.25em] text-warm">Filters</p>
-          <h2 className="mt-2 font-serifTc text-2xl font-semibold">History Scope</h2>
+          <p className="font-lora text-sm uppercase tracking-[0.25em] text-warm">篩選條件</p>
+          <h2 className="mt-2 font-serifTc text-2xl font-semibold">查詢範圍</h2>
 
           <form className="mt-5 grid gap-4 md:grid-cols-2">
             {profile.role !== "leader" && (
               <div>
-                <label className="mb-2 block text-sm text-ink/70">Store</label>
+                <label className="mb-2 block text-sm text-ink/70">店別</label>
                 <select
                   name="store"
                   defaultValue={selectedStoreId}
                   className="w-full rounded-2xl border border-ink/10 bg-white px-4 py-3"
                 >
-                  <option value="">All stores</option>
+                  <option value="">全部店別</option>
                   {stores?.map((store) => (
                     <option key={store.id} value={store.id}>
                       {store.name}
@@ -101,7 +101,7 @@ export default async function InspectionHistoryPage({
             )}
 
             <div>
-              <label className="mb-2 block text-sm text-ink/70">Month</label>
+              <label className="mb-2 block text-sm text-ink/70">月份</label>
               <input
                 type="month"
                 name="month"
@@ -112,10 +112,10 @@ export default async function InspectionHistoryPage({
 
             <div className="flex items-end gap-3">
               <button type="submit" className="rounded-full bg-warm px-5 py-3 text-sm text-white">
-                Apply Filters
+                套用篩選
               </button>
               <Link href="/inspection/history" className="rounded-full bg-soft px-5 py-3 text-sm text-ink/70">
-                Reset
+                重設
               </Link>
             </div>
           </form>
@@ -123,19 +123,19 @@ export default async function InspectionHistoryPage({
 
         <div className="grid gap-3">
           <div className="rounded-[24px] border border-ink/10 bg-white/85 px-5 py-4 shadow-card">
-            <p className="text-sm text-ink/60">Inspections</p>
+            <p className="text-sm text-ink/60">巡店次數</p>
             <p className="mt-2 font-serifTc text-3xl font-semibold">{totalInspections}</p>
           </div>
           <div className="rounded-[24px] border border-ink/10 bg-white/85 px-5 py-4 shadow-card">
-            <p className="text-sm text-ink/60">Average Score</p>
+            <p className="text-sm text-ink/60">平均分數</p>
             <p className="mt-2 font-serifTc text-3xl font-semibold">{averageScore}</p>
           </div>
           <div className="rounded-[24px] border border-ink/10 bg-white/85 px-5 py-4 shadow-card">
-            <p className="text-sm text-ink/60">Low Score Visits</p>
+            <p className="text-sm text-ink/60">低分巡店數</p>
             <p className="mt-2 font-serifTc text-3xl font-semibold">{lowScoreCount}</p>
           </div>
           <div className="rounded-[24px] border border-ink/10 bg-white/85 px-5 py-4 shadow-card">
-            <p className="text-sm text-ink/60">Stores Covered</p>
+            <p className="text-sm text-ink/60">涵蓋店數</p>
             <p className="mt-2 font-serifTc text-3xl font-semibold">{coveredStores}</p>
           </div>
         </div>
@@ -145,12 +145,12 @@ export default async function InspectionHistoryPage({
         <table className="min-w-full text-left text-sm">
           <thead className="bg-soft/40 text-ink/70">
             <tr>
-              <th className="px-4 py-3">Date</th>
-              <th className="px-4 py-3">Store</th>
-              <th className="px-4 py-3">Time Slot</th>
-              <th className="px-4 py-3">Score</th>
-              <th className="px-4 py-3">Status</th>
-              <th className="px-4 py-3">Inspector</th>
+              <th className="px-4 py-3">日期</th>
+              <th className="px-4 py-3">店別</th>
+              <th className="px-4 py-3">時段</th>
+              <th className="px-4 py-3">分數</th>
+              <th className="px-4 py-3">狀態</th>
+              <th className="px-4 py-3">巡店人</th>
             </tr>
           </thead>
           <tbody>
@@ -166,7 +166,7 @@ export default async function InspectionHistoryPage({
                       inspection.is_editable ? "bg-warm/15 text-warm" : "bg-ink/10 text-ink/70"
                     }`}
                   >
-                    {inspection.is_editable ? "Editable" : "Locked"}
+                    {inspection.is_editable ? "可編輯" : "已鎖定"}
                   </span>
                 </td>
                 <td className="px-4 py-3">
@@ -176,7 +176,7 @@ export default async function InspectionHistoryPage({
                       href={`/inspection/history/${inspection.id}`}
                       className="text-warm underline-offset-4 hover:underline"
                     >
-                      View
+                      查看
                     </Link>
                   </div>
                 </td>
@@ -185,7 +185,7 @@ export default async function InspectionHistoryPage({
             {!inspections?.length && (
               <tr>
                 <td className="px-4 py-8 text-center text-ink/60" colSpan={6}>
-                  No inspection records found for the selected filters.
+                  查無符合目前篩選條件的巡店紀錄。
                 </td>
               </tr>
             )}

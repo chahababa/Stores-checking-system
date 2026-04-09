@@ -264,7 +264,7 @@ async function getStoreCode(admin: ReturnType<typeof createAdminClient>, storeId
   const { data: storeRow, error: storeError } = await admin.from("stores").select("code").eq("id", storeId).single();
 
   if (storeError || !storeRow) {
-    throw new Error(storeError?.message || "Store not found.");
+    throw new Error(storeError?.message || "找不到指定店別。");
   }
 
   return storeRow.code;
@@ -273,12 +273,12 @@ async function getStoreCode(admin: ReturnType<typeof createAdminClient>, storeId
 function validateInspectionInput(input: InspectionMutationInput) {
   const missingFocus = input.scores.filter((item) => item.isFocusItem && !item.score);
   if (missingFocus.length > 0) {
-    throw new Error("All focus items must be scored before saving.");
+    throw new Error("所有重點項目都必須完成評分後才能儲存。");
   }
 
   const invalidScores = input.scores.filter((item) => item.score <= 2 && !item.note?.trim());
   if (invalidScores.length > 0) {
-    throw new Error("Scores of 1 or 2 require a note.");
+    throw new Error("評分為 1 或 2 時必須填寫說明。");
   }
 }
 
@@ -421,7 +421,7 @@ export async function getInspectionFormSeed(params?: { storeId?: string; date?: 
   const { data: stores, error: storesError } = await admin.from("stores").select("id, name, code").order("name");
 
   if (storesError || !stores?.length) {
-    throw new Error(storesError?.message || "No stores configured.");
+    throw new Error(storesError?.message || "目前尚未設定任何店別。");
   }
 
   const selectedStoreId = params?.storeId || stores[0].id;
@@ -472,7 +472,7 @@ export async function getInspectionFormSeed(params?: { storeId?: string; date?: 
         focusError?.message ||
         inspectionsError?.message ||
         duplicateError?.message ||
-        "Failed to load inspection form data.",
+        "載入巡店表單資料失敗。",
     );
   }
 
@@ -533,7 +533,7 @@ export async function getInspectionDetail(inspectionId: string): Promise<Inspect
     .maybeSingle();
 
   if (inspectionError || !inspectionRow) {
-    throw new Error(inspectionError?.message || "Inspection not found.");
+    throw new Error(inspectionError?.message || "找不到這筆巡店紀錄。");
   }
 
   if (profile.role === "leader" && inspectionRow.store_id !== profile.store_id) {
@@ -570,7 +570,7 @@ export async function getInspectionDetail(inspectionId: string): Promise<Inspect
 
   if (staffError || scoreError || menuError || legacyError) {
     throw new Error(
-      staffError?.message || scoreError?.message || menuError?.message || legacyError?.message || "Failed to load inspection detail.",
+      staffError?.message || scoreError?.message || menuError?.message || legacyError?.message || "載入巡店明細失敗。",
     );
   }
 
@@ -667,7 +667,7 @@ export async function getInspectionEditSeed(inspectionId: string): Promise<Inspe
   await requireRole("owner", "manager");
   const detail = await getInspectionDetail(inspectionId);
   if (!detail.isEditable) {
-    throw new Error("This inspection is locked and can no longer be edited.");
+    throw new Error("這筆巡店紀錄已鎖定，無法再編輯。");
   }
   const formSeed = await getInspectionFormSeed({
     storeId: detail.store?.id ?? undefined,
@@ -904,7 +904,7 @@ export async function setInspectionPhotoStandard(photoId: string, isStandard: bo
     .maybeSingle();
 
   if (photoError || !photo) {
-    throw new Error(photoError?.message || "Photo not found.");
+    throw new Error(photoError?.message || "找不到這張照片。");
   }
 
   if (isStandard) {
@@ -947,7 +947,7 @@ export async function deleteInspectionPhoto(photoId: string) {
     .maybeSingle();
 
   if (photoError || !photo) {
-    throw new Error(photoError?.message || "Photo not found.");
+    throw new Error(photoError?.message || "找不到這張照片。");
   }
 
   const objectPath = getPublicObjectPath(photo.photo_url);
@@ -1003,7 +1003,7 @@ export async function getInspectionMonthlyReport(params?: {
   ]);
 
   if (storesError || inspectionsError) {
-    throw new Error(storesError?.message || inspectionsError?.message || "Failed to load monthly report.");
+    throw new Error(storesError?.message || inspectionsError?.message || "載入月報資料失敗。");
   }
 
   const inspectionIds = (inspections ?? []).map((inspection) => inspection.id);
@@ -1083,7 +1083,7 @@ export async function createInspection(input: InspectionMutationInput) {
     .single();
 
   if (inspectionError || !inspection) {
-    throw new Error(inspectionError?.message || "Failed to create inspection.");
+    throw new Error(inspectionError?.message || "建立巡店紀錄失敗。");
   }
 
   if (input.selectedStaff.length > 0) {
@@ -1205,10 +1205,10 @@ export async function updateInspection(inspectionId: string, input: InspectionMu
     .maybeSingle();
 
   if (inspectionQueryError || !existingInspection) {
-    throw new Error(inspectionQueryError?.message || "Inspection not found.");
+    throw new Error(inspectionQueryError?.message || "找不到這筆巡店紀錄。");
   }
   if (!existingInspection.is_editable) {
-    throw new Error("This inspection is locked and can no longer be edited.");
+    throw new Error("這筆巡店紀錄已鎖定，無法再編輯。");
   }
 
   const storeCode = await getStoreCode(admin, input.storeId);

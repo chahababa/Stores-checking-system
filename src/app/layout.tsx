@@ -17,8 +17,8 @@ const lora = Lora({
 });
 
 export const metadata: Metadata = {
-  title: "Stores Checking System",
-  description: "Inspection management MVP for Haochu Breakfast",
+  title: "門市巡檢系統",
+  description: "早餐門市巡檢與管理系統",
 };
 
 export default function RootLayout({ children }: { children: ReactNode }) {

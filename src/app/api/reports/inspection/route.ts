@@ -16,7 +16,7 @@ function csvEscape(value: string | number) {
 export async function GET(request: NextRequest) {
   const profile = await getCurrentUserProfile();
   if (!profile) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    return NextResponse.json({ error: "未授權" }, { status: 401 });
   }
 
   const searchParams = request.nextUrl.searchParams;
@@ -25,25 +25,25 @@ export async function GET(request: NextRequest) {
   const report = await getInspectionMonthlyReport({ month, storeId: store });
 
   const lines = [
-    "Summary",
-    "metric,value",
-    `month,${csvEscape(report.month)}`,
-    `total_inspections,${csvEscape(report.summary.totalInspections)}`,
-    `average_score,${csvEscape(report.summary.averageScore)}`,
-    `low_score_items,${csvEscape(report.summary.lowScoreCount)}`,
-    `stores_covered,${csvEscape(report.summary.storesCovered)}`,
-    `pending_tasks,${csvEscape(report.summary.pendingTasks)}`,
-    `verified_tasks,${csvEscape(report.summary.verifiedTasks)}`,
+    "摘要",
+    "欄位,值",
+    `月份,${csvEscape(report.month)}`,
+    `巡店次數,${csvEscape(report.summary.totalInspections)}`,
+    `平均分數,${csvEscape(report.summary.averageScore)}`,
+    `低分項目數,${csvEscape(report.summary.lowScoreCount)}`,
+    `涵蓋店數,${csvEscape(report.summary.storesCovered)}`,
+    `待處理任務,${csvEscape(report.summary.pendingTasks)}`,
+    `已確認任務,${csvEscape(report.summary.verifiedTasks)}`,
     "",
-    "Store Breakdown",
-    "store,inspections,average_score,low_score_items",
+    "各店拆解",
+    "店別,巡店次數,平均分數,低分項目數",
     ...report.storeBreakdown.map(
       (storeRow) =>
         `${csvEscape(storeRow.storeName)},${csvEscape(storeRow.inspections)},${csvEscape(storeRow.averageScore)},${csvEscape(storeRow.lowScoreCount)}`,
     ),
     "",
-    "Top Problem Items",
-    "item,occurrences,average_score",
+    "常見低分題目",
+    "題目,出現次數,平均分數",
     ...report.topProblemItems.map(
       (item) => `${csvEscape(item.itemName)},${csvEscape(item.occurrences)},${csvEscape(item.averageScore)}`,
     ),

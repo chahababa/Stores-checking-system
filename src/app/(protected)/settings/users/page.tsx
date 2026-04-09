@@ -1,6 +1,7 @@
 import { SectionCard } from "@/components/section-card";
 import { requireRole } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { getRoleLabel } from "@/lib/ui-labels";
 
 export default async function UsersSettingsPage() {
   await requireRole("owner");
@@ -32,17 +33,17 @@ export default async function UsersSettingsPage() {
 
   return (
     <div className="grid gap-6 lg:grid-cols-[1.1fr_1.4fr]">
-      <SectionCard title="新增授權帳號" description="Owner 可先建立可登入名單，之後使用者再透過 Google OAuth 進入。">
+      <SectionCard title="新增授權帳號" description="系統擁有者可先建立可登入名單，之後使用者再透過 Google OAuth 進入。">
         <form action={createUserAction} className="grid gap-4">
-          <input name="name" placeholder="顯示名稱（可選）" className="rounded-2xl border border-ink/10 bg-white px-4 py-3" />
+          <input name="name" placeholder="顯示名稱（可留空）" className="rounded-2xl border border-ink/10 bg-white px-4 py-3" />
           <input name="email" type="email" required placeholder="email@example.com" className="rounded-2xl border border-ink/10 bg-white px-4 py-3" />
           <select name="role" className="rounded-2xl border border-ink/10 bg-white px-4 py-3">
-            <option value="leader">leader</option>
-            <option value="manager">manager</option>
-            <option value="owner">owner</option>
+            <option value="leader">店長</option>
+            <option value="manager">店主管</option>
+            <option value="owner">系統擁有者</option>
           </select>
           <select name="store_id" className="rounded-2xl border border-ink/10 bg-white px-4 py-3">
-            <option value="">無指定店別</option>
+            <option value="">不指定店別</option>
             {stores?.map((store) => (
               <option key={store.id} value={store.id}>
                 {store.name}
@@ -50,12 +51,12 @@ export default async function UsersSettingsPage() {
             ))}
           </select>
           <button className="rounded-full bg-warm px-5 py-3 text-sm text-white" type="submit">
-            建立或更新帳號
+            新增帳號
           </button>
         </form>
       </SectionCard>
 
-      <SectionCard title="已授權帳號" description="登入授權與啟用狀態都由這張表控制。">
+      <SectionCard title="已授權帳號" description="這裡會顯示目前能登入系統的帳號與啟用狀態。">
         <div className="overflow-x-auto">
           <table className="min-w-full text-left text-sm">
             <thead className="text-ink/60">
@@ -72,7 +73,7 @@ export default async function UsersSettingsPage() {
                 <tr key={user.id} className="border-t border-ink/10">
                   <td className="px-3 py-3">{user.email}</td>
                   <td className="px-3 py-3">{user.name ?? "-"}</td>
-                  <td className="px-3 py-3">{user.role}</td>
+                  <td className="px-3 py-3">{getRoleLabel(user.role)}</td>
                   <td className="px-3 py-3">{user.is_active ? "啟用中" : "已停用"}</td>
                   <td className="px-3 py-3">
                     <form action={toggleUserAction}>

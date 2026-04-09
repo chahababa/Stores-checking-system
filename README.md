@@ -62,6 +62,7 @@ NEXT_PUBLIC_SITE_URL=http://localhost:3000
    - `supabase/migrations/20260408_000002_inspections.sql`
    - `supabase/migrations/20260408_000003_inspection_photos.sql`
    - `supabase/migrations/20260408_000004_audit_logs.sql`
+   - `supabase/migrations/20260410_000005_localize_seed_content.sql`
 5. Run `supabase/seed.sql`.
 6. The seeded owner email is currently set to `chahababa@gmail.com`.
 
@@ -95,5 +96,6 @@ Current repo checks:
 
 - The current seeded owner account is `chahababa@gmail.com`.
 - Audit logs require `20260408_000004_audit_logs.sql`.
+- Existing deployments that already ran the old English seed should also run `20260410_000005_localize_seed_content.sql`.
 - Leader access is intentionally narrower than owner / manager access.
 - LINE integration, notification flows, and production deployment automation are still not included.

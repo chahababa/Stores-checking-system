@@ -171,7 +171,7 @@ export async function setFocusItems(input: {
   const profile = await requireRole("owner", "manager");
 
   if (input.type === "permanent" && profile.role !== "owner") {
-    throw new Error("Only owners can manage permanent focus items.");
+    throw new Error("只有 owner 可以管理永久重點項目。");
   }
 
   const admin = createAdminClient();

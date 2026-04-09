@@ -76,16 +76,16 @@ function createInitialState(seed: InspectionFormSeed): InspectionFormDraftState 
 }
 
 function roleLabel(role: ShiftRole) {
-  if (role === "kitchen") return "Kitchen";
-  if (role === "floor") return "Floor";
-  return "Counter";
+  if (role === "kitchen") return "內場";
+  if (role === "floor") return "外場";
+  return "櫃台";
 }
 
 export function InspectionForm({
   seed,
   saveAction,
   initialState,
-  submitLabel = "Save Inspection",
+  submitLabel = "儲存巡店紀錄",
   isEditMode = false,
 }: {
   seed: InspectionFormSeed;
@@ -141,7 +141,7 @@ export function InspectionForm({
 
     const existingDraft = localStorage.getItem(`draft_${seed.selectedStoreId}_${seed.selectedDate}`);
     if (existingDraft && !seed.duplicateInspectionWarning) {
-      const shouldLoad = window.confirm("A local draft was found for this store and date. Do you want to restore it?");
+      const shouldLoad = window.confirm("找到這間店在同一天的本機草稿，要不要還原？");
       if (shouldLoad) {
         try {
           setForm(JSON.parse(existingDraft) as InspectionFormDraftState);
@@ -240,7 +240,7 @@ export function InspectionForm({
         [itemId]: [...(current[itemId] ?? []), ...compressed],
       }));
     } catch (uploadError) {
-      setError(uploadError instanceof Error ? uploadError.message : "Failed to prepare images.");
+      setError(uploadError instanceof Error ? uploadError.message : "圖片處理失敗。");
     } finally {
       const input = fileInputRefs.current[itemId];
       if (input) {
@@ -269,12 +269,12 @@ export function InspectionForm({
     setError("");
 
     if (!form.timeSlot.trim()) {
-      setError("Please enter the inspection time slot.");
+      setError("請先輸入巡店時段。");
       return;
     }
 
     if (missingFocusCount > 0) {
-      setError(`There are still ${missingFocusCount} focus items without a score.`);
+      setError(`還有 ${missingFocusCount} 個重點項目尚未評分。`);
       return;
     }
 
@@ -282,7 +282,7 @@ export function InspectionForm({
       (value) => value.score !== null && value.score <= 2 && !value.note.trim(),
     );
     if (invalidNotes) {
-      setError("Scores of 1 or 2 must include a note.");
+      setError("評分為 1 或 2 時，必須填寫說明。");
       return;
     }
 
@@ -336,7 +336,7 @@ export function InspectionForm({
       }
       router.refresh();
     } catch (submissionError) {
-      setError(submissionError instanceof Error ? submissionError.message : "Failed to save inspection.");
+      setError(submissionError instanceof Error ? submissionError.message : "儲存巡店紀錄失敗。");
     } finally {
       setIsSaving(false);
     }
@@ -347,7 +347,7 @@ export function InspectionForm({
       <section className="rounded-[28px] border border-ink/10 bg-white/85 p-5 shadow-card">
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
           <div>
-            <label className="mb-2 block text-sm text-ink/70">Store</label>
+            <label className="mb-2 block text-sm text-ink/70">店別</label>
             <select
               value={form.storeId}
               onChange={(event) => router.push(`/inspection/new?store=${event.target.value}&date=${form.date}`)}
@@ -362,7 +362,7 @@ export function InspectionForm({
           </div>
 
           <div>
-            <label className="mb-2 block text-sm text-ink/70">Date</label>
+            <label className="mb-2 block text-sm text-ink/70">日期</label>
             <input
               type="date"
               value={form.date}
@@ -372,17 +372,17 @@ export function InspectionForm({
           </div>
 
           <div>
-            <label className="mb-2 block text-sm text-ink/70">Time Slot</label>
+            <label className="mb-2 block text-sm text-ink/70">巡店時段</label>
             <input
               value={form.timeSlot}
               onChange={(event) => setForm((current) => ({ ...current, timeSlot: event.target.value }))}
-              placeholder="Example: 14:30-15:15"
+              placeholder="例如：14:30-15:15"
               className="w-full rounded-2xl border border-ink/10 bg-white px-4 py-3"
             />
           </div>
 
           <div>
-            <label className="mb-2 block text-sm text-ink/70">Busyness</label>
+            <label className="mb-2 block text-sm text-ink/70">忙碌程度</label>
             <select
               value={form.busynessLevel}
               onChange={(event) =>
@@ -393,34 +393,34 @@ export function InspectionForm({
               }
               className="w-full rounded-2xl border border-ink/10 bg-white px-4 py-3"
             >
-              <option value="low">Low</option>
-              <option value="medium">Medium</option>
-              <option value="high">High</option>
+              <option value="low">不忙</option>
+              <option value="medium">普通</option>
+              <option value="high">繁忙</option>
             </select>
           </div>
         </div>
 
         {!isEditMode && seed.duplicateInspectionWarning && (
           <div className="mt-4 rounded-2xl border border-danger/20 bg-danger/5 px-4 py-3 text-sm text-danger">
-            An inspection already exists for this store and date. Please confirm before creating another one.
+            這間店在同一天已經有巡店紀錄，若要再新增一筆，請先確認是否真的需要重複建立。
           </div>
         )}
 
         <p className="mt-4 text-xs leading-6 text-ink/60">
           {isEditMode
-            ? "Editing keeps the existing inspection record and lets you add new photos without removing the stored ones."
-            : "Drafts are auto-saved every 30 seconds for the same store and date. Photo files are not saved in browser drafts."}
+            ? "編輯模式會保留原本的巡店紀錄，也可以再補傳新照片，不會刪掉既有照片。"
+            : "草稿會每 30 秒自動儲存一次，以同店別與同日期為單位。照片檔案不會存進瀏覽器草稿。"}
         </p>
       </section>
 
       <section className="rounded-[28px] border border-ink/10 bg-white/85 p-5 shadow-card">
         <div className="flex items-center justify-between gap-3">
           <div>
-            <h2 className="font-serifTc text-2xl font-semibold">Shift Staff</h2>
-            <p className="mt-2 text-sm text-ink/70">Select who was on shift during this inspection.</p>
+            <h2 className="font-serifTc text-2xl font-semibold">當班人員</h2>
+            <p className="mt-2 text-sm text-ink/70">勾選這次巡店時在班的人員。</p>
           </div>
           <div className="rounded-full bg-soft px-4 py-2 text-sm text-ink/70">
-            {Object.keys(form.selectedStaff).length} selected
+            已選 {Object.keys(form.selectedStaff).length} 人
           </div>
         </div>
 
@@ -449,7 +449,7 @@ export function InspectionForm({
 
           {seed.activeStaff.length === 0 && (
             <div className="rounded-2xl border border-dashed border-ink/15 px-4 py-6 text-sm text-ink/60">
-              No active staff found for this store yet.
+              這間店目前還沒有可選的在職組員。
             </div>
           )}
         </div>
@@ -459,7 +459,7 @@ export function InspectionForm({
         <section key={group.categoryId} className="rounded-[28px] border border-ink/10 bg-white/85 p-5 shadow-card">
           <div className="flex items-end justify-between gap-4">
             <div>
-              <p className="font-lora text-sm uppercase tracking-[0.25em] text-warm">Category</p>
+              <p className="font-lora text-sm uppercase tracking-[0.25em] text-warm">分類</p>
               <h2 className="mt-2 font-serifTc text-2xl font-semibold">{group.categoryName}</h2>
             </div>
           </div>
@@ -477,18 +477,17 @@ export function InspectionForm({
                         <h3 className="text-lg font-medium text-ink">{item.name}</h3>
                         {value.isFocusItem && (
                           <span className="rounded-full bg-warm px-3 py-1 text-xs font-medium text-white">
-                            Focus Item
+                            重點項目
                           </span>
                         )}
                         {value.hasPrevIssue && (
                           <span className="rounded-full bg-danger/10 px-3 py-1 text-xs font-medium text-danger">
-                            Previous issue: {value.consecutiveWeeks} week{value.consecutiveWeeks > 1 ? "s" : ""}
+                            上次扣分項，已連續 {value.consecutiveWeeks} 週
                           </span>
                         )}
                       </div>
                       <p className="mt-2 text-sm text-ink/65">
-                        Scores of 1 or 2 require a note. A score of 3 can optionally be marked as a standard photo
-                        reference.
+                        評分為 1 或 2 時必須填寫說明；評分為 3 時可視需要標記為標準照片。
                       </p>
                     </div>
 
@@ -512,11 +511,11 @@ export function InspectionForm({
 
                   <div className="mt-4 grid gap-4 lg:grid-cols-[minmax(0,1fr)_280px]">
                     <div>
-                      <label className="mb-2 block text-sm text-ink/70">Note</label>
+                      <label className="mb-2 block text-sm text-ink/70">備註</label>
                       <textarea
                         value={value.note}
                         onChange={(event) => setNote(item.id, event.target.value)}
-                        placeholder="Add detail when the score is below standard."
+                        placeholder="未達標時請補充說明。"
                         className="min-h-28 w-full rounded-2xl border border-ink/10 bg-white px-4 py-3"
                       />
                     </div>
@@ -524,13 +523,13 @@ export function InspectionForm({
                     <div className="rounded-2xl border border-dashed border-ink/15 bg-soft/40 p-4">
                       <div className="flex items-center justify-between gap-3">
                         <div>
-                          <p className="text-sm font-medium text-ink">Photos</p>
+                          <p className="text-sm font-medium text-ink">照片</p>
                           <p className="mt-1 text-xs leading-5 text-ink/60">
-                            Images are compressed before upload. Mark strong examples as standard photos.
+                            照片上傳前會先壓縮。表現良好的範例可標記成標準照片。
                           </p>
                         </div>
                         <label className="rounded-full bg-white px-4 py-2 text-sm text-ink shadow-sm">
-                          Add
+                          新增
                           <input
                             ref={(node) => {
                               fileInputRefs.current[item.id] = node;
@@ -564,14 +563,14 @@ export function InspectionForm({
                                   photo.isStandard ? "bg-warm text-white" : "bg-soft text-ink/70"
                                 }`}
                               >
-                                {photo.isStandard ? "Standard Photo" : "Mark as Standard"}
+                                {photo.isStandard ? "標準照片" : "設為標準"}
                               </button>
                               <button
                                 type="button"
                                 onClick={() => removePhoto(item.id, photo.fileName)}
                                 className="rounded-full bg-danger/10 px-3 py-2 text-xs text-danger"
                               >
-                                Remove
+                                移除
                               </button>
                             </div>
                           </div>
@@ -579,7 +578,7 @@ export function InspectionForm({
 
                         {itemPhotos.length === 0 && (
                           <div className="col-span-2 rounded-2xl border border-dashed border-ink/15 px-4 py-6 text-sm text-ink/55">
-                            No photos added yet.
+                            尚未新增照片。
                           </div>
                         )}
                       </div>
@@ -595,13 +594,13 @@ export function InspectionForm({
       <section className="rounded-[28px] border border-ink/10 bg-white/85 p-5 shadow-card">
         <div className="grid gap-5 lg:grid-cols-2">
           <div className="rounded-[24px] border border-ink/10 bg-white p-4">
-            <h2 className="font-serifTc text-2xl font-semibold">Food Quality</h2>
-            <p className="mt-2 text-sm text-ink/70">Record the sample dishes and portion weights for this visit.</p>
+            <h2 className="font-serifTc text-2xl font-semibold">餐點品質抽查</h2>
+            <p className="mt-2 text-sm text-ink/70">記錄這次巡店抽查的餐點品項與克重。</p>
 
             <div className="mt-5 grid gap-4">
               <div className="grid gap-3 sm:grid-cols-2">
                 <div>
-                  <label className="mb-2 block text-sm text-ink/70">Dine-in Dish</label>
+                  <label className="mb-2 block text-sm text-ink/70">內用品項</label>
                   <input
                     value={form.menuItems.dineInDishName}
                     onChange={(event) => setMenuField("dineInDishName", event.target.value)}
@@ -609,11 +608,11 @@ export function InspectionForm({
                   />
                 </div>
                 <div>
-                  <label className="mb-2 block text-sm text-ink/70">Dine-in Weight</label>
+                  <label className="mb-2 block text-sm text-ink/70">內用克重</label>
                   <input
                     value={form.menuItems.dineInPortionWeight}
                     onChange={(event) => setMenuField("dineInPortionWeight", event.target.value)}
-                    placeholder="Example: 285g"
+                    placeholder="例如：285g"
                     className="w-full rounded-2xl border border-ink/10 bg-white px-4 py-3"
                   />
                 </div>
@@ -621,7 +620,7 @@ export function InspectionForm({
 
               <div className="grid gap-3 sm:grid-cols-2">
                 <div>
-                  <label className="mb-2 block text-sm text-ink/70">Takeout Dish</label>
+                  <label className="mb-2 block text-sm text-ink/70">外帶品項</label>
                   <input
                     value={form.menuItems.takeoutDishName}
                     onChange={(event) => setMenuField("takeoutDishName", event.target.value)}
@@ -629,11 +628,11 @@ export function InspectionForm({
                   />
                 </div>
                 <div>
-                  <label className="mb-2 block text-sm text-ink/70">Takeout Weight</label>
+                  <label className="mb-2 block text-sm text-ink/70">外帶克重</label>
                   <input
                     value={form.menuItems.takeoutPortionWeight}
                     onChange={(event) => setMenuField("takeoutPortionWeight", event.target.value)}
-                    placeholder="Example: 260g"
+                    placeholder="例如：260g"
                     className="w-full rounded-2xl border border-ink/10 bg-white px-4 py-3"
                   />
                 </div>
@@ -642,13 +641,13 @@ export function InspectionForm({
           </div>
 
           <div className="rounded-[24px] border border-ink/10 bg-white p-4">
-            <h2 className="font-serifTc text-2xl font-semibold">Legacy Notes</h2>
-            <p className="mt-2 text-sm text-ink/70">Capture older-style summary notes that do not fit a single item.</p>
+            <h2 className="font-serifTc text-2xl font-semibold">補充說明</h2>
+            <p className="mt-2 text-sm text-ink/70">記錄不屬於單一題目的整體補充內容。</p>
 
             <textarea
               value={form.legacyNote}
               onChange={(event) => setForm((current) => ({ ...current, legacyNote: event.target.value }))}
-              placeholder="Optional summary, follow-up, or context."
+              placeholder="可填寫本次巡店的補充說明、追蹤事項或其他情境。"
               className="mt-4 min-h-48 w-full rounded-2xl border border-ink/10 bg-white px-4 py-3"
             />
           </div>
@@ -659,7 +658,7 @@ export function InspectionForm({
 
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <p className="text-sm text-ink/65">
-          Focus items missing scores: <span className="font-medium text-danger">{missingFocusCount}</span>
+          尚未評分的重點項目：<span className="font-medium text-danger">{missingFocusCount}</span>
         </p>
         <button
           type="button"
@@ -667,7 +666,7 @@ export function InspectionForm({
           disabled={isSaving}
           className="rounded-full bg-warm px-6 py-3 text-sm font-medium text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
         >
-          {isSaving ? "Saving..." : submitLabel}
+          {isSaving ? "儲存中..." : submitLabel}
         </button>
       </div>
     </div>

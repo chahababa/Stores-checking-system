@@ -1,6 +1,7 @@
 import { SectionCard } from "@/components/section-card";
 import { requireRole } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { getShiftRoleLabel } from "@/lib/ui-labels";
 
 export default async function StaffSettingsPage() {
   const profile = await requireRole("owner", "manager", "leader");
@@ -34,7 +35,7 @@ export default async function StaffSettingsPage() {
 
   return (
     <div className="grid gap-6 lg:grid-cols-[0.9fr_1.5fr]">
-      <SectionCard title="新增組員" description="依店別建立 active 組員，封存後保留歷史資料。">
+      <SectionCard title="新增組員" description="可新增在職組員，封存後資料仍會保留，不會直接刪除。">
         <form action={createStaffAction} className="grid gap-4">
           <select
             name="store_id"
@@ -48,14 +49,12 @@ export default async function StaffSettingsPage() {
               </option>
             ))}
           </select>
-          {profile.role === "leader" ? (
-            <input type="hidden" name="store_id" value={profile.store_id ?? ""} />
-          ) : null}
+          {profile.role === "leader" ? <input type="hidden" name="store_id" value={profile.store_id ?? ""} /> : null}
           <input name="name" required placeholder="組員姓名" className="rounded-2xl border border-ink/10 bg-white px-4 py-3" />
           <select name="position" className="rounded-2xl border border-ink/10 bg-white px-4 py-3">
-            <option value="kitchen">kitchen</option>
-            <option value="floor">floor</option>
-            <option value="counter">counter</option>
+            <option value="kitchen">內場</option>
+            <option value="floor">外場</option>
+            <option value="counter">櫃台</option>
           </select>
           <button
             className="rounded-full bg-warm px-5 py-3 text-sm text-white"
@@ -67,14 +66,18 @@ export default async function StaffSettingsPage() {
         </form>
       </SectionCard>
 
-      <SectionCard title="組員清單" description="MVP 先提供 active / archived 狀態管理。">
+      <SectionCard title="組員列表" description="MVP 階段先提供 active / archived 兩種狀態。">
         <div className="grid gap-3">
           {staffMembers?.map((member) => (
-            <div key={member.id} className="flex flex-col gap-3 rounded-2xl border border-ink/10 bg-soft/60 p-4 md:flex-row md:items-center md:justify-between">
+            <div
+              key={member.id}
+              className="flex flex-col gap-3 rounded-2xl border border-ink/10 bg-soft/60 p-4 md:flex-row md:items-center md:justify-between"
+            >
               <div>
                 <p className="font-medium">{member.name}</p>
                 <p className="text-sm text-ink/65">
-                  {member.stores?.[0]?.name ?? "未知店別"} / {member.position} / {member.status}
+                  {member.stores?.[0]?.name ?? "未指定店別"} / {getShiftRoleLabel(member.position)} /{" "}
+                  {member.status === "active" ? "在職" : "已封存"}
                 </p>
               </div>
               {member.status === "active" ? (

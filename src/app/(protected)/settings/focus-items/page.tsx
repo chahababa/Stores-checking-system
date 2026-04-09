@@ -44,11 +44,17 @@ export default async function FocusItemsPage({ searchParams }: { searchParams: S
   return (
     <div className="grid gap-6">
       {profile.role === "owner" ? (
-        <SectionCard title="永久重點項目" description="只有 owner 可以維護長期重點。">
+        <SectionCard title="永久重點項目" description="只有系統擁有者可以維護長期重點。">
           <form action={updatePermanentAction} className="grid gap-3 md:grid-cols-2">
             {items?.map((item) => (
               <label key={item.id} className="flex items-start gap-3 rounded-2xl border border-ink/10 bg-soft/40 p-3">
-                <input type="checkbox" name="item_ids" value={item.id} defaultChecked={currentFocus.some((entry) => entry.type === "permanent" && entry.item_id === item.id)} className="mt-1" />
+                <input
+                  type="checkbox"
+                  name="item_ids"
+                  value={item.id}
+                  defaultChecked={currentFocus.some((entry) => entry.type === "permanent" && entry.item_id === item.id)}
+                  className="mt-1"
+                />
                 <span>
                   <span className="block font-medium">{item.name}</span>
                   <span className="text-xs text-ink/60">{item.categories?.[0]?.name ?? "未分類"}</span>
@@ -57,14 +63,14 @@ export default async function FocusItemsPage({ searchParams }: { searchParams: S
             ))}
             <div className="md:col-span-2">
               <button className="rounded-full bg-warm px-5 py-3 text-sm text-white" type="submit">
-                更新永久重點
+                儲存永久重點
               </button>
             </div>
           </form>
         </SectionCard>
       ) : null}
 
-      <SectionCard title="每月動態重點項目" description="Owner 與 manager 都可設定，查詢結果會與永久重點自動去重。">
+      <SectionCard title="每月重點項目" description="系統擁有者與店主管都可以設定指定月份要特別追蹤的項目。">
         <form action={updateMonthlyAction} className="grid gap-4">
           <div className="max-w-xs">
             <input type="month" name="month" defaultValue={month} className="w-full rounded-2xl border border-ink/10 bg-white px-4 py-3" />
@@ -84,7 +90,7 @@ export default async function FocusItemsPage({ searchParams }: { searchParams: S
                   <span className="text-xs text-ink/60">{item.categories?.[0]?.name ?? "未分類"}</span>
                   {selectedIds.has(item.id) ? (
                     <span className="mt-1 inline-block rounded-full bg-soft px-2 py-1 text-[11px] text-ink/70">
-                      目前合併查詢會出現
+                      目前已列入重點
                     </span>
                   ) : null}
                 </span>
@@ -93,7 +99,7 @@ export default async function FocusItemsPage({ searchParams }: { searchParams: S
           </div>
           <div>
             <button className="rounded-full bg-warm px-5 py-3 text-sm text-white" type="submit">
-              更新每月重點
+              儲存每月重點
             </button>
           </div>
         </form>

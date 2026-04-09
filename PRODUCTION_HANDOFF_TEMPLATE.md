@@ -38,6 +38,7 @@ Fill this before final production rollout.
   - `20260408_000002_inspections.sql`
   - `20260408_000003_inspection_photos.sql`
   - `20260408_000004_audit_logs.sql`
+  - `20260410_000005_localize_seed_content.sql`
 - Seed applied:
   - `Yes / No`
 - Placeholder owner removed:
