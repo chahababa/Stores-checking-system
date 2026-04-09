@@ -432,7 +432,8 @@ export async function getInspectionFormSeed(params?: { storeId?: string; date?: 
     { data: staff, error: staffError },
     { data: categories, error: categoriesError },
     { data: items, error: itemsError },
-    { data: focusRows, error: focusError },
+    { data: permanentFocusRows, error: permanentFocusError },
+    { data: monthlyFocusRows, error: monthlyFocusError },
     { data: recentInspections, error: inspectionsError },
     { data: duplicateRows, error: duplicateError },
     extraAssignments,
@@ -449,10 +450,8 @@ export async function getInspectionFormSeed(params?: { storeId?: string; date?: 
       .select("id, name, category_id, sort_order, is_base, is_active")
       .eq("is_active", true)
       .order("sort_order"),
-    admin
-      .from("focus_items")
-      .select("item_id, type, month")
-      .or(`type.eq.permanent,and(type.eq.monthly,month.eq.${selectedMonth})`),
+    admin.from("focus_items").select("item_id").eq("type", "permanent"),
+    admin.from("focus_items").select("item_id").eq("type", "monthly").eq("month", selectedMonth),
     admin
       .from("inspections")
       .select("id, date, inspection_scores(item_id, score)")
@@ -464,12 +463,21 @@ export async function getInspectionFormSeed(params?: { storeId?: string; date?: 
     admin.from("store_extra_items").select("item_id").eq("store_id", selectedStoreId),
   ]);
 
-  if (staffError || categoriesError || itemsError || focusError || inspectionsError || duplicateError) {
+  if (
+    staffError ||
+    categoriesError ||
+    itemsError ||
+    permanentFocusError ||
+    monthlyFocusError ||
+    inspectionsError ||
+    duplicateError
+  ) {
     throw new Error(
       staffError?.message ||
         categoriesError?.message ||
         itemsError?.message ||
-        focusError?.message ||
+        permanentFocusError?.message ||
+        monthlyFocusError?.message ||
         inspectionsError?.message ||
         duplicateError?.message ||
         "載入巡店表單資料失敗。",
@@ -480,6 +488,7 @@ export async function getInspectionFormSeed(params?: { storeId?: string; date?: 
     throw new Error(extraAssignments.error.message);
   }
 
+  const focusRows = [...(permanentFocusRows ?? []), ...(monthlyFocusRows ?? [])];
   const extraItemIds = new Set((extraAssignments.data ?? []).map((row) => row.item_id));
   const allowedItems = (items ?? []).filter((item) => item.is_base || extraItemIds.has(item.id));
   const focusIds = new Set((focusRows ?? []).map((row) => row.item_id));
