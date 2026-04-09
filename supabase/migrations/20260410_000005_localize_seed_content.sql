@@ -1,9 +1,9 @@
 update public.stores
 set name = case code
-  when 'store_1' then '台北站前店'
-  when 'store_2' then '板橋車站店'
-  when 'store_3' then '桃園廣場店'
-  when 'store_4' then '中壢樞紐店'
+  when 'store_1' then '1店'
+  when 'store_2' then '2店'
+  when 'store_3' then '3店'
+  when 'store_4' then '4店'
   else name
 end
 where code in ('store_1', 'store_2', 'store_3', 'store_4');
@@ -71,11 +71,11 @@ set name = case name
   when 'Pickup and dine-in flow is smooth' then '取餐與內用動線順暢'
   when 'Store atmosphere matches brand standard' then '門市整體氛圍符合品牌標準'
   when 'Service timing is acceptable' then '服務速度符合期待'
-  when 'Taipei Main self-service station is complete' then '台北站前店自助區備品完整'
-  when 'Taipei Main commuter rush support is in place' then '台北站前店尖峰支援安排到位'
-  when 'Banqiao Station delivery handoff shelf is organized' then '板橋車站店外送交接架整齊'
-  when 'Taoyuan Plaza fryer backup tools are ready' then '桃園廣場店炸台備援工具齊全'
-  when 'Zhongli Hub late-night cleanup handoff is complete' then '中壢樞紐店晚班清潔交接完整'
+  when 'Taipei Main self-service station is complete' then '1店自助區備品完整'
+  when 'Taipei Main commuter rush support is in place' then '1店尖峰支援安排到位'
+  when 'Banqiao Station delivery handoff shelf is organized' then '2店外送交接架整齊'
+  when 'Taoyuan Plaza fryer backup tools are ready' then '3店炸台備援工具齊全'
+  when 'Zhongli Hub late-night cleanup handoff is complete' then '4店晚班清潔交接完整'
   else name
 end
 where name in (

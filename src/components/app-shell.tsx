@@ -9,9 +9,10 @@ const links = [
   { href: "/inspection/new", label: "新增巡店", roles: ["owner", "manager"] },
   { href: "/inspection/history", label: "巡店紀錄", roles: ["owner", "manager", "leader"] },
   { href: "/inspection/improvements", label: "改善追蹤", roles: ["owner", "manager", "leader"] },
-  { href: "/inspection/reports", label: "巡店報表", roles: ["owner", "manager", "leader"] },
+  { href: "/inspection/reports", label: "報表分析", roles: ["owner", "manager", "leader"] },
   { href: "/audit", label: "操作紀錄", roles: ["owner", "manager"] },
   { href: "/settings/users", label: "帳號權限", roles: ["owner"] },
+  { href: "/settings/stores", label: "店別管理", roles: ["owner"] },
   { href: "/settings/staff", label: "組員管理", roles: ["owner", "manager", "leader"] },
   { href: "/settings/items", label: "題目管理", roles: ["owner"] },
   { href: "/settings/focus-items", label: "重點項目", roles: ["owner", "manager"] },
@@ -27,15 +28,12 @@ export function AppShell({
       <header className="border-b border-ink/10 bg-cream/90 backdrop-blur">
         <div className="mx-auto flex max-w-6xl flex-col gap-4 px-4 py-5 md:flex-row md:items-center md:justify-between">
           <div>
-            <p className="font-lora text-sm uppercase tracking-[0.3em] text-warm">門市巡檢作業</p>
+            <p className="font-lora text-sm uppercase tracking-[0.3em] text-warm">Warm Morning Ops</p>
             <h1 className="font-serifTc text-2xl font-semibold">門市巡檢系統</h1>
           </div>
           <div className="rounded-2xl bg-soft px-4 py-3 text-sm shadow-card">
             <p>{profile.name || profile.email}</p>
-            <p className="text-ink/70">
-              {getRoleLabel(profile.role)}
-              {profile.store_id ? ` / ${profile.store_id}` : ""}
-            </p>
+            <p className="text-ink/70">{getRoleLabel(profile.role)}</p>
           </div>
         </div>
         <nav className="mx-auto flex max-w-6xl flex-wrap gap-2 px-4 pb-4">

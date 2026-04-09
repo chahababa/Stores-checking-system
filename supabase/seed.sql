@@ -1,9 +1,9 @@
 insert into public.stores (code, name)
 values
-  ('store_1', '台北站前店'),
-  ('store_2', '板橋車站店'),
-  ('store_3', '桃園廣場店'),
-  ('store_4', '中壢樞紐店')
+  ('store_1', '1店'),
+  ('store_2', '2店'),
+  ('store_3', '3店'),
+  ('store_4', '4店')
 on conflict (code) do update
 set name = excluded.name;
 

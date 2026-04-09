@@ -13,6 +13,93 @@ export type AuthorizedUserInput = {
   name?: string | null;
 };
 
+export type StoreInput = {
+  code: string;
+  name: string;
+};
+
+function revalidateStoreDependentPaths() {
+  revalidatePath("/");
+  revalidatePath("/settings/stores");
+  revalidatePath("/settings/users");
+  revalidatePath("/settings/staff");
+  revalidatePath("/settings/items");
+  revalidatePath("/inspection/new");
+  revalidatePath("/inspection/history");
+  revalidatePath("/inspection/reports");
+}
+
+export async function createStore(input: StoreInput) {
+  const profile = await requireRole("owner");
+  const admin = createAdminClient();
+  const code = input.code.trim().toLowerCase();
+  const name = input.name.trim();
+
+  if (!code) {
+    throw new Error("請輸入店別代碼。");
+  }
+
+  if (!name) {
+    throw new Error("請輸入店別名稱。");
+  }
+
+  const { data, error } = await admin
+    .from("stores")
+    .insert({
+      code,
+      name,
+    })
+    .select("id")
+    .single();
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  await createAuditLog({
+    actorId: profile.id,
+    actorEmail: profile.email,
+    action: "create_store",
+    entityType: "store",
+    entityId: data?.id ?? code,
+    details: {
+      code,
+      name,
+    },
+  });
+
+  revalidateStoreDependentPaths();
+}
+
+export async function updateStoreName(input: { id: string; name: string }) {
+  const profile = await requireRole("owner");
+  const admin = createAdminClient();
+  const name = input.name.trim();
+
+  if (!name) {
+    throw new Error("請輸入店別名稱。");
+  }
+
+  const { error } = await admin.from("stores").update({ name }).eq("id", input.id);
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  await createAuditLog({
+    actorId: profile.id,
+    actorEmail: profile.email,
+    action: "update_store_name",
+    entityType: "store",
+    entityId: input.id,
+    details: {
+      name,
+    },
+  });
+
+  revalidateStoreDependentPaths();
+}
+
 export async function createAuthorizedUser(input: AuthorizedUserInput) {
   const profile = await requireRole("owner");
   const admin = createAdminClient();
