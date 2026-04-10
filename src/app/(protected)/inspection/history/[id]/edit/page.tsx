@@ -1,7 +1,8 @@
 import Link from "next/link";
 
 import { InspectionForm } from "@/components/inspection/inspection-form";
-import { getInspectionEditSeed, updateInspection } from "@/lib/inspection";
+import { updateInspectionAction } from "@/lib/inspection-actions";
+import { getInspectionEditSeed, type InspectionMutationInput } from "@/lib/inspection";
 
 type PageParams = Promise<{ id: string }>;
 
@@ -9,9 +10,9 @@ export default async function EditInspectionPage({ params }: { params: PageParam
   const { id } = await params;
   const seed = await getInspectionEditSeed(id);
 
-  async function updateAction(payload: Parameters<typeof updateInspection>[1]) {
+  async function updateAction(payload: InspectionMutationInput) {
     "use server";
-    return updateInspection(id, payload);
+    return updateInspectionAction(id, payload);
   }
 
   return (

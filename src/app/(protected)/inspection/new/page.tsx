@@ -1,5 +1,6 @@
 import { InspectionForm } from "@/components/inspection/inspection-form";
-import { createInspection, getInspectionFormSeed } from "@/lib/inspection";
+import { createInspectionAction } from "@/lib/inspection-actions";
+import { getInspectionFormSeed } from "@/lib/inspection";
 
 type SearchParams = Promise<{ store?: string; date?: string }>;
 
@@ -24,7 +25,7 @@ export default async function NewInspectionPage({
         </p>
       </div>
 
-      <InspectionForm seed={seed} saveAction={createInspection} />
+      <InspectionForm seed={seed} saveAction={createInspectionAction} />
     </div>
   );
 }
