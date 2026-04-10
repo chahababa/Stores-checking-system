@@ -518,7 +518,13 @@ export function InspectionForm({
 
           <div className="mt-5 grid gap-4">
             {group.items.map((item) => {
-              const value = form.scores[item.id];
+              const value = form.scores[item.id] ?? {
+                score: item.defaultScore,
+                note: "",
+                isFocusItem: item.isFocusItem,
+                hasPrevIssue: item.hasPrevIssue,
+                consecutiveWeeks: item.consecutiveWeeks,
+              };
               const itemPhotos = photos[item.id] ?? [];
 
               return (

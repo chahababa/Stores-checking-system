@@ -25,7 +25,11 @@ export default async function NewInspectionPage({
         </p>
       </div>
 
-      <InspectionForm seed={seed} saveAction={createInspectionAction} />
+      <InspectionForm
+        key={`${seed.selectedStoreId}:${seed.selectedDate}`}
+        seed={seed}
+        saveAction={createInspectionAction}
+      />
     </div>
   );
 }

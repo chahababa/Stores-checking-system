@@ -1,139 +1,98 @@
 # Changelog
 
-Stores Checking System 的部署、修復與驗證紀錄。
+Stores Checking System 的部署、修復與 QA 驗證紀錄。
 
 ## 2026-04-10
 
-### 正式站
+### 部署摘要
+- 正式網址：`https://stores-checking-system.zeabur.app`
+- 部署平台：Zeabur
+- Google OAuth 已從 Testing 發布到 Production
 
-- 網址：`https://stores-checking-system.zeabur.app`
-- 平台：Zeabur
-- OAuth：Google Cloud OAuth consent screen 已從 Testing 發布到 Production
+### 已驗證的重要修復
 
-### 已部署與驗證的重點 commits
-
-| Commit | Message | 結果 |
+| Commit | Message | 說明 |
 | --- | --- | --- |
-| `428bdac` | `fix: stabilize inspection form focus item queries` | 修正 `/inspection/new` 的 focus item 查詢策略 |
-| `c1af5d1` | `feat: add store management and restore store names` | 新增店別管理頁，並將店名恢復為 `1店 ~ 4店` |
-| `1d48493` | `fix: move inspection mutations to server actions` | 修正 `/inspection/new` 與巡店編輯頁的 Server Action 邊界問題 |
-| `df673d6` | `fix: handle read-only cookie context in server supabase client` | 修正舊 auth cookie 造成的首頁 crash |
-| `9f46c9d` | `docs: add CHANGELOG for 2026-04-10 deployment session` | 建立 changelog 初版 |
-| `ec87695` | `docs: clean deployment changelog` | 整理 changelog 結構與內容 |
-| `20b2eac` | `fix: address qa findings across history and settings` | 修正 QA 第一輪回報的 10 個問題 |
+| `428bdac` | `fix: stabilize inspection form focus item queries` | 修正 `/inspection/new` 讀取 focus items 時的查詢不穩定問題 |
+| `c1af5d1` | `feat: add store management and restore store names` | 新增店別管理並將店名修正為 `1店` 到 `4店` |
+| `1d48493` | `fix: move inspection mutations to server actions` | 修正 `/inspection/new` 與編輯頁傳遞 server function 給 client component 的錯誤 |
+| `df673d6` | `fix: handle read-only cookie context in server supabase client` | 修正舊 auth cookie 導致 server render crash 的問題 |
+| `20b2eac` | `fix: address qa findings across history and settings` | 修正第一輪 QA 回歸的 10 項問題 |
+| `7d44d81` | `fix: allow restoring archived staff members` | 讓封存組員可恢復在職 |
+| `ec87695` | `docs: clean deployment changelog` | 清理與重整 deployment changelog |
 
-### 已執行 migration
-
+### 執行過的 migration
 - `20260410_000006_fix_store_names.sql`
-  - 將既有 `stores` 資料修正為：
+  - 將 `stores` 表中的正式店名更新為：
     - `store_1 -> 1店`
     - `store_2 -> 2店`
     - `store_3 -> 3店`
     - `store_4 -> 4店`
-  - 類型：資料更新
-  - 備註：不涉及 schema 變更
 
-### 已修復的重要問題
+### 重要問題與修法
 
-#### `/inspection/new` 報錯，Digest `556599903`
-
+#### `/inspection/new` server-side 例外，Digest `556599903`
 - 根因：
-  - 一般 server function 被直接傳進 Client Component
-- 修復：
+  - 將未標記為 server action 的函式直接傳給 client component
+- 修法：
   - 新增 `src/lib/inspection-actions.ts`
-  - 改以 `"use server"` 明確暴露 mutation actions
+  - 將 mutation 改由 `"use server"` 的 action 檔案提供
 - 對應 commit：
   - `1d48493`
 
-#### `/inspection/new` 的 focus item 查詢不穩
-
+#### `/inspection/new` focus items 查詢不穩定
 - 根因：
-  - 原本使用脆弱的複合 `.or(...)` 條件查詢 `focus_items`
-- 修復：
-  - 改成獨立查詢 `permanent` 與 `monthly`
-  - 再於程式內合併
+  - 以脆弱的 `.or(...)` 條件讀取 `focus_items`
+- 修法：
+  - 分開查詢 `permanent` 與 `monthly`，再在程式內合併
 - 對應 commit：
   - `428bdac`
 
-#### 舊 auth cookie 造成首頁 crash，Digest `3211860576`
-
+#### 舊 auth cookie 造成整頁 crash，Digest `3211860576`
 - 根因：
-  - Supabase SSR 在 Server Component render 期間 refresh token
-  - `cookieStore.set()` 在唯讀 cookie context 中拋錯
-- 修復：
-  - 在 `src/lib/supabase/server.ts` 的 `setAll` 外包 `try/catch`
-  - 讓 middleware 在下一次 request 處理 refresh
+  - Server Component render 期間，Supabase SSR 嘗試 refresh token 並寫入唯讀 cookie context
+- 修法：
+  - 在 `src/lib/supabase/server.ts` 的 `setAll` 中加入 `try/catch`
+  - 讓下一次 request 由 middleware 完成真正的 refresh
 - 對應 commit：
   - `df673d6`
 
-#### 店別名稱與需求不一致
-
-- 修復：
+#### 店名內容偏離規格
+- 根因：
+  - 早期 seed / 修正過程中，正式店名未維持在 `1店` 到 `4店`
+- 修法：
   - 新增店別管理頁
-  - seed 改為 `1店 ~ 4店`
-  - 補上資料修正 migration
+  - 修正 seed 與正式資料內容
+  - 執行專用 migration 同步正式資料
 - 對應 commit：
   - `c1af5d1`
 
-### QA 第一輪回報後的修復
-
-以下問題已在 `20b2eac` 修復：
-
-1. 巡店紀錄列表缺少店別顯示
-2. 巡店紀錄列表缺少巡檢人顯示
-3. 組員管理顯示「未指定店別」
+### 第一輪 QA 回歸修復
+以下問題已由 `20b2eac` 修正：
+1. 巡店紀錄列表店別顯示為 `-`
+2. 巡店紀錄列表巡檢人顯示為 `-`
+3. 組員管理新增後店別顯示錯誤
 4. 新增巡店缺少批次評分
 5. 職位名稱不一致
-6. 操作紀錄內容過於技術化
-7. 帳號停用缺少確認提示
-8. 組員管理文案偏開發術語
-9. 缺少成功提示
-10. 缺少首頁 / 儀表板
+6. audit details 過度技術化
+7. 停用帳號缺少確認
+8. 缺少成功 toast
+9. 缺少首頁儀表板
 
-#### 該輪修復重點
+### 第二輪 QA 回歸修復
+以下問題已由 `7d44d81` 修正：
+1. 封存組員後無法恢復在職
 
-- `/inspection/history`
-  - 補回店別與巡檢人 relation mapping
-- `/settings/staff`
-  - 補回正確店別顯示
-  - 文案改為使用者導向
-  - 成功操作加入 toast
-- `/inspection/new`
-  - 新增 `全部設為 3 分`
-  - 新增 `重設評分`
-- `/settings/users`
-  - 停用帳號前加入確認提示
-  - 成功操作加入 toast
-- `/audit`
-  - 將 details 轉為人類可讀格式
-- `/`
-  - 新增最小可用 dashboard
+### 第三輪 QA 回歸修復
+以下問題已修正：
+1. `/inspection/new` 切換到其他店別時，因舊表單 state 與新 seed 暫時不一致而觸發 client-side crash
+   - 修法：
+     - 讓 `InspectionForm` 在店別或日期變更時以 `key` 重新掛載
+     - 渲染評分項目時，對缺漏的 score state 提供 fallback，避免讀取 `undefined.isFocusItem`
+2. `/audit` 對象欄位的 `inspection` 統一顯示為 `巡店紀錄`
 
-### QA 第二輪回歸追加修復
-
-以下問題在本輪修復：
-
-11. 封存組員後無法解封
-
-#### 修復內容
-
-- `src/lib/settings.ts`
-  - 新增 `restoreStaffMember()`
-- `/settings/staff`
-  - 封存組員旁新增 `恢復在職` 按鈕
-  - 成功後顯示成功提示
-- `src/lib/ui-labels.ts`
-  - 新增 `restore_staff_member` audit label
-
-#### 影響範圍
-
-- 僅程式碼修正
-- 不涉及 schema 或 migration 變更
-
-### 驗證狀態
-
-本日已確認可正常使用的頁面包含：
-
+### 正式站驗證
+目前已驗證可正常使用的主要頁面：
 - `/login`
 - `/`
 - `/inspection/history`
@@ -142,12 +101,13 @@ Stores Checking System 的部署、修復與驗證紀錄。
 - `/inspection/reports`
 - `/audit`
 - `/settings/stores`
+- `/settings/staff`
+- `/settings/users`
 
-### 維護提醒
-
-- 之後若再有部署、migration、OAuth、Zeabur 或 Supabase 相關異動，請直接在本檔案追加新日期區塊
-- 若有重大故障，建議補上：
-  - 症狀
-  - 根因
-  - 修復 commit
-  - 驗證方式
+### 後續紀錄方式
+之後若再有新的部署、migration、OAuth 設定或 QA 修復，請追加：
+- 問題現象
+- 根因
+- 修法
+- commit
+- 驗證結果
