@@ -19,6 +19,7 @@ function getSingleRelation<T>(value: T | T[] | null | undefined) {
 function getSuccessMessage(success?: string) {
   if (success === "staff-created") return "組員新增成功。";
   if (success === "staff-archived") return "組員已封存。";
+  if (success === "staff-restored") return "組員已恢復為在職。";
   return null;
 }
 
@@ -53,6 +54,13 @@ export default async function StaffSettingsPage({ searchParams }: { searchParams
     const { archiveStaffMember } = await import("@/lib/settings");
     await archiveStaffMember(String(formData.get("id")));
     redirect("/settings/staff?success=staff-archived");
+  }
+
+  async function restoreAction(formData: FormData) {
+    "use server";
+    const { restoreStaffMember } = await import("@/lib/settings");
+    await restoreStaffMember(String(formData.get("id")));
+    redirect("/settings/staff?success=staff-restored");
   }
 
   const successMessage = getSuccessMessage(params.success);
@@ -97,7 +105,7 @@ export default async function StaffSettingsPage({ searchParams }: { searchParams
         </form>
       </SectionCard>
 
-      <SectionCard title="組員列表" description="可查看目前在職或已封存的組員，封存後不會出現在巡店表單。">
+      <SectionCard title="組員列表" description="可查看目前在職或已封存的組員，並在需要時恢復封存人員。">
         <div className="grid gap-3">
           {staffMembers?.map((member) => {
             const store = getSingleRelation(member.stores) as { name?: string } | null;
@@ -122,7 +130,15 @@ export default async function StaffSettingsPage({ searchParams }: { searchParams
                     </button>
                   </form>
                 ) : (
-                  <span className="text-xs text-ink/55">封存日期：{member.archived_at?.slice(0, 10) ?? "-"}</span>
+                  <div className="flex items-center gap-3">
+                    <span className="text-xs text-ink/55">封存日期：{member.archived_at?.slice(0, 10) ?? "-"}</span>
+                    <form action={restoreAction}>
+                      <input type="hidden" name="id" value={member.id} />
+                      <button className="rounded-full bg-white px-4 py-2 text-xs" type="submit">
+                        恢復在職
+                      </button>
+                    </form>
+                  </div>
                 )}
               </div>
             );

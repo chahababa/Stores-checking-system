@@ -32,6 +32,7 @@ export function getAuditActionLabel(action: string) {
     update_store_name: "更新店別名稱",
     create_staff_member: "新增組員",
     archive_staff_member: "封存組員",
+    restore_staff_member: "恢復組員",
     set_focus_items: "更新重點項目",
     update_inspection_item_status: "更新題目啟用狀態",
     set_store_extra_items: "更新店別額外題目",

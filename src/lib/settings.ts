@@ -220,6 +220,32 @@ export async function archiveStaffMember(id: string) {
   revalidatePath("/settings/staff");
 }
 
+export async function restoreStaffMember(id: string) {
+  const profile = await requireRole("owner", "manager");
+  const admin = createAdminClient();
+  const { error } = await admin
+    .from("staff_members")
+    .update({
+      status: "active",
+      archived_at: null,
+    })
+    .eq("id", id);
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  await createAuditLog({
+    actorId: profile.id,
+    actorEmail: profile.email,
+    action: "restore_staff_member",
+    entityType: "staff_member",
+    entityId: id,
+  });
+
+  revalidatePath("/settings/staff");
+}
+
 export async function getFocusItems(month: string) {
   await requireRole("owner", "manager");
   const admin = createAdminClient();
