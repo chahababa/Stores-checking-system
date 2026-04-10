@@ -6,3 +6,6 @@ dist
 coverage
 *.log
 *.tsbuildinfo
+playwright-report
+test-results
+playwright/.auth

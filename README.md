@@ -70,6 +70,8 @@ NEXT_PUBLIC_SITE_URL=http://localhost:3000
 
 - `npm run dev`
 - `npm run test`
+- `npm run test:e2e`
+- `npm run test:e2e:headed`
 - `npm run lint`
 - `npm run typecheck`
 - `npm run build`
@@ -91,6 +93,14 @@ Current repo checks:
 - `npm run lint`
 - `npm run typecheck`
 - `npm run build`
+
+## UI / E2E Testing
+
+Playwright is configured under [playwright.config.ts](/c:/Users/User/Desktop/VibeCoding/Stores-checking-system/playwright.config.ts).
+
+- Public smoke tests live in [e2e/public-smoke.spec.ts](/c:/Users/User/Desktop/VibeCoding/Stores-checking-system/e2e/public-smoke.spec.ts)
+- Optional authenticated dashboard checks live in [e2e/authenticated-dashboards.spec.ts](/c:/Users/User/Desktop/VibeCoding/Stores-checking-system/e2e/authenticated-dashboards.spec.ts)
+- Setup notes are in [e2e/README.md](/c:/Users/User/Desktop/VibeCoding/Stores-checking-system/e2e/README.md)
 
 ## Notes
 

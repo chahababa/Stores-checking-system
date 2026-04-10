@@ -98,6 +98,16 @@ Stores Checking System 的部署、修復與 QA 驗證紀錄。
 2. leader 若未綁定店別，首頁會導向 `/pending`
    - 避免在角色資料不完整時誤看到跨店資訊
 
+### 自動化 UI / E2E 測試基礎
+1. 導入 Playwright
+2. 新增公開 smoke tests
+   - 登入頁是否可開啟
+   - 未登入使用者進入受保護頁面時是否會被導回登入頁
+3. 新增可選的 authenticated dashboard 測試
+   - owner dashboard 可見項目
+   - leader dashboard 與受限導航
+4. 補上 `e2e/README.md`，說明如何在本地或正式站執行測試
+
 ### 正式站驗證
 目前已驗證可正常使用的主要頁面：
 - `/login`
