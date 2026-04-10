@@ -91,6 +91,13 @@ Stores Checking System 的部署、修復與 QA 驗證紀錄。
      - 渲染評分項目時，對缺漏的 score state 提供 fallback，避免讀取 `undefined.isFocusItem`
 2. `/audit` 對象欄位的 `inspection` 統一顯示為 `巡店紀錄`
 
+### 角色首頁調整
+1. 首頁改為真正的角色化 dashboard
+   - owner / manager 看到跨店營運總覽、近期巡店與店別概況
+   - leader 看到單店工作台、本店待辦與單店快捷入口
+2. leader 若未綁定店別，首頁會導向 `/pending`
+   - 避免在角色資料不完整時誤看到跨店資訊
+
 ### 正式站驗證
 目前已驗證可正常使用的主要頁面：
 - `/login`
