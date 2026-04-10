@@ -1,10 +1,24 @@
+import { redirect } from "next/navigation";
+
+import { ConfirmSubmitButton } from "@/components/confirm-submit-button";
+import { PageToast } from "@/components/page-toast";
 import { SectionCard } from "@/components/section-card";
 import { requireRole } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getRoleLabel } from "@/lib/ui-labels";
 
-export default async function UsersSettingsPage() {
+type SearchParams = Promise<{ success?: string }>;
+
+function getSuccessMessage(success?: string) {
+  if (success === "user-created") return "帳號已建立或更新。";
+  if (success === "user-disabled") return "帳號已停用。";
+  if (success === "user-enabled") return "帳號已重新啟用。";
+  return null;
+}
+
+export default async function UsersSettingsPage({ searchParams }: { searchParams: SearchParams }) {
   await requireRole("owner");
+  const params = await searchParams;
   const admin = createAdminClient();
   const [{ data: users }, { data: stores }] = await Promise.all([
     admin.from("users").select("id, email, name, role, is_active, store_id").order("email"),
@@ -20,26 +34,40 @@ export default async function UsersSettingsPage() {
       role: String(formData.get("role") || "leader") as "owner" | "manager" | "leader",
       storeId: String(formData.get("store_id") || "") || null,
     });
+    redirect("/settings/users?success=user-created");
   }
 
   async function toggleUserAction(formData: FormData) {
     "use server";
+    const nextActive = String(formData.get("next_active")) === "true";
     const { updateAuthorizedUserStatus } = await import("@/lib/settings");
-    await updateAuthorizedUserStatus(
-      String(formData.get("id")),
-      String(formData.get("next_active")) === "true",
-    );
+    await updateAuthorizedUserStatus(String(formData.get("id")), nextActive);
+    redirect(`/settings/users?success=${nextActive ? "user-enabled" : "user-disabled"}`);
   }
+
+  const successMessage = getSuccessMessage(params.success);
 
   return (
     <div className="grid gap-6 lg:grid-cols-[1.1fr_1.4fr]">
-      <SectionCard title="新增授權帳號" description="系統擁有者可先建立可登入名單，之後使用者再透過 Google OAuth 進入。">
+      {successMessage ? <PageToast message={successMessage} /> : null}
+
+      <SectionCard title="新增授權帳號" description="建立可登入系統的帳號。使用者仍需透過 Google 登入，系統再依 email 判斷是否授權。">
         <form action={createUserAction} className="grid gap-4">
-          <input name="name" placeholder="顯示名稱（可留空）" className="rounded-2xl border border-ink/10 bg-white px-4 py-3" />
-          <input name="email" type="email" required placeholder="email@example.com" className="rounded-2xl border border-ink/10 bg-white px-4 py-3" />
+          <input
+            name="name"
+            placeholder="輸入顯示名稱"
+            className="rounded-2xl border border-ink/10 bg-white px-4 py-3"
+          />
+          <input
+            name="email"
+            type="email"
+            required
+            placeholder="email@example.com"
+            className="rounded-2xl border border-ink/10 bg-white px-4 py-3"
+          />
           <select name="role" className="rounded-2xl border border-ink/10 bg-white px-4 py-3">
             <option value="leader">店長</option>
-            <option value="manager">店主管</option>
+            <option value="manager">主管</option>
             <option value="owner">系統擁有者</option>
           </select>
           <select name="store_id" className="rounded-2xl border border-ink/10 bg-white px-4 py-3">
@@ -51,12 +79,12 @@ export default async function UsersSettingsPage() {
             ))}
           </select>
           <button className="rounded-full bg-warm px-5 py-3 text-sm text-white" type="submit">
-            新增帳號
+            儲存帳號
           </button>
         </form>
       </SectionCard>
 
-      <SectionCard title="已授權帳號" description="這裡會顯示目前能登入系統的帳號與啟用狀態。">
+      <SectionCard title="已授權帳號" description="可查看目前已授權的帳號，並停用或重新啟用個別使用者。">
         <div className="overflow-x-auto">
           <table className="min-w-full text-left text-sm">
             <thead className="text-ink/60">
@@ -79,9 +107,17 @@ export default async function UsersSettingsPage() {
                     <form action={toggleUserAction}>
                       <input type="hidden" name="id" value={user.id} />
                       <input type="hidden" name="next_active" value={String(!user.is_active)} />
-                      <button className="rounded-full bg-soft px-4 py-2 text-xs" type="submit">
-                        {user.is_active ? "停用" : "重新啟用"}
-                      </button>
+                      {user.is_active ? (
+                        <ConfirmSubmitButton
+                          label="停用"
+                          className="rounded-full bg-soft px-4 py-2 text-xs"
+                          confirmMessage={`確定要停用 ${user.email} 的帳號嗎？`}
+                        />
+                      ) : (
+                        <button className="rounded-full bg-soft px-4 py-2 text-xs" type="submit">
+                          重新啟用
+                        </button>
+                      )}
                     </form>
                   </td>
                 </tr>

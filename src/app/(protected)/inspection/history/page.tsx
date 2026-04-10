@@ -17,6 +17,14 @@ function getMonthRange(month: string) {
   };
 }
 
+function getSingleRelation<T>(value: T | T[] | null | undefined) {
+  if (Array.isArray(value)) {
+    return value[0] ?? null;
+  }
+
+  return value ?? null;
+}
+
 export default async function InspectionHistoryPage({
   searchParams,
 }: {
@@ -30,7 +38,7 @@ export default async function InspectionHistoryPage({
   const storesQuery = admin.from("stores").select("id, name").order("name");
   const inspectionsQuery = admin
     .from("inspections")
-    .select("id, date, time_slot, total_score, created_at, store_id, is_editable, stores(name), users(email)")
+    .select("id, date, time_slot, total_score, created_at, store_id, is_editable, stores(id, name), users(name, email)")
     .order("date", { ascending: false })
     .order("created_at", { ascending: false });
 
@@ -66,7 +74,7 @@ export default async function InspectionHistoryPage({
     <div className="grid gap-6">
       <div className="flex flex-col gap-4 rounded-[28px] border border-ink/10 bg-white/85 p-6 shadow-card md:flex-row md:items-center md:justify-between">
         <div>
-          <p className="font-lora text-sm uppercase tracking-[0.25em] text-warm">巡店紀錄</p>
+          <p className="font-lora text-sm uppercase tracking-[0.25em] text-warm">Inspection History</p>
           <h1 className="mt-2 font-serifTc text-3xl font-semibold">巡店紀錄</h1>
         </div>
         {(profile.role === "owner" || profile.role === "manager") && (
@@ -78,8 +86,8 @@ export default async function InspectionHistoryPage({
 
       <div className="grid gap-6 lg:grid-cols-[1.2fr_0.8fr]">
         <div className="rounded-[28px] border border-ink/10 bg-white/85 p-6 shadow-card">
-          <p className="font-lora text-sm uppercase tracking-[0.25em] text-warm">篩選條件</p>
-          <h2 className="mt-2 font-serifTc text-2xl font-semibold">查詢範圍</h2>
+          <p className="font-lora text-sm uppercase tracking-[0.25em] text-warm">Filters</p>
+          <h2 className="mt-2 font-serifTc text-2xl font-semibold">篩選條件</h2>
 
           <form className="mt-5 grid gap-4 md:grid-cols-2">
             {profile.role !== "leader" && (
@@ -115,7 +123,7 @@ export default async function InspectionHistoryPage({
                 套用篩選
               </button>
               <Link href="/inspection/history" className="rounded-full bg-soft px-5 py-3 text-sm text-ink/70">
-                重設
+                清除
               </Link>
             </div>
           </form>
@@ -150,42 +158,47 @@ export default async function InspectionHistoryPage({
               <th className="px-4 py-3">時段</th>
               <th className="px-4 py-3">分數</th>
               <th className="px-4 py-3">狀態</th>
-              <th className="px-4 py-3">巡店人</th>
+              <th className="px-4 py-3">巡檢人</th>
             </tr>
           </thead>
           <tbody>
-            {(inspections ?? []).map((inspection) => (
-              <tr key={inspection.id} className="border-t border-ink/10">
-                <td className="px-4 py-3">{inspection.date}</td>
-                <td className="px-4 py-3">{inspection.stores?.[0]?.name ?? "-"}</td>
-                <td className="px-4 py-3">{inspection.time_slot}</td>
-                <td className="px-4 py-3">{inspection.total_score}</td>
-                <td className="px-4 py-3">
-                  <span
-                    className={`rounded-full px-3 py-1 text-xs ${
-                      inspection.is_editable ? "bg-warm/15 text-warm" : "bg-ink/10 text-ink/70"
-                    }`}
-                  >
-                    {inspection.is_editable ? "可編輯" : "已鎖定"}
-                  </span>
-                </td>
-                <td className="px-4 py-3">
-                  <div className="flex items-center justify-between gap-3">
-                    <span>{inspection.users?.[0]?.email ?? "-"}</span>
-                    <Link
-                      href={`/inspection/history/${inspection.id}`}
-                      className="text-warm underline-offset-4 hover:underline"
+            {(inspections ?? []).map((inspection) => {
+              const store = getSingleRelation(inspection.stores) as { name?: string } | null;
+              const inspector = getSingleRelation(inspection.users) as { name?: string; email?: string } | null;
+
+              return (
+                <tr key={inspection.id} className="border-t border-ink/10">
+                  <td className="px-4 py-3">{inspection.date}</td>
+                  <td className="px-4 py-3">{store?.name ?? "-"}</td>
+                  <td className="px-4 py-3">{inspection.time_slot}</td>
+                  <td className="px-4 py-3">{inspection.total_score}</td>
+                  <td className="px-4 py-3">
+                    <span
+                      className={`rounded-full px-3 py-1 text-xs ${
+                        inspection.is_editable ? "bg-warm/15 text-warm" : "bg-ink/10 text-ink/70"
+                      }`}
                     >
-                      查看
-                    </Link>
-                  </div>
-                </td>
-              </tr>
-            ))}
+                      {inspection.is_editable ? "可編輯" : "已鎖定"}
+                    </span>
+                  </td>
+                  <td className="px-4 py-3">
+                    <div className="flex items-center justify-between gap-3">
+                      <span>{inspector?.name || inspector?.email || "-"}</span>
+                      <Link
+                        href={`/inspection/history/${inspection.id}`}
+                        className="text-warm underline-offset-4 hover:underline"
+                      >
+                        查看
+                      </Link>
+                    </div>
+                  </td>
+                </tr>
+              );
+            })}
             {!inspections?.length && (
               <tr>
                 <td className="px-4 py-8 text-center text-ink/60" colSpan={6}>
-                  查無符合目前篩選條件的巡店紀錄。
+                  目前沒有符合條件的巡店紀錄。
                 </td>
               </tr>
             )}

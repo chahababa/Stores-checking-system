@@ -162,6 +162,31 @@ export function InspectionForm({
 
   const missingFocusCount = Object.values(form.scores).filter((score) => score.isFocusItem && score.score === null)
     .length;
+  const totalItemCount = seed.groupedItems.reduce((sum, group) => sum + group.items.length, 0);
+  const scoredItemCount = Object.values(form.scores).filter((value) => value.score !== null).length;
+
+  function applyBulkScore(score: ScoreValue) {
+    setForm((current) => ({
+      ...current,
+      scores: Object.fromEntries(
+        Object.entries(current.scores).map(([itemId, value]) => [
+          itemId,
+          {
+            ...value,
+            score,
+          },
+        ]),
+      ),
+    }));
+  }
+
+  function resetScoresToDefault() {
+    const defaults = createInitialState(seed);
+    setForm((current) => ({
+      ...current,
+      scores: defaults.scores,
+    }));
+  }
 
   function setScore(itemId: string, score: ScoreValue) {
     setForm((current) => ({
@@ -452,6 +477,33 @@ export function InspectionForm({
               這間店目前還沒有可選的在職組員。
             </div>
           )}
+        </div>
+      </section>
+
+      <section className="rounded-[28px] border border-ink/10 bg-white/85 p-5 shadow-card">
+        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+          <div>
+            <h2 className="font-serifTc text-2xl font-semibold">批次評分</h2>
+            <p className="mt-2 text-sm text-ink/70">
+              已填 {scoredItemCount} / {totalItemCount} 題。建議先全部設為 3 分，再微調少數例外項目。
+            </p>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={() => applyBulkScore(3)}
+              className="rounded-full bg-warm px-4 py-2 text-sm text-white"
+            >
+              全部設為 3 分
+            </button>
+            <button
+              type="button"
+              onClick={resetScoresToDefault}
+              className="rounded-full bg-soft px-4 py-2 text-sm text-ink/75"
+            >
+              重設評分
+            </button>
+          </div>
         </div>
       </section>
 
