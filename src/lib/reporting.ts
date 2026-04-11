@@ -1,4 +1,10 @@
-import { buildCategoryGrades, buildOverallInspectionGrade, type GradeableScore, type InspectionGrade } from "@/lib/grading";
+import {
+  buildCategoryGrades,
+  buildOverallInspectionGrade,
+  buildTagIssueCounts,
+  type GradeableScore,
+  type InspectionGrade,
+} from "@/lib/grading";
 
 export type MonthlyInspectionReportSummary = {
   totalInspections: number;
@@ -13,6 +19,11 @@ export type MonthlyInspectionReportSummary = {
   storesCovered: number;
   pendingTasks: number;
   verifiedTasks: number;
+  tagIssueCounts: {
+    critical: number;
+    monthlyAttention: number;
+    complaintWatch: number;
+  };
 };
 
 export type ProblemItemStat = {
@@ -142,6 +153,7 @@ export function buildMonthlyInspectionReportStats(input: {
 
   const allScores = input.inspections.flatMap((inspection) => inspection.scores);
   const overallInspectionGrade = allScores.length > 0 ? buildOverallInspectionGrade(allScores) : null;
+  const tagIssueCounts = buildTagIssueCounts(allScores);
   const categorySummaries = buildCategoryGrades(allScores).sort(
     (left, right) =>
       gradeWeight[left.grade] - gradeWeight[right.grade] || Number(left.averageScore) - Number(right.averageScore),
@@ -156,6 +168,7 @@ export function buildMonthlyInspectionReportStats(input: {
     storesCovered: new Set(input.inspections.map((inspection) => inspection.storeId)).size,
     pendingTasks: input.relatedTasks.filter((task) => task.status === "pending").length,
     verifiedTasks: input.relatedTasks.filter((task) => task.status === "verified").length,
+    tagIssueCounts,
   };
 
   const topProblemItems: ProblemItemStat[] = [...itemStats.values()]

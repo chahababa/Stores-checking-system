@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   buildCategoryGrades,
   buildOverallInspectionGrade,
+  buildTagIssueCounts,
   downgradeGrade,
   getAverageGrade,
   getScoreGrade,
@@ -50,6 +51,21 @@ describe("grading helpers", () => {
     expect(downgradeGrade("A")).toBe("B");
     expect(downgradeGrade("A", 2)).toBe("C");
     expect(downgradeGrade("C")).toBe("C");
+  });
+
+  it("counts low-score issues by tag type", () => {
+    const result = buildTagIssueCounts([
+      { categoryName: "人員管理", score: 3, tagTypes: ["critical"] },
+      { categoryName: "人員管理", score: 2, tagTypes: ["critical", "monthly_attention"] },
+      { categoryName: "服務品質", score: 1, tagTypes: ["complaint_watch"] },
+      { categoryName: "服務品質", score: 2, tagTypes: ["complaint_watch", "monthly_attention"] },
+    ]);
+
+    expect(result).toEqual({
+      critical: 1,
+      monthlyAttention: 2,
+      complaintWatch: 2,
+    });
   });
 
   it("applies tag-based overall grade adjustments", () => {

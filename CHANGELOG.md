@@ -49,6 +49,19 @@ Stores Checking System 的開發、部署、驗證與修復紀錄。
   - 分類拆解
   - 店別總評
 
+### 標籤統計與 E2E 擴充
+- 首頁與月報加入標籤異常摘要：
+  - 必查異常
+  - 本月加強異常
+  - 客訴項目異常
+- 月報資料模型與 CSV 匯出同步帶出標籤異常數。
+- Playwright 已登入測試擴充為：
+  - owner dashboard 驗證
+  - owner reports 驗證
+  - leader dashboard 驗證
+  - leader reports 驗證
+  - leader 受限頁面阻擋驗證
+
 Stores Checking System 的部署、修復與產品體驗調整紀錄。
 
 ## 2026-04-11

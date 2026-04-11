@@ -6,6 +6,7 @@ import { getCurrentUserProfile } from "@/lib/auth";
 import {
   buildCategoryGrades,
   buildOverallInspectionGrade,
+  buildTagIssueCounts,
   type InspectionGrade,
   type InspectionTagType,
 } from "@/lib/grading";
@@ -100,6 +101,7 @@ export default async function HomePage() {
   const categoryGrades = buildCategoryGrades(allScores).sort(
     (left, right) => Number(left.averageScore) - Number(right.averageScore),
   );
+  const tagIssueCounts = buildTagIssueCounts(allScores);
   const weakestCategories = categoryGrades.slice(0, 3);
   const strongestCategories = [...categoryGrades].sort((left, right) => Number(right.averageScore) - Number(left.averageScore)).slice(0, 3);
 
@@ -331,6 +333,24 @@ export default async function HomePage() {
             <p className="text-sm text-ink/60">{profile.role === "leader" ? "本店在職組員" : "在職組員數"}</p>
             <p className="mt-2 font-serifTc text-3xl font-semibold">{activeStaffCount}</p>
             <p className="mt-2 text-xs text-ink/55">低分巡店 {lowScoreInspections} 次</p>
+          </div>
+        </section>
+
+        <section className="grid gap-4 md:grid-cols-3">
+          <div className="rounded-[24px] border border-danger/15 bg-white px-5 py-4 shadow-card">
+            <p className="text-sm text-ink/60">必查異常</p>
+            <p className="mt-2 font-serifTc text-3xl font-semibold text-danger">{tagIssueCounts.critical}</p>
+            <p className="mt-2 text-xs text-ink/55">目前落在 B / C 的必查題目數</p>
+          </div>
+          <div className="rounded-[24px] border border-warm/20 bg-white px-5 py-4 shadow-card">
+            <p className="text-sm text-ink/60">本月加強異常</p>
+            <p className="mt-2 font-serifTc text-3xl font-semibold text-warm">{tagIssueCounts.monthlyAttention}</p>
+            <p className="mt-2 text-xs text-ink/55">這個月需要加強、但目前仍落在 B / C 的題目數</p>
+          </div>
+          <div className="rounded-[24px] border border-ink/15 bg-white px-5 py-4 shadow-card">
+            <p className="text-sm text-ink/60">客訴項目異常</p>
+            <p className="mt-2 font-serifTc text-3xl font-semibold text-ink">{tagIssueCounts.complaintWatch}</p>
+            <p className="mt-2 text-xs text-ink/55">目前被標記為客訴項目且落在 B / C 的題目數</p>
           </div>
         </section>
 

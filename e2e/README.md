@@ -62,10 +62,12 @@ PLAYWRIGHT_LEADER_STORAGE_STATE=playwright/.auth/leader.json
 
 These files should contain Playwright storage state captured after a successful login for each role.
 
-The initial authenticated coverage focuses on:
+The authenticated coverage now focuses on:
 
 - owner dashboard visibility
+- owner reports visibility
 - leader dashboard visibility
+- leader reports visibility
 - leader navigation restrictions
 
 Example:

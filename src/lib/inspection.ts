@@ -190,6 +190,11 @@ export type MonthlyInspectionReport = {
     storesCovered: number;
     pendingTasks: number;
     verifiedTasks: number;
+    tagIssueCounts: {
+      critical: number;
+      monthlyAttention: number;
+      complaintWatch: number;
+    };
   };
   topProblemItems: Array<{
     itemId: string;

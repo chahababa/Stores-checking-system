@@ -31,6 +31,12 @@ export type OverallInspectionGrade = {
   };
 };
 
+export type TagIssueCounts = {
+  critical: number;
+  monthlyAttention: number;
+  complaintWatch: number;
+};
+
 export function getScoreGrade(score: 1 | 2 | 3): InspectionGrade {
   if (score === 3) return "A";
   if (score === 2) return "B";
@@ -79,6 +85,35 @@ export function buildCategoryGrades(scores: GradeableScore[]): CategoryGradeSumm
       counts,
     };
   });
+}
+
+export function buildTagIssueCounts(scores: GradeableScore[]): TagIssueCounts {
+  return scores.reduce(
+    (acc, row) => {
+      if (row.score > 2) {
+        return acc;
+      }
+
+      if (row.tagTypes?.includes("critical")) {
+        acc.critical += 1;
+      }
+
+      if (row.tagTypes?.includes("monthly_attention")) {
+        acc.monthlyAttention += 1;
+      }
+
+      if (row.tagTypes?.includes("complaint_watch")) {
+        acc.complaintWatch += 1;
+      }
+
+      return acc;
+    },
+    {
+      critical: 0,
+      monthlyAttention: 0,
+      complaintWatch: 0,
+    },
+  );
 }
 
 export function buildOverallInspectionGrade(scores: GradeableScore[]): OverallInspectionGrade {

@@ -141,6 +141,30 @@ export default async function InspectionReportsPage({
         </div>
       </div>
 
+      <div className="grid gap-4 md:grid-cols-3">
+        <div className="rounded-[24px] border border-danger/15 bg-white px-5 py-4 shadow-card">
+          <p className="text-sm text-ink/60">必查異常</p>
+          <p className="mt-2 font-serifTc text-3xl font-semibold text-danger">
+            {report.summary.tagIssueCounts.critical}
+          </p>
+          <p className="mt-2 text-xs text-ink/55">所有被標記為必查且落在 B / C 的題目數</p>
+        </div>
+        <div className="rounded-[24px] border border-warm/20 bg-white px-5 py-4 shadow-card">
+          <p className="text-sm text-ink/60">本月加強異常</p>
+          <p className="mt-2 font-serifTc text-3xl font-semibold text-warm">
+            {report.summary.tagIssueCounts.monthlyAttention}
+          </p>
+          <p className="mt-2 text-xs text-ink/55">這個月特別加強、但目前仍落在 B / C 的題目數</p>
+        </div>
+        <div className="rounded-[24px] border border-ink/15 bg-white px-5 py-4 shadow-card">
+          <p className="text-sm text-ink/60">客訴項目異常</p>
+          <p className="mt-2 font-serifTc text-3xl font-semibold text-ink">
+            {report.summary.tagIssueCounts.complaintWatch}
+          </p>
+          <p className="mt-2 text-xs text-ink/55">目前被標記為客訴項目且落在 B / C 的題目數</p>
+        </div>
+      </div>
+
       <div className="grid gap-6 lg:grid-cols-[1.05fr_0.95fr]">
         <div className="rounded-[28px] border border-ink/10 bg-white p-6 shadow-card">
           <p className="font-lora text-sm uppercase tracking-[0.25em] text-warm">Category Health</p>

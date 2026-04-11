@@ -81,6 +81,11 @@ describe("reporting helpers", () => {
       storesCovered: 2,
       pendingTasks: 2,
       verifiedTasks: 1,
+      tagIssueCounts: {
+        critical: 1,
+        monthlyAttention: 1,
+        complaintWatch: 1,
+      },
     });
     expect(stats.topProblemItems[0]).toEqual({
       itemId: "item-1",
