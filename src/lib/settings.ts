@@ -34,6 +34,13 @@ export type WorkstationInput = {
   isActive?: boolean;
 };
 
+export type InspectionItemInput = {
+  name: string;
+  categoryId: string;
+  isBase: boolean;
+  storeIds?: string[];
+};
+
 export type InspectionTagType = "critical" | "monthly_attention" | "complaint_watch";
 export type InspectionTagSource = "manual" | "complaint_sync";
 export type QaCleanupPreview = {
@@ -670,6 +677,84 @@ export async function updateInspectionItemStatus(id: string, isActive: boolean) 
   });
 
   revalidatePath("/settings/items");
+}
+
+export async function createInspectionItem(input: InspectionItemInput) {
+  const profile = await requireRole("owner");
+  const admin = createAdminClient();
+  const name = input.name.trim();
+
+  if (!name) {
+    throw new Error("請填寫題目名稱。");
+  }
+
+  if (!input.categoryId) {
+    throw new Error("請選擇題目類別。");
+  }
+
+  const scopedStoreIds = Array.from(new Set((input.storeIds ?? []).filter(Boolean)));
+  if (!input.isBase && scopedStoreIds.length === 0) {
+    throw new Error("店別加題至少要指定一間適用店別。");
+  }
+
+  const { data: sortRow, error: sortError } = await admin
+    .from("inspection_items")
+    .select("sort_order")
+    .eq("category_id", input.categoryId)
+    .order("sort_order", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (sortError) {
+    throw new Error(sortError.message);
+  }
+
+  const nextSortOrder = (sortRow?.sort_order ?? 0) + 10;
+  const { data: createdItem, error: createError } = await admin
+    .from("inspection_items")
+    .insert({
+      category_id: input.categoryId,
+      name,
+      sort_order: nextSortOrder,
+      is_base: input.isBase,
+      is_active: true,
+    })
+    .select("id")
+    .single();
+
+  if (createError || !createdItem) {
+    throw new Error(createError?.message || "新增題目失敗。");
+  }
+
+  if (!input.isBase && scopedStoreIds.length > 0) {
+    const { error: extraError } = await admin.from("store_extra_items").insert(
+      scopedStoreIds.map((storeId) => ({
+        store_id: storeId,
+        item_id: createdItem.id,
+      })),
+    );
+
+    if (extraError) {
+      throw new Error(extraError.message);
+    }
+  }
+
+  await createAuditLog({
+    actorId: profile.id,
+    actorEmail: profile.email,
+    action: "create_inspection_item",
+    entityType: "inspection_item",
+    entityId: createdItem.id,
+    details: {
+      name,
+      category_id: input.categoryId,
+      is_base: input.isBase,
+      store_ids: scopedStoreIds,
+    },
+  });
+
+  revalidatePath("/settings/items");
+  revalidatePath("/inspection/new");
 }
 
 export async function setStoreExtraItems(input: { storeId: string; itemIds: string[] }) {

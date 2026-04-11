@@ -67,6 +67,7 @@ export function getAuditActionLabel(action: string) {
     restore_staff_member: "恢復組員",
     create_workstation: "新增工作站",
     update_workstation: "更新工作站",
+    create_inspection_item: "新增巡店題目",
     set_focus_items: "更新標籤設定",
     update_inspection_item_status: "更新題目啟用狀態",
     set_store_extra_items: "更新店別附加題目",
@@ -218,6 +219,16 @@ export function formatAuditDetails(
     case "update_inspection_item_status":
       if ("is_active" in details) {
         parts.push(`狀態：${getBooleanLabel(details.is_active)}`);
+      }
+      break;
+
+    case "create_inspection_item":
+      if (typeof details.name === "string") parts.push(`題目：${details.name}`);
+      if ("is_base" in details) {
+        parts.push(`類型：${details.is_base ? "基礎題目" : "店別加題"}`);
+      }
+      if (Array.isArray(details.store_ids) && details.store_ids.length > 0) {
+        parts.push(`適用店別：${details.store_ids.length} 間`);
       }
       break;
 
