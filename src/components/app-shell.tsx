@@ -20,13 +20,16 @@ const inspectionLinks: NavigationLink[] = [
   { href: "/inspection/reports", label: "報表分析", roles: ["owner", "manager", "leader"] },
 ];
 
-const managementLinks: NavigationLink[] = [
-  { href: "/settings/users", label: "帳號管理", roles: ["owner"] },
-  { href: "/settings/stores", label: "店別管理", roles: ["owner"] },
-  { href: "/settings/workstations", label: "工作站管理", roles: ["owner", "manager"] },
+const peopleAndItemLinks: NavigationLink[] = [
   { href: "/settings/staff", label: "組員管理", roles: ["owner", "manager", "leader"] },
+  { href: "/settings/workstations", label: "工作站設定", roles: ["owner", "manager"] },
   { href: "/settings/items", label: "題目管理", roles: ["owner"] },
   { href: "/settings/focus-items", label: "標籤管理", roles: ["owner", "manager"] },
+];
+
+const otherSettingsLinks: NavigationLink[] = [
+  { href: "/settings/users", label: "帳號管理", roles: ["owner"] },
+  { href: "/settings/stores", label: "店別管理", roles: ["owner"] },
   { href: "/settings/qa-cleanup", label: "測試資料清理", roles: ["owner"] },
   { href: "/audit", label: "操作紀錄", roles: ["owner", "manager"] },
 ];
@@ -74,7 +77,8 @@ export function AppShell({
   children,
 }: PropsWithChildren<{ profile: UserProfile; pathname: string }>) {
   const visibleInspectionLinks = inspectionLinks.filter((link) => link.roles.includes(profile.role));
-  const visibleManagementLinks = managementLinks.filter((link) => link.roles.includes(profile.role));
+  const visiblePeopleAndItemLinks = peopleAndItemLinks.filter((link) => link.roles.includes(profile.role));
+  const visibleOtherSettingsLinks = otherSettingsLinks.filter((link) => link.roles.includes(profile.role));
 
   return (
     <div className="min-h-screen">
@@ -96,8 +100,10 @@ export function AppShell({
         </div>
         <nav className="mx-auto flex max-w-6xl flex-col gap-3 px-4 pb-4">
           <NavigationGroup title="巡檢業務" links={visibleInspectionLinks} pathname={pathname} />
-          {visibleManagementLinks.length > 0 ? <div className="h-px w-full bg-ink/10" aria-hidden="true" /> : null}
-          <NavigationGroup title="系統管理" links={visibleManagementLinks} pathname={pathname} />
+          {visiblePeopleAndItemLinks.length > 0 ? <div className="h-px w-full bg-ink/10" aria-hidden="true" /> : null}
+          <NavigationGroup title="組員與題目" links={visiblePeopleAndItemLinks} pathname={pathname} />
+          {visibleOtherSettingsLinks.length > 0 ? <div className="h-px w-full bg-ink/10" aria-hidden="true" /> : null}
+          <NavigationGroup title="其他設定" links={visibleOtherSettingsLinks} pathname={pathname} />
         </nav>
       </header>
       <main className="mx-auto max-w-6xl px-4 py-8">{children}</main>

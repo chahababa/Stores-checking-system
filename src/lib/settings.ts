@@ -51,6 +51,28 @@ export type QaCleanupPreview = {
   scopedTags: Array<{ id: string; type: InspectionTagType; month: string | null; storeName: string | null }>;
 };
 
+function normalizeIdentifier(value: string) {
+  return value
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "");
+}
+
+function buildWorkstationCode(input: { code: string; name: string; area: WorkstationArea }) {
+  const explicitCode = normalizeIdentifier(input.code);
+  if (explicitCode) {
+    return explicitCode;
+  }
+
+  const nameBasedCode = normalizeIdentifier(input.name);
+  if (nameBasedCode) {
+    return `${input.area}_${nameBasedCode}`;
+  }
+
+  return `${input.area}_${crypto.randomUUID().slice(0, 8)}`;
+}
+
 function revalidateStoreDependentPaths() {
   revalidatePath("/");
   revalidatePath("/settings/stores");
@@ -243,12 +265,12 @@ export async function updateStoreName(input: { id: string; name: string }) {
 export async function createWorkstation(input: WorkstationInput) {
   const profile = await requireRole("owner", "manager");
   const admin = createAdminClient();
-  const code = input.code.trim().toLowerCase();
   const name = input.name.trim();
-
-  if (!code) {
-    throw new Error("請填寫工作站代碼。");
-  }
+  const code = buildWorkstationCode({
+    code: input.code,
+    name,
+    area: input.area,
+  });
 
   if (!name) {
     throw new Error("請填寫工作站名稱。");
@@ -296,12 +318,12 @@ export async function updateWorkstation(input: {
 }) {
   const profile = await requireRole("owner", "manager");
   const admin = createAdminClient();
-  const code = input.code.trim().toLowerCase();
   const name = input.name.trim();
-
-  if (!code) {
-    throw new Error("請填寫工作站代碼。");
-  }
+  const code = buildWorkstationCode({
+    code: input.code,
+    name,
+    area: input.area,
+  });
 
   if (!name) {
     throw new Error("請填寫工作站名稱。");

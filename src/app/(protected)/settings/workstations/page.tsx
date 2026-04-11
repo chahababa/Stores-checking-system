@@ -75,15 +75,14 @@ export default async function WorkstationsSettingsPage({
 
       <SectionCard
         title="新增工作站"
-        description="工作站是巡店當下要指派給組員的站位。區域維持分成內場、外場、櫃台，但每個區域底下可以新增更多細部工作站。"
+        description="工作站是巡店當下要指派給組員的站位。區域先維持分成內場、外場、櫃台；如果你只是要新增炸台、飲料台、點餐台這種細部站位，直接在這裡新增就可以。"
       >
         <form action={createWorkstationAction} className="grid gap-4">
           <label className="grid gap-2 text-sm">
-            <span className="text-ink/70">工作站代碼</span>
+            <span className="text-ink/70">工作站代碼（可不填）</span>
             <input
               name="code"
-              required
-              placeholder="fryer_station"
+              placeholder="留白時系統會自動產生"
               className="rounded-2xl border border-ink/10 bg-white px-4 py-3"
             />
           </label>
@@ -104,6 +103,14 @@ export default async function WorkstationsSettingsPage({
               <option value="counter">櫃台</option>
             </select>
           </label>
+          <div className="rounded-2xl border border-ink/10 bg-soft/40 px-4 py-3 text-sm text-ink/70">
+            <p className="font-medium text-ink">區域怎麼選比較好？</p>
+            <ul className="mt-2 grid gap-1">
+              <li>內場：炸台、備料台、飲料台、洗滌區</li>
+              <li>外場：帶位、送餐、桌面整理、出餐口</li>
+              <li>櫃台：點餐、收銀、外帶交付</li>
+            </ul>
+          </div>
           <label className="grid gap-2 text-sm">
             <span className="text-ink/70">適用範圍</span>
             <select name="store_id" className="rounded-2xl border border-ink/10 bg-white px-4 py-3">
@@ -123,7 +130,7 @@ export default async function WorkstationsSettingsPage({
 
       <SectionCard
         title="工作站清單"
-        description="之後如果要增加新的工作站，就在這裡操作。全部店通用的工作站適用所有門市；指定店別則只會出現在該店的巡店表單。"
+        description="之後如果要增加新的工作站，就在這裡操作。代碼主要是系統內部識別用途，若留白系統會自動產生。若未來不是新增工作站，而是要新增全新的區域分類，那就需要再調整系統規則。"
       >
         <div data-testid="workstations-list" className="grid gap-3">
           {(workstations ?? []).map((workstation) => {
