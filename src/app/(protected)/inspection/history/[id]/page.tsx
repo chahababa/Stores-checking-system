@@ -136,7 +136,7 @@ export default async function InspectionDetailPage({
   const concernCount = detail.scores.filter((row) => row.score <= 2 || row.isFocusItem).length;
 
   return (
-    <div className="grid gap-6">
+    <div className="grid gap-6" data-testid="inspection-detail-page">
       <div className="flex flex-col gap-4 rounded-[28px] border border-ink/10 bg-white p-6 shadow-card md:flex-row md:items-center md:justify-between">
         <div>
           <p className="font-lora text-sm uppercase tracking-[0.25em] text-warm">Inspection Detail</p>
@@ -149,7 +149,10 @@ export default async function InspectionDetailPage({
             <span>{getBusynessLabel(detail.busynessLevel)}</span>
             <span>/</span>
             <span>平均分數 {detail.totalScore}</span>
-            <span className={`rounded-full px-3 py-1 text-xs font-medium ${getGradeTone(overallGrade.finalGrade)}`}>
+            <span
+              data-testid="inspection-detail-header-grade"
+              className={`rounded-full px-3 py-1 text-xs font-medium ${getGradeTone(overallGrade.finalGrade)}`}
+            >
               總評 {overallGrade.finalGrade}
             </span>
             <span
@@ -169,7 +172,11 @@ export default async function InspectionDetailPage({
             匯出明細 CSV
           </Link>
           {canManageInspection && detail.isEditable ? (
-            <Link href={`/inspection/history/${id}/edit`} className="rounded-full bg-warm px-5 py-3 text-sm text-white">
+            <Link
+              href={`/inspection/history/${id}/edit`}
+              data-testid="inspection-edit-link"
+              className="rounded-full bg-warm px-5 py-3 text-sm text-white"
+            >
               編輯巡店紀錄
             </Link>
           ) : null}
@@ -203,7 +210,10 @@ export default async function InspectionDetailPage({
         <SectionCard title="巡店摘要" description="先看總評、關注題數與這筆巡店的基本資料。">
           <div className="grid gap-3 text-sm text-ink/75">
             <div className="flex flex-wrap items-center gap-2">
-              <span className={`rounded-full px-3 py-1 text-xs font-medium ${getGradeTone(overallGrade.finalGrade)}`}>
+              <span
+                data-testid="inspection-detail-overall-grade"
+                className={`rounded-full px-3 py-1 text-xs font-medium ${getGradeTone(overallGrade.finalGrade)}`}
+              >
                 總評 {overallGrade.finalGrade}
               </span>
               <span className="rounded-full bg-soft px-3 py-1 text-xs text-ink/75">需關注 {concernCount} 題</span>
@@ -260,6 +270,7 @@ export default async function InspectionDetailPage({
             <Link
               key={option.key}
               href={option.key === "all" ? `/inspection/history/${id}` : `/inspection/history/${id}?show=${option.key}`}
+              data-testid={`inspection-detail-filter-${option.key}`}
               className={`rounded-full px-4 py-2 text-sm transition ${
                 filter === option.key ? "bg-warm text-white" : "bg-soft text-ink/75 hover:bg-cream"
               }`}
@@ -274,7 +285,12 @@ export default async function InspectionDetailPage({
             const categorySummary = categoryGradeMap.get(group.categoryName);
 
             return (
-              <details key={group.categoryName} open className="rounded-[24px] border border-ink/10 bg-white">
+              <details
+                key={group.categoryName}
+                open
+                data-testid={`inspection-detail-category-${group.categoryName}`}
+                className="rounded-[24px] border border-ink/10 bg-white"
+              >
                 <summary className="flex cursor-pointer list-none items-center justify-between gap-4 px-5 py-4">
                   <div className="flex flex-col gap-2">
                     <p className="font-serifTc text-xl font-semibold text-ink">{group.categoryName}</p>

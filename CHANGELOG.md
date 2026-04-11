@@ -1,6 +1,13 @@
 # Changelog
- 
+
 ## 2026-04-11
+
+### 核心流程 E2E 補強
+- 新增 Playwright `inspection-flow.spec.ts`
+- 補上 owner 的巡店建立、明細查看、編輯與改善任務流轉測試腳本
+- 在巡店表單、巡店歷史、巡店明細、改善追蹤頁補上穩定的 `data-testid`
+- `npx playwright test --list` 現在可列出 9 個測試
+- `e2e/README.md` 已補上新的覆蓋範圍說明
 
 ### QA 測試資料清理機制
 - 新增 owner 專用頁面 `/settings/qa-cleanup`

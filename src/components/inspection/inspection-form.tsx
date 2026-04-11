@@ -435,12 +435,13 @@ export function InspectionForm({
           : "尚未開始儲存草稿。";
 
   return (
-    <div className="grid gap-6">
+    <div className="grid gap-6" data-testid={isEditMode ? "inspection-edit-form" : "inspection-create-form"}>
       <section className="rounded-[28px] border border-ink/10 bg-white p-5 shadow-card">
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
           <div>
             <label className="mb-2 block text-sm text-ink/70">店別</label>
             <select
+              data-testid="inspection-store-select"
               value={form.storeId}
               onChange={(event) => navigateToSeed(event.target.value, form.date)}
               disabled={isEditMode}
@@ -457,6 +458,7 @@ export function InspectionForm({
           <div>
             <label className="mb-2 block text-sm text-ink/70">日期</label>
             <input
+              data-testid="inspection-date-input"
               type="date"
               value={form.date}
               onChange={(event) => navigateToSeed(form.storeId, event.target.value)}
@@ -468,6 +470,7 @@ export function InspectionForm({
           <div>
             <label className="mb-2 block text-sm text-ink/70">巡店時段</label>
             <input
+              data-testid="inspection-time-slot-input"
               value={form.timeSlot}
               onChange={(event) => setForm((current) => ({ ...current, timeSlot: event.target.value }))}
               placeholder="例如 14:30-15:15"
@@ -478,6 +481,7 @@ export function InspectionForm({
           <div>
             <label className="mb-2 block text-sm text-ink/70">忙碌程度</label>
             <select
+              data-testid="inspection-busyness-select"
               value={form.busynessLevel}
               onChange={(event) =>
                 setForm((current) => ({
@@ -523,7 +527,9 @@ export function InspectionForm({
           </div>
           <div className="rounded-2xl border border-ink/10 bg-soft/35 px-4 py-4">
             <p className="text-sm font-medium text-ink">草稿狀態</p>
-            <p className="mt-2 text-sm text-ink/70">{draftStatusLabel}</p>
+            <p className="mt-2 text-sm text-ink/70" data-testid="inspection-draft-status">
+              {draftStatusLabel}
+            </p>
             <p className="mt-2 text-xs leading-5 text-ink/55">
               {isEditMode
                 ? "編輯送出後會直接更新原本巡店紀錄。"
@@ -580,16 +586,26 @@ export function InspectionForm({
             <p className="mt-2 text-sm text-ink/70">先快速把整體評分設好，再只調整例外項目會更快。</p>
           </div>
           <div className="flex flex-wrap gap-2">
-            <button type="button" onClick={() => applyBulkScore(3)} className="rounded-full bg-warm px-4 py-2 text-sm text-white">
+            <button
+              type="button"
+              data-testid="inspection-bulk-score-3"
+              onClick={() => applyBulkScore(3)}
+              className="rounded-full bg-warm px-4 py-2 text-sm text-white"
+            >
               全部設為 3 分
             </button>
-            <button type="button" onClick={resetScoresToDefault} className="rounded-full bg-soft px-4 py-2 text-sm text-ink/75">
+            <button
+              type="button"
+              data-testid="inspection-reset-scores"
+              onClick={resetScoresToDefault}
+              className="rounded-full bg-soft px-4 py-2 text-sm text-ink/75"
+            >
               重設評分
             </button>
           </div>
         </div>
 
-        <div className="mt-4 flex flex-wrap gap-2">
+        <div className="mt-4 flex flex-wrap gap-2" data-testid="inspection-category-nav">
           {seed.groupedItems.map((group, index) => {
             const answeredCount = group.items.filter((item) => form.scores[item.id]?.score !== null).length;
             const isCompleted = answeredCount === group.items.length;
@@ -654,7 +670,12 @@ export function InspectionForm({
                   const itemPhotos = photos[item.id] ?? [];
 
                   return (
-                    <article key={item.id} className="rounded-[24px] border border-ink/10 bg-soft/25 p-4">
+                    <article
+                      key={item.id}
+                      data-testid={`inspection-item-${item.id}`}
+                      data-item-id={item.id}
+                      className="rounded-[24px] border border-ink/10 bg-soft/25 p-4"
+                    >
                       <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                         <div className="max-w-2xl">
                           <div className="flex flex-wrap items-center gap-2">
@@ -689,6 +710,8 @@ export function InspectionForm({
                             <button
                               key={score}
                               type="button"
+                              data-testid={`inspection-score-${item.id}-${score}`}
+                              data-score={score}
                               onClick={() => setScore(item.id, score as ScoreValue)}
                               className={`rounded-full px-4 py-2 text-sm font-medium transition ${
                                 value.score === score
@@ -706,6 +729,7 @@ export function InspectionForm({
                         <div>
                           <label className="mb-2 block text-sm text-ink/70">備註</label>
                           <textarea
+                            data-testid={`inspection-note-${item.id}`}
                             value={value.note}
                             onChange={(event) => setNote(item.id, event.target.value)}
                             placeholder="若為低分，請補充原因、現場觀察或改善方向。"
@@ -852,6 +876,7 @@ export function InspectionForm({
         <button
           type="button"
           onClick={handleSubmit}
+          data-testid="inspection-submit-button"
           disabled={isSaving}
           className="rounded-full bg-warm px-6 py-3 text-sm font-medium text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
         >

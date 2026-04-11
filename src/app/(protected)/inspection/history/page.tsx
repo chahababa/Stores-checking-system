@@ -213,7 +213,7 @@ export default async function InspectionHistoryPage({
               const inspector = getSingleRelation(inspection.users) as { name?: string; email?: string } | null;
 
               return (
-                <tr key={inspection.id} className="border-t border-ink/10">
+                <tr key={inspection.id} data-testid={`inspection-history-row-${inspection.id}`} className="border-t border-ink/10">
                   <td className="px-4 py-3">{inspection.date}</td>
                   <td className="px-4 py-3">{store?.name ?? "-"}</td>
                   <td className="px-4 py-3">{inspection.time_slot}</td>
@@ -241,7 +241,11 @@ export default async function InspectionHistoryPage({
                   <td className="px-4 py-3">
                     <div className="flex items-center justify-between gap-3">
                       <span>{inspector?.name || inspector?.email || "-"}</span>
-                      <Link href={`/inspection/history/${inspection.id}`} className="text-warm underline-offset-4 hover:underline">
+                      <Link
+                        href={`/inspection/history/${inspection.id}`}
+                        data-testid={`inspection-history-view-${inspection.id}`}
+                        className="text-warm underline-offset-4 hover:underline"
+                      >
                         查看
                       </Link>
                     </div>

@@ -57,7 +57,7 @@ export default async function ImprovementTasksPage() {
       >
         <div className="grid gap-3">
           {tasks.map((task) => (
-            <div key={task.id} className="rounded-[24px] border border-ink/10 bg-soft/40 p-4">
+            <div key={task.id} data-testid={`improvement-task-${task.id}`} className="rounded-[24px] border border-ink/10 bg-soft/40 p-4">
               <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
                 <div className="space-y-1">
                   <div className="flex flex-wrap items-center gap-2">
@@ -88,6 +88,7 @@ export default async function ImprovementTasksPage() {
                       type="submit"
                       name="status"
                       value="pending"
+                      data-testid={`improvement-task-status-pending-${task.id}`}
                       className="rounded-full bg-white px-4 py-2 text-xs text-ink/70"
                     >
                       設為待處理
@@ -96,6 +97,7 @@ export default async function ImprovementTasksPage() {
                       type="submit"
                       name="status"
                       value="resolved"
+                      data-testid={`improvement-task-status-resolved-${task.id}`}
                       className="rounded-full bg-warm px-4 py-2 text-xs text-white"
                     >
                       設為已改善
@@ -104,6 +106,7 @@ export default async function ImprovementTasksPage() {
                       type="submit"
                       name="status"
                       value="verified"
+                      data-testid={`improvement-task-status-verified-${task.id}`}
                       className="rounded-full bg-green-600 px-4 py-2 text-xs text-white"
                     >
                       設為已確認
@@ -112,6 +115,7 @@ export default async function ImprovementTasksPage() {
                       type="submit"
                       name="status"
                       value="superseded"
+                      data-testid={`improvement-task-status-superseded-${task.id}`}
                       className="rounded-full bg-ink px-4 py-2 text-xs text-white"
                     >
                       設為已替代

@@ -69,6 +69,7 @@ The authenticated coverage now focuses on:
 - leader dashboard visibility
 - leader reports visibility
 - leader navigation restrictions
+- owner inspection create / detail / edit / improvement flow
 
 Example:
 
