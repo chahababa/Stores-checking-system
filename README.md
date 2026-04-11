@@ -72,6 +72,8 @@ NEXT_PUBLIC_SITE_URL=http://localhost:3000
 - `npm run test`
 - `npm run test:e2e`
 - `npm run test:e2e:headed`
+- `npm run test:e2e:auth:owner`
+- `npm run test:e2e:auth:leader`
 - `npm run lint`
 - `npm run typecheck`
 - `npm run build`

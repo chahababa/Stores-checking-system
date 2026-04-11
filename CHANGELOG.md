@@ -108,6 +108,19 @@ Stores Checking System 的部署、修復與 QA 驗證紀錄。
    - leader dashboard 與受限導航
 4. 補上 `e2e/README.md`，說明如何在本地或正式站執行測試
 
+### E2E 已登入測試收尾
+1. 新增 `scripts/create-playwright-storage-state.mjs`
+   - 可手動產生 owner / leader 的 Playwright storage state
+2. 新增 npm scripts
+   - `npm run test:e2e:auth:owner`
+   - `npm run test:e2e:auth:leader`
+3. 補上文件說明如何用正式站登入後保存 session，再執行已登入 dashboard 測試
+
+### Leader 工作台加強
+1. leader dashboard 補上「本店待改善清單」
+2. leader dashboard 補上「最近低分提醒」
+3. 首頁文案重新整理成更接近日常單店管理語境
+
 ### 正式站驗證
 目前已驗證可正常使用的主要頁面：
 - `/login`

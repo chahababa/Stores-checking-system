@@ -11,6 +11,7 @@ test.describe("owner dashboard", () => {
     await page.goto("/");
 
     await expect(page.getByRole("heading", { name: "營運總覽首頁" })).toBeVisible();
+    await expect(page.getByText("管理快捷入口")).toBeVisible();
     await expect(page.locator('a[href="/inspection/new"]')).toBeVisible();
     await expect(page.locator('a[href="/settings/users"]')).toBeVisible();
     await expect(page.locator('a[href="/audit"]')).toBeVisible();
@@ -25,6 +26,9 @@ test.describe("leader dashboard", () => {
     await page.goto("/");
 
     await expect(page.getByRole("heading", { name: "單店營運工作台" })).toBeVisible();
+    await expect(page.getByText("本店待改善清單")).toBeVisible();
+    await expect(page.getByText("最近低分提醒")).toBeVisible();
+
     await expect(page.locator('a[href="/inspection/history"]')).toBeVisible();
     await expect(page.locator('a[href="/inspection/improvements"]')).toBeVisible();
     await expect(page.locator('a[href="/inspection/reports"]')).toBeVisible();
