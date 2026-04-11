@@ -26,6 +26,7 @@ const managementLinks: NavigationLink[] = [
   { href: "/settings/staff", label: "組員管理", roles: ["owner", "manager", "leader"] },
   { href: "/settings/items", label: "題目管理", roles: ["owner"] },
   { href: "/settings/focus-items", label: "標籤管理", roles: ["owner", "manager"] },
+  { href: "/settings/qa-cleanup", label: "QA 清理", roles: ["owner"] },
   { href: "/audit", label: "操作紀錄", roles: ["owner", "manager"] },
 ];
 
@@ -94,9 +95,7 @@ export function AppShell({
         </div>
         <nav className="mx-auto flex max-w-6xl flex-col gap-3 px-4 pb-4">
           <NavigationGroup title="巡檢業務" links={visibleInspectionLinks} pathname={pathname} />
-          {visibleManagementLinks.length > 0 ? (
-            <div className="h-px w-full bg-ink/10" aria-hidden="true" />
-          ) : null}
+          {visibleManagementLinks.length > 0 ? <div className="h-px w-full bg-ink/10" aria-hidden="true" /> : null}
           <NavigationGroup title="系統管理" links={visibleManagementLinks} pathname={pathname} />
         </nav>
       </header>

@@ -1,4 +1,21 @@
 # Changelog
+ 
+## 2026-04-11
+
+### QA 測試資料清理機制
+- 新增 owner 專用頁面 `/settings/qa-cleanup`
+- 可預覽目前會被清理的 QA 店別、帳號、組員、巡店紀錄與店別標籤
+- 新增安全確認後的一鍵清理流程，會同步移除 QA 巡店照片與對應資料
+- 清理完成後保留 audit log，方便之後追蹤誰在什麼時間做過清理
+
+### 維護性整理
+- 重寫全站 `AppShell` 導覽文字與分組，補上 `QA 清理` 入口
+- 重寫 `ui-labels.ts`，清理角色、職位、標籤、audit 文案與細節格式
+
+### 驗證
+- `npm run test` 通過
+- `npm run build` 通過
+
 
 Stores Checking System 的開發、部署、驗證與修復紀錄。
 

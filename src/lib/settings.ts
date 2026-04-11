@@ -4,6 +4,12 @@ import { revalidatePath } from "next/cache";
 
 import { createAuditLog } from "@/lib/audit";
 import { requireRole } from "@/lib/auth";
+import {
+  isQaInspectionRecord,
+  isQaStaffRecord,
+  isQaStoreRecord,
+  isQaUserRecord,
+} from "@/lib/qa-cleanup";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 export type AuthorizedUserInput = {
@@ -20,17 +26,129 @@ export type StoreInput = {
 
 export type InspectionTagType = "critical" | "monthly_attention" | "complaint_watch";
 export type InspectionTagSource = "manual" | "complaint_sync";
+export type QaCleanupPreview = {
+  stores: Array<{ id: string; code: string; name: string }>;
+  users: Array<{ id: string; email: string; name: string | null; role: "owner" | "manager" | "leader" }>;
+  staffMembers: Array<{ id: string; name: string; status: "active" | "archived"; storeName: string | null }>;
+  inspections: Array<{ id: string; date: string; timeSlot: string; storeName: string | null }>;
+  scopedTags: Array<{ id: string; type: InspectionTagType; month: string | null; storeName: string | null }>;
+};
 
 function revalidateStoreDependentPaths() {
   revalidatePath("/");
   revalidatePath("/settings/stores");
   revalidatePath("/settings/users");
   revalidatePath("/settings/staff");
+  revalidatePath("/settings/qa-cleanup");
   revalidatePath("/settings/items");
   revalidatePath("/settings/focus-items");
   revalidatePath("/inspection/new");
   revalidatePath("/inspection/history");
   revalidatePath("/inspection/reports");
+}
+
+function getPublicObjectPath(photoUrl: string) {
+  const marker = "/object/public/inspection-photos/";
+  const index = photoUrl.indexOf(marker);
+  if (index === -1) return null;
+  return decodeURIComponent(photoUrl.slice(index + marker.length));
+}
+
+async function collectQaCleanupPreview() {
+  const admin = createAdminClient();
+  const [
+    { data: stores, error: storesError },
+    { data: users, error: usersError },
+    { data: staffMembers, error: staffError },
+    { data: inspections, error: inspectionsError },
+    { data: legacyNotes, error: notesError },
+    { data: focusItems, error: focusError },
+  ] = await Promise.all([
+    admin.from("stores").select("id, code, name").order("created_at"),
+    admin.from("users").select("id, email, name, role, store_id, is_active").order("created_at"),
+    admin.from("staff_members").select("id, store_id, name, status").order("created_at"),
+    admin.from("inspections").select("id, store_id, date, time_slot").order("date", { ascending: false }),
+    admin.from("legacy_notes").select("inspection_id, content"),
+    admin.from("focus_items").select("id, type, month, store_id"),
+  ]);
+
+  if (storesError || usersError || staffError || inspectionsError || notesError || focusError) {
+    throw new Error(
+      storesError?.message ||
+        usersError?.message ||
+        staffError?.message ||
+        inspectionsError?.message ||
+        notesError?.message ||
+        focusError?.message ||
+        "無法載入 QA 清理預覽。",
+    );
+  }
+
+  const storeRows = stores ?? [];
+  const userRows = users ?? [];
+  const staffRows = staffMembers ?? [];
+  const inspectionRows = inspections ?? [];
+  const noteRows = legacyNotes ?? [];
+  const focusRows = focusItems ?? [];
+
+  const storeNameById = Object.fromEntries(storeRows.map((store) => [store.id, store.name]));
+  const qaStores = storeRows.filter((store) => isQaStoreRecord(store));
+  const qaStoreIds = new Set(qaStores.map((store) => store.id));
+  const notesByInspectionId = noteRows.reduce<Record<string, string[]>>((carry, note) => {
+    const group = carry[note.inspection_id] ?? [];
+    group.push(note.content);
+    carry[note.inspection_id] = group;
+    return carry;
+  }, {});
+
+  const qaUsers = userRows.filter((user) => isQaUserRecord(user));
+  const qaStaffMembers = staffRows.filter((staff) => isQaStaffRecord(staff) || qaStoreIds.has(staff.store_id));
+  const qaInspections = inspectionRows.filter(
+    (inspection) =>
+      qaStoreIds.has(inspection.store_id) ||
+      isQaInspectionRecord({
+        timeSlot: inspection.time_slot,
+        legacyNotes: notesByInspectionId[inspection.id] ?? [],
+      }),
+  );
+  const scopedTags = focusRows.filter((tag) => Boolean(tag.store_id) && qaStoreIds.has(tag.store_id!));
+
+  return {
+    stores: qaStores.map((store) => ({
+      id: store.id,
+      code: store.code,
+      name: store.name,
+    })),
+    users: qaUsers.map((user) => ({
+      id: user.id,
+      email: user.email,
+      name: user.name,
+      role: user.role,
+    })),
+    staffMembers: qaStaffMembers.map((staff) => ({
+      id: staff.id,
+      name: staff.name,
+      status: staff.status,
+      storeName: storeNameById[staff.store_id] ?? null,
+    })),
+    inspections: qaInspections.map((inspection) => ({
+      id: inspection.id,
+      date: inspection.date,
+      timeSlot: inspection.time_slot,
+      storeName: storeNameById[inspection.store_id] ?? null,
+    })),
+    scopedTags: scopedTags.map((tag) => ({
+      id: tag.id,
+      type: tag.type as InspectionTagType,
+      month: tag.month,
+      storeName: tag.store_id ? (storeNameById[tag.store_id] ?? null) : null,
+    })),
+  } satisfies QaCleanupPreview;
+}
+
+export async function getQaCleanupPreview() {
+  await requireRole("owner");
+  return collectQaCleanupPreview();
 }
 
 export async function createStore(input: StoreInput) {
@@ -453,4 +571,99 @@ export async function setStoreExtraItems(input: { storeId: string; itemIds: stri
   });
 
   revalidatePath("/settings/items");
+}
+
+export async function cleanupQaTestData() {
+  const profile = await requireRole("owner");
+  const admin = createAdminClient();
+  const preview = await collectQaCleanupPreview();
+  const inspectionIds = preview.inspections.map((inspection) => inspection.id);
+  const storeIds = preview.stores.map((store) => store.id);
+  const staffIds = preview.staffMembers.map((staff) => staff.id);
+  const userIds = preview.users.map((user) => user.id);
+  const tagIds = preview.scopedTags.map((tag) => tag.id);
+
+  if (inspectionIds.length > 0) {
+    const { data: scoreRows, error: scoreError } = await admin
+      .from("inspection_scores")
+      .select("id")
+      .in("inspection_id", inspectionIds);
+
+    if (scoreError) {
+      throw new Error(scoreError.message);
+    }
+
+    const scoreIds = (scoreRows ?? []).map((row) => row.id);
+    if (scoreIds.length > 0) {
+      const { data: photos, error: photoError } = await admin
+        .from("inspection_photos")
+        .select("photo_url")
+        .in("score_id", scoreIds);
+
+      if (photoError) {
+        throw new Error(photoError.message);
+      }
+
+      const objectPaths = (photos ?? [])
+        .map((photo) => getPublicObjectPath(photo.photo_url))
+        .filter((value): value is string => Boolean(value));
+
+      if (objectPaths.length > 0) {
+        const { error: storageError } = await admin.storage.from("inspection-photos").remove(objectPaths);
+        if (storageError) {
+          throw new Error(storageError.message);
+        }
+      }
+    }
+
+    const { error: deleteInspectionError } = await admin.from("inspections").delete().in("id", inspectionIds);
+    if (deleteInspectionError) {
+      throw new Error(deleteInspectionError.message);
+    }
+  }
+
+  if (tagIds.length > 0) {
+    const { error } = await admin.from("focus_items").delete().in("id", tagIds);
+    if (error) {
+      throw new Error(error.message);
+    }
+  }
+
+  if (staffIds.length > 0) {
+    const { error } = await admin.from("staff_members").delete().in("id", staffIds);
+    if (error) {
+      throw new Error(error.message);
+    }
+  }
+
+  if (userIds.length > 0) {
+    const { error } = await admin.from("users").delete().in("id", userIds);
+    if (error) {
+      throw new Error(error.message);
+    }
+  }
+
+  if (storeIds.length > 0) {
+    const { error } = await admin.from("stores").delete().in("id", storeIds);
+    if (error) {
+      throw new Error(error.message);
+    }
+  }
+
+  await createAuditLog({
+    actorId: profile.id,
+    actorEmail: profile.email,
+    action: "cleanup_qa_test_data",
+    entityType: "qa_cleanup",
+    entityId: new Date().toISOString(),
+    details: {
+      stores: preview.stores.length,
+      users: preview.users.length,
+      staff_members: preview.staffMembers.length,
+      inspections: preview.inspections.length,
+      scoped_tags: preview.scopedTags.length,
+    },
+  });
+
+  revalidateStoreDependentPaths();
 }
