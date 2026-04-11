@@ -9,7 +9,7 @@ type SearchParams = Promise<{ store?: string; success?: string }>;
 
 function getSuccessMessage(success?: string) {
   if (success === "item-created") return "題目已新增。";
-  if (success === "item-status-updated") return "題目狀態已更新。";
+  if (success === "item-updated") return "題目內容已更新。";
   if (success === "item-scope-updated") return "店別加題適用範圍已更新。";
   return null;
 }
@@ -56,15 +56,21 @@ export default async function ItemsSettingsPage({ searchParams }: { searchParams
     redirect(nextStore ? `/settings/items?success=item-created&store=${nextStore}` : "/settings/items?success=item-created");
   }
 
-  async function toggleItemAction(formData: FormData) {
+  async function updateItemAction(formData: FormData) {
     "use server";
-    const { updateInspectionItemStatus } = await import("@/lib/settings");
-    await updateInspectionItemStatus(
-      String(formData.get("id")),
-      String(formData.get("next_active")) === "true",
-    );
+    const { updateInspectionItem } = await import("@/lib/settings");
+    const type = String(formData.get("item_type") || "base");
+    const storeIds = formData.getAll("store_ids").map(String);
     const selectedStore = String(formData.get("selected_store") || "");
-    redirect(selectedStore ? `/settings/items?success=item-status-updated&store=${selectedStore}` : "/settings/items?success=item-status-updated");
+    await updateInspectionItem({
+      id: String(formData.get("id") || ""),
+      name: String(formData.get("name") || ""),
+      categoryId: String(formData.get("category_id") || ""),
+      isBase: type === "base",
+      isActive: String(formData.get("is_active") || "true") === "true",
+      storeIds,
+    });
+    redirect(selectedStore ? `/settings/items?success=item-updated&store=${selectedStore}` : "/settings/items?success=item-updated");
   }
 
   async function updateExtraItemsAction(formData: FormData) {
@@ -201,14 +207,7 @@ export default async function ItemsSettingsPage({ searchParams }: { searchParams
                         {item.is_active ? "目前啟用中" : "目前停用中"} / 基礎題目
                       </p>
                     </div>
-                    <form action={toggleItemAction}>
-                      <input type="hidden" name="id" value={item.id} />
-                      <input type="hidden" name="selected_store" value={selectedStoreId} />
-                      <input type="hidden" name="next_active" value={String(!item.is_active)} />
-                      <button className="rounded-full bg-white px-4 py-2 text-xs" type="submit">
-                        {item.is_active ? "停用" : "啟用"}
-                      </button>
-                    </form>
+                    <span className="rounded-full bg-soft px-3 py-1 text-xs text-ink/70">可在下方「編輯既有題目」調整名稱、類別與狀態</span>
                   </div>
                 ))}
               </div>
@@ -257,32 +256,35 @@ export default async function ItemsSettingsPage({ searchParams }: { searchParams
                     return (
                       <label
                         key={item.id}
-                        className="flex items-start gap-3 rounded-2xl border border-ink/10 bg-white/85 p-4"
+                        className="grid gap-4 rounded-2xl border border-ink/10 bg-white/85 p-4"
                       >
-                        <input
-                          type="checkbox"
-                          name="item_ids"
-                          value={item.id}
-                          defaultChecked={selectedExtraItemIds.has(item.id)}
-                          className="mt-1"
-                        />
-                        <span className="grid gap-2">
-                          <span className="font-medium text-ink">{item.name}</span>
-                          <span className="text-xs text-ink/60">
-                            {item.is_active ? "題目啟用中" : "題目停用中"} / 店別加題
+                        <div className="flex items-start gap-3">
+                          <input
+                            type="checkbox"
+                            name="item_ids"
+                            value={item.id}
+                            defaultChecked={selectedExtraItemIds.has(item.id)}
+                            className="mt-1"
+                          />
+                          <span className="grid gap-2">
+                            <span className="font-medium text-ink">{item.name}</span>
+                            <span className="text-xs text-ink/60">
+                              {item.is_active ? "題目啟用中" : "題目停用中"} / 店別加題
+                            </span>
+                            <span className="flex flex-wrap gap-2">
+                              {scopedStoreNames.length > 0 ? (
+                                scopedStoreNames.map((storeName) => (
+                                  <span key={storeName} className="rounded-full bg-soft px-3 py-1 text-xs text-ink/70">
+                                    {storeName}
+                                  </span>
+                                ))
+                              ) : (
+                                <span className="rounded-full bg-soft px-3 py-1 text-xs text-ink/70">尚未指定店別</span>
+                              )}
+                            </span>
                           </span>
-                          <span className="flex flex-wrap gap-2">
-                            {scopedStoreNames.length > 0 ? (
-                              scopedStoreNames.map((storeName) => (
-                                <span key={storeName} className="rounded-full bg-soft px-3 py-1 text-xs text-ink/70">
-                                  {storeName}
-                                </span>
-                              ))
-                            ) : (
-                              <span className="rounded-full bg-soft px-3 py-1 text-xs text-ink/70">尚未指定店別</span>
-                            )}
-                          </span>
-                        </span>
+                        </div>
+                        <span className="rounded-full bg-soft px-3 py-1 text-xs text-ink/70">可在下方「編輯既有題目」調整名稱、類別與狀態</span>
                       </label>
                     );
                   })}
@@ -296,6 +298,126 @@ export default async function ItemsSettingsPage({ searchParams }: { searchParams
             </button>
           </div>
         </form>
+      </SectionCard>
+
+      <SectionCard
+        title="編輯既有題目"
+        description="若你要改題目名稱、換類別，或把基礎題目改成店別加題，可以直接在下面操作。這裡會保留同樣的分類邏輯，避免未來題目越來越多時找不到。"
+      >
+        <div className="grid gap-5">
+          {(categories ?? []).map((category) => {
+            const categoryItems = (items ?? []).filter((item) => item.category_id === category.id);
+            if (categoryItems.length === 0) return null;
+
+            return (
+              <div key={category.id} className="rounded-[24px] border border-ink/10 bg-soft/35 p-4">
+                <div className="mb-4">
+                  <p className="font-serifTc text-xl font-semibold text-ink">{category.name}</p>
+                  <p className="text-sm text-ink/65">{categoryItems.length} 題</p>
+                </div>
+                <div className="grid gap-4">
+                  {categoryItems.map((item) => (
+                    <form key={item.id} action={updateItemAction} className="grid gap-4 rounded-2xl border border-ink/10 bg-white/85 p-4">
+                      <input type="hidden" name="id" value={item.id} />
+                      <input type="hidden" name="selected_store" value={selectedStoreId} />
+                      <div className="grid gap-4 lg:grid-cols-[1fr_220px]">
+                        <div className="grid gap-4">
+                          <label className="grid gap-2 text-sm">
+                            <span className="text-ink/70">題目名稱</span>
+                            <input
+                              name="name"
+                              defaultValue={item.name}
+                              required
+                              className="rounded-2xl border border-ink/10 bg-white px-4 py-3"
+                            />
+                          </label>
+                          <label className="grid gap-2 text-sm">
+                            <span className="text-ink/70">題目類別</span>
+                            <select
+                              name="category_id"
+                              defaultValue={item.category_id}
+                              required
+                              className="rounded-2xl border border-ink/10 bg-white px-4 py-3"
+                            >
+                              {(categories ?? []).map((option) => (
+                                <option key={option.id} value={option.id}>
+                                  {option.name}
+                                </option>
+                              ))}
+                            </select>
+                          </label>
+                          <label className="grid gap-2 text-sm">
+                            <span className="text-ink/70">啟用狀態</span>
+                            <select
+                              name="is_active"
+                              defaultValue={String(item.is_active)}
+                              className="rounded-2xl border border-ink/10 bg-white px-4 py-3"
+                            >
+                              <option value="true">啟用</option>
+                              <option value="false">停用</option>
+                            </select>
+                          </label>
+                          <fieldset className="grid gap-3 rounded-2xl border border-ink/10 bg-soft/35 p-4">
+                            <legend className="px-2 text-sm font-medium text-ink">題目類型</legend>
+                            <label className="flex items-start gap-3 rounded-2xl bg-white/75 px-4 py-3 text-sm">
+                              <input type="radio" name="item_type" value="base" defaultChecked={item.is_base} className="mt-1" />
+                              <span>
+                                <span className="block font-medium">基礎題目</span>
+                                <span className="text-ink/60">所有門市都會看到，勾選的店別將被忽略。</span>
+                              </span>
+                            </label>
+                            <label className="flex items-start gap-3 rounded-2xl bg-white/75 px-4 py-3 text-sm">
+                              <input type="radio" name="item_type" value="scoped" defaultChecked={!item.is_base} className="mt-1" />
+                              <span>
+                                <span className="block font-medium">店別加題</span>
+                                <span className="text-ink/60">只出現在下方勾選的店別。</span>
+                              </span>
+                            </label>
+                          </fieldset>
+                          <fieldset className="grid gap-3 rounded-2xl border border-ink/10 bg-white/70 p-4">
+                            <legend className="px-2 text-sm font-medium text-ink">適用店別（只在店別加題時生效）</legend>
+                            <div className="grid gap-3 md:grid-cols-2">
+                              {(stores ?? []).map((store) => (
+                                <label key={store.id} className="flex items-center gap-3 rounded-2xl bg-soft/40 px-4 py-3 text-sm">
+                                  <input
+                                    type="checkbox"
+                                    name="store_ids"
+                                    value={store.id}
+                                    defaultChecked={(storeIdsByItemId[item.id] ?? []).includes(store.id)}
+                                    className="mt-0.5"
+                                  />
+                                  <span>{store.name}</span>
+                                </label>
+                              ))}
+                            </div>
+                          </fieldset>
+                        </div>
+                        <div className="flex flex-col justify-between rounded-[24px] border border-ink/10 bg-cream/85 p-4">
+                          <div className="space-y-3 text-sm text-ink/70">
+                            <p className="font-medium text-ink">目前狀態</p>
+                            <ul className="space-y-2">
+                              <li>{item.is_active ? "啟用中" : "停用中"}</li>
+                              <li>{item.is_base ? "基礎題目" : "店別加題"}</li>
+                              <li>
+                                適用店別：
+                                {(storeIdsByItemId[item.id] ?? []).length > 0
+                                  ? (storeIdsByItemId[item.id] ?? []).map((storeId) => storeNamesById[storeId] ?? storeId).join("、")
+                                  : "全部店通用"}
+                              </li>
+                            </ul>
+                          </div>
+                          <button className="mt-6 rounded-full bg-white px-5 py-3 text-sm text-ink" type="submit">
+                            儲存題目設定
+                          </button>
+                        </div>
+                      </div>
+                    </form>
+                  ))}
+                </div>
+              </div>
+            );
+          })}
+        </div>
       </SectionCard>
     </div>
   );

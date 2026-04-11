@@ -41,6 +41,11 @@ export type InspectionItemInput = {
   storeIds?: string[];
 };
 
+export type InspectionItemUpdateInput = InspectionItemInput & {
+  id: string;
+  isActive: boolean;
+};
+
 export type InspectionTagType = "critical" | "monthly_attention" | "complaint_watch";
 export type InspectionTagSource = "manual" | "complaint_sync";
 export type QaCleanupPreview = {
@@ -771,6 +776,108 @@ export async function createInspectionItem(input: InspectionItemInput) {
       name,
       category_id: input.categoryId,
       is_base: input.isBase,
+      store_ids: scopedStoreIds,
+    },
+  });
+
+  revalidatePath("/settings/items");
+  revalidatePath("/inspection/new");
+}
+
+export async function updateInspectionItem(input: InspectionItemUpdateInput) {
+  const profile = await requireRole("owner");
+  const admin = createAdminClient();
+  const name = input.name.trim();
+
+  if (!name) {
+    throw new Error("請填寫題目名稱。");
+  }
+
+  if (!input.categoryId) {
+    throw new Error("請選擇題目類別。");
+  }
+
+  const scopedStoreIds = Array.from(new Set((input.storeIds ?? []).filter(Boolean)));
+  if (!input.isBase && scopedStoreIds.length === 0) {
+    throw new Error("店別加題至少要指定一間適用店別。");
+  }
+
+  const { data: existingItem, error: existingError } = await admin
+    .from("inspection_items")
+    .select("id, category_id, sort_order")
+    .eq("id", input.id)
+    .maybeSingle();
+
+  if (existingError) {
+    throw new Error(existingError.message);
+  }
+
+  if (!existingItem) {
+    throw new Error("找不到要更新的題目。");
+  }
+
+  let sortOrder = existingItem.sort_order;
+  if (existingItem.category_id !== input.categoryId) {
+    const { data: sortRow, error: sortError } = await admin
+      .from("inspection_items")
+      .select("sort_order")
+      .eq("category_id", input.categoryId)
+      .neq("id", input.id)
+      .order("sort_order", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (sortError) {
+      throw new Error(sortError.message);
+    }
+
+    sortOrder = (sortRow?.sort_order ?? 0) + 10;
+  }
+
+  const { error: updateError } = await admin
+    .from("inspection_items")
+    .update({
+      name,
+      category_id: input.categoryId,
+      is_base: input.isBase,
+      is_active: input.isActive,
+      sort_order: sortOrder,
+    })
+    .eq("id", input.id);
+
+  if (updateError) {
+    throw new Error(updateError.message);
+  }
+
+  const { error: deleteExtraError } = await admin.from("store_extra_items").delete().eq("item_id", input.id);
+  if (deleteExtraError) {
+    throw new Error(deleteExtraError.message);
+  }
+
+  if (!input.isBase && scopedStoreIds.length > 0) {
+    const { error: insertExtraError } = await admin.from("store_extra_items").insert(
+      scopedStoreIds.map((storeId) => ({
+        store_id: storeId,
+        item_id: input.id,
+      })),
+    );
+
+    if (insertExtraError) {
+      throw new Error(insertExtraError.message);
+    }
+  }
+
+  await createAuditLog({
+    actorId: profile.id,
+    actorEmail: profile.email,
+    action: "update_inspection_item",
+    entityType: "inspection_item",
+    entityId: input.id,
+    details: {
+      name,
+      category_id: input.categoryId,
+      is_base: input.isBase,
+      is_active: input.isActive,
       store_ids: scopedStoreIds,
     },
   });
