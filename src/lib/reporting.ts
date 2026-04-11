@@ -1,6 +1,14 @@
+import { buildCategoryGrades, buildOverallInspectionGrade, type GradeableScore, type InspectionGrade } from "@/lib/grading";
+
 export type MonthlyInspectionReportSummary = {
   totalInspections: number;
   averageScore: string;
+  overallGrade: InspectionGrade | null;
+  gradeCounts: {
+    a: number;
+    b: number;
+    c: number;
+  };
   lowScoreCount: number;
   storesCovered: number;
   pendingTasks: number;
@@ -12,6 +20,20 @@ export type ProblemItemStat = {
   itemName: string;
   occurrences: number;
   averageScore: string;
+  averageGrade: InspectionGrade;
+};
+
+export type CategoryBreakdownStat = {
+  categoryName: string;
+  averageScore: string;
+  grade: InspectionGrade;
+  itemCount: number;
+  attentionCount: number;
+  counts: {
+    a: number;
+    b: number;
+    c: number;
+  };
 };
 
 export type StoreBreakdownStat = {
@@ -19,6 +41,7 @@ export type StoreBreakdownStat = {
   storeName: string;
   inspections: number;
   averageScore: string;
+  overallGrade: InspectionGrade;
   lowScoreCount: number;
 };
 
@@ -53,6 +76,7 @@ export function buildMonthlyInspectionReportStats(input: {
     storeId: string;
     storeName: string;
     totalScore: number;
+    scores: GradeableScore[];
   }>;
   lowScores: Array<{
     itemId: string;
@@ -64,6 +88,12 @@ export function buildMonthlyInspectionReportStats(input: {
     status: "pending" | "resolved" | "verified" | "superseded";
   }>;
 }) {
+  const gradeWeight: Record<InspectionGrade, number> = {
+    C: 0,
+    B: 1,
+    A: 2,
+  };
+
   const totalInspections = input.inspections.length;
   const averageScore =
     totalInspections > 0
@@ -85,7 +115,7 @@ export function buildMonthlyInspectionReportStats(input: {
 
   const storeStats = new Map<
     string,
-    { storeId: string; storeName: string; inspections: number; scoreSum: number; lowScoreCount: number }
+    { storeId: string; storeName: string; inspections: number; scoreSum: number; lowScoreCount: number; scores: GradeableScore[] }
   >();
   for (const inspection of input.inspections) {
     const current = storeStats.get(inspection.storeId) ?? {
@@ -94,9 +124,11 @@ export function buildMonthlyInspectionReportStats(input: {
       inspections: 0,
       scoreSum: 0,
       lowScoreCount: 0,
+      scores: [],
     };
     current.inspections += 1;
     current.scoreSum += inspection.totalScore;
+    current.scores.push(...inspection.scores);
     storeStats.set(inspection.storeId, current);
   }
 
@@ -108,9 +140,18 @@ export function buildMonthlyInspectionReportStats(input: {
     current.lowScoreCount += 1;
   }
 
+  const allScores = input.inspections.flatMap((inspection) => inspection.scores);
+  const overallInspectionGrade = allScores.length > 0 ? buildOverallInspectionGrade(allScores) : null;
+  const categorySummaries = buildCategoryGrades(allScores).sort(
+    (left, right) =>
+      gradeWeight[left.grade] - gradeWeight[right.grade] || Number(left.averageScore) - Number(right.averageScore),
+  );
+
   const summary: MonthlyInspectionReportSummary = {
     totalInspections,
     averageScore,
+    overallGrade: overallInspectionGrade?.finalGrade ?? null,
+    gradeCounts: overallInspectionGrade?.counts ?? { a: 0, b: 0, c: 0 },
     lowScoreCount: input.lowScores.length,
     storesCovered: new Set(input.inspections.map((inspection) => inspection.storeId)).size,
     pendingTasks: input.relatedTasks.filter((task) => task.status === "pending").length,
@@ -120,12 +161,25 @@ export function buildMonthlyInspectionReportStats(input: {
   const topProblemItems: ProblemItemStat[] = [...itemStats.values()]
     .sort((a, b) => b.occurrences - a.occurrences || a.itemName.localeCompare(b.itemName))
     .slice(0, 8)
-    .map((item) => ({
-      itemId: item.itemId,
-      itemName: item.itemName,
-      occurrences: item.occurrences,
-      averageScore: (item.scoreSum / item.occurrences).toFixed(2),
-    }));
+    .map((item) => {
+      const averageScoreValue = item.scoreSum / item.occurrences;
+      return {
+        itemId: item.itemId,
+        itemName: item.itemName,
+        occurrences: item.occurrences,
+        averageScore: averageScoreValue.toFixed(2),
+        averageGrade: averageScoreValue >= 2.5 ? "A" : averageScoreValue >= 1.5 ? "B" : "C",
+      };
+    });
+
+  const categoryBreakdown: CategoryBreakdownStat[] = categorySummaries.map((category) => ({
+    categoryName: category.categoryName,
+    averageScore: category.averageScore.toFixed(2),
+    grade: category.grade,
+    itemCount: category.itemCount,
+    attentionCount: category.counts.b + category.counts.c,
+    counts: category.counts,
+  }));
 
   const storeBreakdown: StoreBreakdownStat[] = [...storeStats.values()]
     .sort((a, b) => a.storeName.localeCompare(b.storeName))
@@ -134,12 +188,14 @@ export function buildMonthlyInspectionReportStats(input: {
       storeName: store.storeName,
       inspections: store.inspections,
       averageScore: (store.scoreSum / Math.max(store.inspections, 1)).toFixed(2),
+      overallGrade: buildOverallInspectionGrade(store.scores).finalGrade,
       lowScoreCount: store.lowScoreCount,
     }));
 
   return {
     summary,
     topProblemItems,
+    categoryBreakdown,
     storeBreakdown,
   };
 }

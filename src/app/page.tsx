@@ -3,6 +3,12 @@ import { redirect } from "next/navigation";
 
 import { AppShell } from "@/components/app-shell";
 import { getCurrentUserProfile } from "@/lib/auth";
+import {
+  buildCategoryGrades,
+  buildOverallInspectionGrade,
+  type InspectionGrade,
+  type InspectionTagType,
+} from "@/lib/grading";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 function getMonthRange(month: string) {
@@ -24,10 +30,10 @@ function getSingleRelation<T>(value: T | T[] | null | undefined) {
   return value ?? null;
 }
 
-function getScoreTone(score: number) {
-  if (score >= 2.8) return "text-emerald-700 bg-emerald-50";
-  if (score >= 2.4) return "text-amber-700 bg-amber-50";
-  return "text-danger bg-danger/10";
+function getGradeTone(grade: InspectionGrade) {
+  if (grade === "A") return "bg-green-100 text-green-700";
+  if (grade === "B") return "bg-warm/15 text-warm";
+  return "bg-danger/10 text-danger";
 }
 
 export default async function HomePage() {
@@ -47,7 +53,7 @@ export default async function HomePage() {
 
   let inspectionsQuery = admin
     .from("inspections")
-    .select("id, date, time_slot, total_score, created_at, store_id, stores(id, name)")
+    .select("id, date, time_slot, total_score, created_at, store_id, stores(id, name), inspection_scores(score, applied_tag_types, inspection_items(categories(name)))")
     .gte("date", start)
     .lt("date", end)
     .order("date", { ascending: false })
@@ -59,10 +65,7 @@ export default async function HomePage() {
     )
     .order("created_at", { ascending: false });
   let storesQuery = admin.from("stores").select("id, name").order("name");
-  let staffQuery = admin
-    .from("staff_members")
-    .select("id, store_id, status, archived_at")
-    .order("created_at", { ascending: false });
+  let staffQuery = admin.from("staff_members").select("id, store_id, status").order("created_at", { ascending: false });
 
   if (profile.role === "leader" && profile.store_id) {
     inspectionsQuery = inspectionsQuery.eq("store_id", profile.store_id);
@@ -82,21 +85,36 @@ export default async function HomePage() {
   const taskRows = tasks ?? [];
   const storeRows = stores ?? [];
   const staffRows = staffMembers ?? [];
+  const allScores = inspectionRows.flatMap((inspection) =>
+    (inspection.inspection_scores ?? []).map((row) => {
+      const item = getSingleRelation(row.inspection_items) as { categories?: unknown } | null;
+      const category = item ? (getSingleRelation(item.categories as never) as { name?: string } | null) : null;
+      return {
+        categoryName: category?.name ?? "未分類",
+        score: row.score,
+        tagTypes: row.applied_tag_types ?? [],
+      };
+    }),
+  );
+  const overallGrade = allScores.length > 0 ? buildOverallInspectionGrade(allScores) : null;
+  const categoryGrades = buildCategoryGrades(allScores).sort(
+    (left, right) => Number(left.averageScore) - Number(right.averageScore),
+  );
+  const weakestCategories = categoryGrades.slice(0, 3);
+  const strongestCategories = [...categoryGrades].sort((left, right) => Number(right.averageScore) - Number(left.averageScore)).slice(0, 3);
 
   const totalInspections = inspectionRows.length;
   const averageScore =
     totalInspections > 0
       ? Number(
           (
-            inspectionRows.reduce((sum, inspection) => sum + Number(inspection.total_score ?? 0), 0) /
-            totalInspections
+            inspectionRows.reduce((sum, inspection) => sum + Number(inspection.total_score ?? 0), 0) / totalInspections
           ).toFixed(2),
         )
       : 0;
   const pendingTasks = taskRows.filter((task) => task.status === "pending").length;
   const verifiedTasks = taskRows.filter((task) => task.status === "verified").length;
   const activeStaffCount = staffRows.filter((staff) => staff.status === "active").length;
-  const archivedStaffCount = staffRows.filter((staff) => staff.status === "archived").length;
   const lowScoreInspections = inspectionRows.filter((inspection) => Number(inspection.total_score ?? 0) < 2.5).length;
   const managedStoreCount = storeRows.length;
   const latestInspection = inspectionRows[0] ?? null;
@@ -104,10 +122,10 @@ export default async function HomePage() {
   const quickLinks =
     profile.role === "leader"
       ? [
-          { href: "/inspection/history", label: "查看本店巡店紀錄" },
-          { href: "/inspection/improvements", label: "追蹤待改善項目" },
-          { href: "/inspection/reports", label: "查看單店報表" },
-          { href: "/settings/staff", label: "管理本店組員" },
+          { href: "/inspection/history", label: "查看巡店紀錄" },
+          { href: "/inspection/improvements", label: "查看改善追蹤" },
+          { href: "/inspection/reports", label: "查看報表" },
+          { href: "/settings/staff", label: "管理組員" },
         ]
       : [
           { href: "/inspection/new", label: "新增巡店" },
@@ -124,7 +142,8 @@ export default async function HomePage() {
         string,
         {
           storeName: string;
-          count: number;
+          inspections: number;
+          scores: Array<{ categoryName: string; score: 1 | 2 | 3; tagTypes: InspectionTagType[] }>;
           totalScore: number;
         }
       >
@@ -134,21 +153,34 @@ export default async function HomePage() {
       if (!carry[inspection.store_id]) {
         carry[inspection.store_id] = {
           storeName: store?.name ?? "未命名店別",
-          count: 0,
+          inspections: 0,
+          scores: [],
           totalScore: 0,
         };
       }
 
-      carry[inspection.store_id].count += 1;
+      carry[inspection.store_id].inspections += 1;
       carry[inspection.store_id].totalScore += Number(inspection.total_score ?? 0);
+      carry[inspection.store_id].scores.push(
+        ...(inspection.inspection_scores ?? []).map((row) => {
+          const item = getSingleRelation(row.inspection_items) as { categories?: unknown } | null;
+          const category = item ? (getSingleRelation(item.categories as never) as { name?: string } | null) : null;
+          return {
+            categoryName: category?.name ?? "未分類",
+            score: row.score,
+            tagTypes: row.applied_tag_types ?? [],
+          };
+        }),
+      );
       return carry;
     }, {}),
   )
     .map((entry) => ({
       ...entry,
-      averageScore: Number((entry.totalScore / entry.count).toFixed(2)),
+      averageScore: Number((entry.totalScore / entry.inspections).toFixed(2)),
+      overallGrade: buildOverallInspectionGrade(entry.scores).finalGrade,
     }))
-    .sort((left, right) => right.count - left.count || right.averageScore - left.averageScore)
+    .sort((left, right) => Number(left.averageScore) - Number(right.averageScore))
     .slice(0, 4);
 
   const pendingTaskHighlights = taskRows
@@ -172,51 +204,57 @@ export default async function HomePage() {
       };
     });
 
+  const latestInspectionRows = inspectionRows.slice(0, 5).map((inspection) => {
+    const store = getSingleRelation(inspection.stores) as { name?: string } | null;
+    const scoreRows = (inspection.inspection_scores ?? []).map((row) => {
+      const item = getSingleRelation(row.inspection_items) as { categories?: unknown } | null;
+      const category = item ? (getSingleRelation(item.categories as never) as { name?: string } | null) : null;
+      return {
+        categoryName: category?.name ?? "未分類",
+        score: row.score,
+        tagTypes: row.applied_tag_types ?? [],
+      };
+    });
+
+    return {
+      id: inspection.id,
+      date: inspection.date,
+      timeSlot: inspection.time_slot,
+      storeName: store?.name ?? "未指定店別",
+      averageScore: Number(inspection.total_score ?? 0),
+      grade: buildOverallInspectionGrade(scoreRows).finalGrade,
+    };
+  });
+
   const leaderChecklist = [
     {
       title: "待改善任務",
       value: `${pendingTasks} 項`,
       description:
         pendingTasks > 0
-          ? "先到改善追蹤頁安排本店今天的優先處理順序，避免低分題目持續累積。"
-          : "目前沒有待改善項目，建議安排本店下次巡店前的預檢。",
+          ? "今天先優先處理待改善任務，避免低分項持續累積。"
+          : "目前沒有待改善任務，維持現況並繼續追蹤重點項目。",
     },
     {
-      title: "在職組員",
-      value: `${activeStaffCount} 人`,
-      description:
-        archivedStaffCount > 0
-          ? `另有 ${archivedStaffCount} 位已封存組員，可到組員管理確認是否需要恢復。`
-          : "目前沒有封存組員，班表維護相對單純。",
+      title: "最弱分類",
+      value: weakestCategories[0] ? weakestCategories[0].grade : "-",
+      description: weakestCategories[0]
+        ? `${weakestCategories[0].categoryName} 平均分數 ${weakestCategories[0].averageScore.toFixed(2)}，建議先從這一類改善。`
+        : "這個月還沒有足夠資料建立分類評級。",
     },
     {
       title: "最近巡店",
       value: latestInspection ? latestInspection.date : "尚無資料",
       description: latestInspection
-        ? `最近一次巡店時段為 ${latestInspection.time_slot}，可優先回看當次低分項目。`
-        : "本月尚未建立巡店紀錄，建議安排本店首次巡檢。",
+        ? `最近一次巡店在 ${latestInspection.time_slot}，請回頭確認低分與待改善任務。`
+        : "目前還沒有巡店紀錄，建議先完成第一筆巡店。",
     },
   ];
-
-  const leaderLatestLowInspections = inspectionRows
-    .filter((inspection) => Number(inspection.total_score ?? 0) < 2.5)
-    .slice(0, 3)
-    .map((inspection) => {
-      const store = getSingleRelation(inspection.stores) as { name?: string } | null;
-
-      return {
-        id: inspection.id,
-        storeName: store?.name ?? "未指定店別",
-        date: inspection.date,
-        timeSlot: inspection.time_slot,
-        totalScore: Number(inspection.total_score ?? 0),
-      };
-    });
 
   return (
     <AppShell profile={profile} pathname="/">
       <div className="grid gap-6">
-        <section className="overflow-hidden rounded-[32px] border border-ink/10 bg-white/90 shadow-card">
+        <section className="overflow-hidden rounded-[32px] border border-ink/10 bg-white shadow-card">
           <div className="grid gap-6 px-6 py-7 lg:grid-cols-[1.2fr_0.8fr] lg:px-8">
             <div>
               <p className="font-lora text-sm uppercase tracking-[0.25em] text-warm">
@@ -227,24 +265,32 @@ export default async function HomePage() {
               </h1>
               <p className="mt-4 max-w-2xl text-sm leading-7 text-ink/70">
                 {profile.role === "leader"
-                  ? "這裡聚焦你負責店別的巡店、改善任務與組員現況。登入後先看待改善清單與最近低分提醒，就能快速知道今天要優先追哪些事。"
-                  : "這裡整理本月巡店、改善任務與店別概況，方便你快速掌握跨店營運狀態，再進一步進入各後台頁面做追蹤與管理。"}
+                  ? "先看本店總評、最弱分類與待改善任務，再決定今天要先處理哪幾件事。"
+                  : "先看跨店整體評級，再往下看各分類健康度、弱店別與待改善任務。"}
               </p>
             </div>
 
             <div className="rounded-[28px] border border-warm/15 bg-gradient-to-br from-cream via-white to-soft p-5">
-              <p className="text-xs uppercase tracking-[0.25em] text-warm">本月摘要</p>
+              <p className="text-xs uppercase tracking-[0.25em] text-warm">
+                {profile.role === "leader" ? "Store Snapshot" : "Network Snapshot"}
+              </p>
               <div className="mt-4 grid gap-4">
                 <div>
-                  <p className="text-sm text-ink/60">{profile.role === "leader" ? "目前店別" : "管理範圍"}</p>
+                  <p className="text-sm text-ink/60">{profile.role === "leader" ? "目前店別" : "管理店數"}</p>
                   <p className="mt-1 font-serifTc text-2xl font-semibold text-ink">
                     {profile.role === "leader" ? storeRows[0]?.name ?? "未指定店別" : `${managedStoreCount} 間店`}
                   </p>
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   <div className="rounded-2xl bg-white/90 px-4 py-3">
-                    <p className="text-xs text-ink/55">巡店次數</p>
-                    <p className="mt-2 font-serifTc text-2xl font-semibold">{totalInspections}</p>
+                    <p className="text-xs text-ink/55">本月總評</p>
+                    {overallGrade ? (
+                      <p className={`mt-2 inline-flex rounded-full px-3 py-1 text-2xl font-semibold ${getGradeTone(overallGrade.finalGrade)}`}>
+                        {overallGrade.finalGrade}
+                      </p>
+                    ) : (
+                      <p className="mt-2 text-lg text-ink/45">-</p>
+                    )}
                   </div>
                   <div className="rounded-2xl bg-white/90 px-4 py-3">
                     <p className="text-xs text-ink/55">平均分數</p>
@@ -257,21 +303,32 @@ export default async function HomePage() {
         </section>
 
         <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-          <div className="rounded-[24px] border border-ink/10 bg-white/85 px-5 py-4 shadow-card">
-            <p className="text-sm text-ink/60">{profile.role === "leader" ? "本店本月巡店次數" : "本月巡店次數"}</p>
+          <div className="rounded-[24px] border border-ink/10 bg-white px-5 py-4 shadow-card">
+            <p className="text-sm text-ink/60">{profile.role === "leader" ? "本店總評" : "本月總評"}</p>
+            {overallGrade ? (
+              <p className={`mt-2 inline-flex rounded-full px-4 py-2 text-2xl font-semibold ${getGradeTone(overallGrade.finalGrade)}`}>
+                {overallGrade.finalGrade}
+              </p>
+            ) : (
+              <p className="mt-2 text-lg text-ink/45">尚無資料</p>
+            )}
+          </div>
+          <div className="rounded-[24px] border border-ink/10 bg-white px-5 py-4 shadow-card">
+            <p className="text-sm text-ink/60">{profile.role === "leader" ? "本店巡店次數" : "本月巡店次數"}</p>
             <p className="mt-2 font-serifTc text-3xl font-semibold">{totalInspections}</p>
+            {overallGrade ? (
+              <p className="mt-2 text-xs text-ink/55">
+                A / B / C：{overallGrade.counts.a} / {overallGrade.counts.b} / {overallGrade.counts.c}
+              </p>
+            ) : null}
           </div>
-          <div className="rounded-[24px] border border-ink/10 bg-white/85 px-5 py-4 shadow-card">
-            <p className="text-sm text-ink/60">{profile.role === "leader" ? "本店平均分數" : "整體平均分數"}</p>
-            <p className="mt-2 font-serifTc text-3xl font-semibold">{averageScore.toFixed(2)}</p>
-          </div>
-          <div className="rounded-[24px] border border-ink/10 bg-white/85 px-5 py-4 shadow-card">
+          <div className="rounded-[24px] border border-ink/10 bg-white px-5 py-4 shadow-card">
             <p className="text-sm text-ink/60">待改善任務</p>
             <p className="mt-2 font-serifTc text-3xl font-semibold">{pendingTasks}</p>
             <p className="mt-2 text-xs text-ink/55">已確認 {verifiedTasks} 項</p>
           </div>
-          <div className="rounded-[24px] border border-ink/10 bg-white/85 px-5 py-4 shadow-card">
-            <p className="text-sm text-ink/60">{profile.role === "leader" ? "本店在職組員" : "在職組員總數"}</p>
+          <div className="rounded-[24px] border border-ink/10 bg-white px-5 py-4 shadow-card">
+            <p className="text-sm text-ink/60">{profile.role === "leader" ? "本店在職組員" : "在職組員數"}</p>
             <p className="mt-2 font-serifTc text-3xl font-semibold">{activeStaffCount}</p>
             <p className="mt-2 text-xs text-ink/55">低分巡店 {lowScoreInspections} 次</p>
           </div>
@@ -279,12 +336,10 @@ export default async function HomePage() {
 
         {profile.role === "leader" ? (
           <div className="grid gap-6">
-            <section className="rounded-[28px] border border-ink/10 bg-white/85 p-6 shadow-card">
-              <div className="flex items-center justify-between gap-3">
-                <div>
-                  <p className="font-lora text-sm uppercase tracking-[0.25em] text-warm">Today Focus</p>
-                  <h2 className="mt-2 font-serifTc text-2xl font-semibold">今天先看這三件事</h2>
-                </div>
+            <section className="rounded-[28px] border border-ink/10 bg-white p-6 shadow-card">
+              <div>
+                <p className="font-lora text-sm uppercase tracking-[0.25em] text-warm">Today Focus</p>
+                <h2 className="mt-2 font-serifTc text-2xl font-semibold">今天先看這三件事</h2>
               </div>
 
               <div className="mt-5 grid gap-3 lg:grid-cols-3">
@@ -300,7 +355,75 @@ export default async function HomePage() {
               </div>
             </section>
 
-            <section className="rounded-[28px] border border-ink/10 bg-white/85 p-6 shadow-card">
+            <section className="grid gap-6 xl:grid-cols-[1.05fr_0.95fr]">
+              <div className="rounded-[28px] border border-ink/10 bg-white p-6 shadow-card">
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <p className="font-lora text-sm uppercase tracking-[0.25em] text-warm">Category Health</p>
+                    <h2 className="mt-2 font-serifTc text-2xl font-semibold">本店分類表現</h2>
+                  </div>
+                </div>
+                <div className="mt-5 grid gap-3">
+                  {weakestCategories.map((category) => (
+                    <div key={category.categoryName} className="rounded-[22px] border border-ink/10 bg-soft/40 px-4 py-4">
+                      <div className="flex items-center justify-between gap-3">
+                        <div>
+                          <p className="font-medium text-ink">{category.categoryName}</p>
+                          <p className="mt-1 text-sm text-ink/60">
+                            平均分數 {category.averageScore.toFixed(2)} / A、B、C：{category.counts.a}、{category.counts.b}、{category.counts.c}
+                          </p>
+                        </div>
+                        <span className={`rounded-full px-3 py-1 text-sm font-medium ${getGradeTone(category.grade)}`}>
+                          {category.grade}
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                  {weakestCategories.length === 0 && (
+                    <div className="rounded-[22px] border border-dashed border-ink/15 px-4 py-8 text-sm text-ink/60">
+                      這個月還沒有足夠資料建立分類評級。
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <div className="rounded-[28px] border border-ink/10 bg-white p-6 shadow-card">
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <p className="font-lora text-sm uppercase tracking-[0.25em] text-warm">Action Queue</p>
+                    <h2 className="mt-2 font-serifTc text-2xl font-semibold">本店待改善清單</h2>
+                  </div>
+                  <Link href="/inspection/improvements" className="text-sm text-warm underline-offset-4 hover:underline">
+                    查看全部
+                  </Link>
+                </div>
+                <div className="mt-5 grid gap-3">
+                  {pendingTaskHighlights.map((task) => (
+                    <div key={task.id} className="rounded-[22px] border border-ink/10 bg-white px-4 py-4">
+                      <div className="flex items-start justify-between gap-3">
+                        <div>
+                          <p className="font-medium text-ink">{task.itemName}</p>
+                          <p className="mt-1 text-sm text-ink/60">
+                            {task.storeName}
+                            {task.inspectionDate ? ` / ${task.inspectionDate}` : ""}
+                            {task.score ? ` / 分數 ${task.score}` : ""}
+                          </p>
+                        </div>
+                        <span className="rounded-full bg-danger/10 px-3 py-1 text-xs text-danger">待處理</span>
+                      </div>
+                      {task.note ? <p className="mt-3 text-sm leading-6 text-ink/70">{task.note}</p> : null}
+                    </div>
+                  ))}
+                  {pendingTaskHighlights.length === 0 && (
+                    <div className="rounded-[22px] border border-dashed border-ink/15 px-4 py-8 text-sm text-ink/60">
+                      目前沒有待改善任務，今天可以優先巡查必查項目與客訴項目。
+                    </div>
+                  )}
+                </div>
+              </div>
+            </section>
+
+            <section className="rounded-[28px] border border-ink/10 bg-white p-6 shadow-card">
               <div className="flex items-center justify-between gap-3">
                 <div>
                   <p className="font-lora text-sm uppercase tracking-[0.25em] text-warm">Recent Activity</p>
@@ -310,217 +433,189 @@ export default async function HomePage() {
                   查看全部
                 </Link>
               </div>
-
               <div className="mt-5 grid gap-3">
-                {inspectionRows.slice(0, 5).map((inspection) => {
-                  const store = getSingleRelation(inspection.stores) as { name?: string } | null;
-                  const score = Number(inspection.total_score ?? 0);
-
-                  return (
-                    <div
-                      key={inspection.id}
-                      className="flex flex-col gap-3 rounded-[22px] border border-ink/10 bg-white px-4 py-4 md:flex-row md:items-center md:justify-between"
-                    >
-                      <div>
-                        <p className="text-sm text-ink/55">{inspection.date}</p>
-                        <p className="mt-1 text-base font-medium text-ink">
-                          {store?.name ?? "未指定店別"} / {inspection.time_slot}
-                        </p>
-                      </div>
-                      <div className="flex items-center gap-3">
-                        <span className={`rounded-full px-3 py-1 text-sm ${getScoreTone(score)}`}>
-                          總分 {score.toFixed(2)}
-                        </span>
-                        <Link
-                          href={`/inspection/history/${inspection.id}`}
-                          className="rounded-full bg-soft px-4 py-2 text-sm text-ink/75 transition hover:bg-warm hover:text-white"
-                        >
-                          查看明細
-                        </Link>
-                      </div>
+                {latestInspectionRows.map((inspection) => (
+                  <div
+                    key={inspection.id}
+                    className="flex flex-col gap-3 rounded-[22px] border border-ink/10 bg-white px-4 py-4 md:flex-row md:items-center md:justify-between"
+                  >
+                    <div>
+                      <p className="text-sm text-ink/55">{inspection.date}</p>
+                      <p className="mt-1 text-base font-medium text-ink">
+                        {inspection.storeName} / {inspection.timeSlot}
+                      </p>
                     </div>
-                  );
-                })}
-
-                {inspectionRows.length === 0 && (
-                  <div className="rounded-[22px] border border-dashed border-ink/15 px-4 py-8 text-sm text-ink/60">
-                    本月還沒有巡店紀錄，建議先安排一次巡店，之後首頁就會開始累積本店動態。
-                  </div>
-                )}
-              </div>
-            </section>
-
-            <section className="rounded-[28px] border border-ink/10 bg-white/85 p-6 shadow-card">
-              <div className="flex items-center justify-between gap-3">
-                <div>
-                  <p className="font-lora text-sm uppercase tracking-[0.25em] text-warm">Action Queue</p>
-                  <h2 className="mt-2 font-serifTc text-2xl font-semibold">本店待改善清單</h2>
-                </div>
-                <Link
-                  href="/inspection/improvements"
-                  className="text-sm text-warm underline-offset-4 hover:underline"
-                >
-                  前往追蹤
-                </Link>
-              </div>
-
-              <div className="mt-5 grid gap-3 lg:grid-cols-2">
-                {pendingTaskHighlights.map((task) => (
-                  <div key={task.id} className="rounded-[22px] border border-ink/10 bg-white px-4 py-4">
-                    <div className="flex items-start justify-between gap-3">
-                      <div>
-                        <p className="font-medium text-ink">{task.itemName}</p>
-                        <p className="mt-1 text-sm text-ink/60">
-                          {task.storeName}
-                          {task.inspectionDate ? ` / ${task.inspectionDate}` : ""}
-                          {task.score ? ` / 分數 ${task.score}` : ""}
-                        </p>
-                      </div>
-                      <span className="rounded-full bg-danger/10 px-3 py-1 text-xs text-danger">待處理</span>
-                    </div>
-                    {task.note ? <p className="mt-3 text-sm leading-6 text-ink/70">{task.note}</p> : null}
-                  </div>
-                ))}
-
-                {pendingTaskHighlights.length === 0 && (
-                  <div className="rounded-[22px] border border-dashed border-ink/15 px-4 py-8 text-sm text-ink/60 lg:col-span-2">
-                    目前沒有待改善清單，本店狀態算穩定，可以把重點放在日常巡檢與組員安排。
-                  </div>
-                )}
-              </div>
-            </section>
-
-            <section className="rounded-[28px] border border-ink/10 bg-white/85 p-6 shadow-card">
-              <div className="flex items-center justify-between gap-3">
-                <div>
-                  <p className="font-lora text-sm uppercase tracking-[0.25em] text-warm">Low Score Watch</p>
-                  <h2 className="mt-2 font-serifTc text-2xl font-semibold">最近低分提醒</h2>
-                </div>
-                <Link href="/inspection/history" className="text-sm text-warm underline-offset-4 hover:underline">
-                  看巡店紀錄
-                </Link>
-              </div>
-
-              <div className="mt-5 grid gap-3 lg:grid-cols-3">
-                {leaderLatestLowInspections.map((inspection) => (
-                  <div key={inspection.id} className="rounded-[22px] border border-ink/10 bg-white px-4 py-4">
-                    <div className="flex items-center justify-between gap-3">
-                      <div>
-                        <p className="font-medium text-ink">{inspection.storeName}</p>
-                        <p className="mt-1 text-sm text-ink/60">
-                          {inspection.date} / {inspection.timeSlot}
-                        </p>
-                      </div>
-                      <span className={`rounded-full px-3 py-1 text-sm ${getScoreTone(inspection.totalScore)}`}>
-                        總分 {inspection.totalScore.toFixed(2)}
+                    <div className="flex items-center gap-3">
+                      <span className={`rounded-full px-3 py-1 text-sm font-medium ${getGradeTone(inspection.grade)}`}>
+                        {inspection.grade}
                       </span>
+                      <Link
+                        href={`/inspection/history/${inspection.id}`}
+                        className="rounded-full bg-soft px-4 py-2 text-sm text-ink/75 transition hover:bg-warm hover:text-white"
+                      >
+                        查看明細
+                      </Link>
                     </div>
                   </div>
                 ))}
-
-                {leaderLatestLowInspections.length === 0 && (
-                  <div className="rounded-[22px] border border-dashed border-ink/15 px-4 py-8 text-sm text-ink/60 lg:col-span-3">
-                    最近沒有低分巡店紀錄，這裡會在需要關注時提醒你快速回看。
+                {latestInspectionRows.length === 0 && (
+                  <div className="rounded-[22px] border border-dashed border-ink/15 px-4 py-8 text-sm text-ink/60">
+                    目前還沒有巡店紀錄，建議先完成第一筆巡店。
                   </div>
                 )}
               </div>
             </section>
 
-          <section className="rounded-[28px] border border-ink/10 bg-white/85 p-6 shadow-card">
-            <p className="font-lora text-sm uppercase tracking-[0.25em] text-warm">Quick Actions</p>
-            <h2 className="mt-2 font-serifTc text-2xl font-semibold">店長常用入口</h2>
-            <div className="mt-5 flex flex-wrap gap-3">
-              {quickLinks.map((link) => (
-                <Link
-                  key={link.href}
-                  href={link.href}
-                  className="rounded-full bg-soft px-5 py-3 text-sm text-ink/75 transition hover:bg-warm hover:text-white"
-                >
-                  {link.label}
-                </Link>
-              ))}
-            </div>
-          </section>
+            <section className="rounded-[28px] border border-ink/10 bg-white p-6 shadow-card">
+              <p className="font-lora text-sm uppercase tracking-[0.25em] text-warm">Quick Actions</p>
+              <h2 className="mt-2 font-serifTc text-2xl font-semibold">店長常用入口</h2>
+              <div className="mt-5 flex flex-wrap gap-3">
+                {quickLinks.map((link) => (
+                  <Link
+                    key={link.href}
+                    href={link.href}
+                    className="rounded-full bg-soft px-5 py-3 text-sm text-ink/75 transition hover:bg-warm hover:text-white"
+                  >
+                    {link.label}
+                  </Link>
+                ))}
+              </div>
+            </section>
           </div>
         ) : (
-          <section className="grid gap-6 lg:grid-cols-[1.15fr_0.85fr]">
-            <div className="rounded-[28px] border border-ink/10 bg-white/85 p-6 shadow-card">
-              <div className="flex items-center justify-between gap-3">
-                <div>
-                  <p className="font-lora text-sm uppercase tracking-[0.25em] text-warm">Recent Activity</p>
-                  <h2 className="mt-2 font-serifTc text-2xl font-semibold">近期巡店動態</h2>
-                </div>
-                <Link href="/inspection/history" className="text-sm text-warm underline-offset-4 hover:underline">
-                  查看全部
-                </Link>
-              </div>
-
-              <div className="mt-5 grid gap-3">
-                {inspectionRows.slice(0, 5).map((inspection) => {
-                  const store = getSingleRelation(inspection.stores) as { name?: string } | null;
-                  const score = Number(inspection.total_score ?? 0);
-
-                  return (
-                    <div
-                      key={inspection.id}
-                      className="flex flex-col gap-3 rounded-[22px] border border-ink/10 bg-white px-4 py-4 md:flex-row md:items-center md:justify-between"
-                    >
-                      <div>
-                        <p className="text-sm text-ink/55">{inspection.date}</p>
-                        <p className="mt-1 text-base font-medium text-ink">
-                          {store?.name ?? "未指定店別"} / {inspection.time_slot}
-                        </p>
-                      </div>
-                      <div className="flex items-center gap-3">
-                        <span className={`rounded-full px-3 py-1 text-sm ${getScoreTone(score)}`}>
-                          總分 {score.toFixed(2)}
-                        </span>
-                        <Link
-                          href={`/inspection/history/${inspection.id}`}
-                          className="rounded-full bg-soft px-4 py-2 text-sm text-ink/75 transition hover:bg-warm hover:text-white"
-                        >
-                          查看明細
-                        </Link>
-                      </div>
-                    </div>
-                  );
-                })}
-
-                {inspectionRows.length === 0 && (
-                  <div className="rounded-[22px] border border-dashed border-ink/15 px-4 py-8 text-sm text-ink/60">
-                    本月還沒有足夠的巡店資料，等各店開始巡店後，這裡就會顯示跨店概況。
-                  </div>
-                )}
-              </div>
-            </div>
-
+          <section className="grid gap-6 lg:grid-cols-[1.05fr_0.95fr]">
             <div className="grid gap-6">
-              <section className="rounded-[28px] border border-ink/10 bg-white/85 p-6 shadow-card">
-                <p className="font-lora text-sm uppercase tracking-[0.25em] text-warm">Store Overview</p>
-                <h2 className="mt-2 font-serifTc text-2xl font-semibold">店別概況</h2>
+              <section className="rounded-[28px] border border-ink/10 bg-white p-6 shadow-card">
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <p className="font-lora text-sm uppercase tracking-[0.25em] text-warm">Category Health</p>
+                    <h2 className="mt-2 font-serifTc text-2xl font-semibold">各分類健康度</h2>
+                  </div>
+                  <Link href="/inspection/reports" className="text-sm text-warm underline-offset-4 hover:underline">
+                    查看報表
+                  </Link>
+                </div>
                 <div className="mt-5 grid gap-3">
-                  {groupedByStore.map((store) => (
-                    <div key={store.storeName} className="rounded-[22px] border border-ink/10 bg-white px-4 py-4">
+                  {weakestCategories.map((category) => (
+                    <div key={category.categoryName} className="rounded-[22px] border border-ink/10 bg-soft/40 px-4 py-4">
                       <div className="flex items-center justify-between gap-3">
-                        <p className="font-medium text-ink">{store.storeName}</p>
-                        <span className={`rounded-full px-3 py-1 text-sm ${getScoreTone(store.averageScore)}`}>
-                          平均 {store.averageScore.toFixed(2)}
+                        <div>
+                          <p className="font-medium text-ink">{category.categoryName}</p>
+                          <p className="mt-1 text-sm text-ink/60">
+                            平均分數 {category.averageScore.toFixed(2)} / A、B、C：{category.counts.a}、{category.counts.b}、{category.counts.c}
+                          </p>
+                        </div>
+                        <span className={`rounded-full px-3 py-1 text-sm font-medium ${getGradeTone(category.grade)}`}>
+                          {category.grade}
                         </span>
                       </div>
-                      <p className="mt-2 text-sm text-ink/60">本月巡店 {store.count} 次</p>
                     </div>
                   ))}
-                  {groupedByStore.length === 0 && (
+                  {weakestCategories.length === 0 && (
                     <div className="rounded-[22px] border border-dashed border-ink/15 px-4 py-8 text-sm text-ink/60">
-                      本月還沒有足夠的巡店資料，等各店開始巡店後，這裡就會顯示跨店概況。
+                      這個月還沒有足夠資料建立分類評級。
                     </div>
                   )}
                 </div>
               </section>
 
-              <section className="rounded-[28px] border border-ink/10 bg-white/85 p-6 shadow-card">
+              <section className="rounded-[28px] border border-ink/10 bg-white p-6 shadow-card">
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <p className="font-lora text-sm uppercase tracking-[0.25em] text-warm">Recent Activity</p>
+                    <h2 className="mt-2 font-serifTc text-2xl font-semibold">最近巡店紀錄</h2>
+                  </div>
+                  <Link href="/inspection/history" className="text-sm text-warm underline-offset-4 hover:underline">
+                    查看全部
+                  </Link>
+                </div>
+
+                <div className="mt-5 grid gap-3">
+                  {latestInspectionRows.map((inspection) => (
+                    <div
+                      key={inspection.id}
+                      className="flex flex-col gap-3 rounded-[22px] border border-ink/10 bg-white px-4 py-4 md:flex-row md:items-center md:justify-between"
+                    >
+                      <div>
+                        <p className="text-sm text-ink/55">{inspection.date}</p>
+                        <p className="mt-1 text-base font-medium text-ink">
+                          {inspection.storeName} / {inspection.timeSlot}
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <span className={`rounded-full px-3 py-1 text-sm font-medium ${getGradeTone(inspection.grade)}`}>
+                          {inspection.grade}
+                        </span>
+                        <Link
+                          href={`/inspection/history/${inspection.id}`}
+                          className="rounded-full bg-soft px-4 py-2 text-sm text-ink/75 transition hover:bg-warm hover:text-white"
+                        >
+                          查看明細
+                        </Link>
+                      </div>
+                    </div>
+                  ))}
+                  {latestInspectionRows.length === 0 && (
+                    <div className="rounded-[22px] border border-dashed border-ink/15 px-4 py-8 text-sm text-ink/60">
+                      目前還沒有巡店紀錄，先從新增巡店開始建立本月資料。
+                    </div>
+                  )}
+                </div>
+              </section>
+            </div>
+
+            <div className="grid gap-6">
+              <section className="rounded-[28px] border border-ink/10 bg-white p-6 shadow-card">
+                <p className="font-lora text-sm uppercase tracking-[0.25em] text-warm">Store Overview</p>
+                <h2 className="mt-2 font-serifTc text-2xl font-semibold">店別表現一覽</h2>
+                <div className="mt-5 grid gap-3">
+                  {groupedByStore.map((store) => (
+                    <div key={store.storeName} className="rounded-[22px] border border-ink/10 bg-white px-4 py-4">
+                      <div className="flex items-center justify-between gap-3">
+                        <p className="font-medium text-ink">{store.storeName}</p>
+                        <span className={`rounded-full px-3 py-1 text-sm font-medium ${getGradeTone(store.overallGrade)}`}>
+                          {store.overallGrade}
+                        </span>
+                      </div>
+                      <p className="mt-2 text-sm text-ink/60">
+                        巡店 {store.inspections} 次 / 平均分數 {store.averageScore.toFixed(2)}
+                      </p>
+                    </div>
+                  ))}
+                  {groupedByStore.length === 0 && (
+                    <div className="rounded-[22px] border border-dashed border-ink/15 px-4 py-8 text-sm text-ink/60">
+                      目前沒有跨店統計資料。
+                    </div>
+                  )}
+                </div>
+              </section>
+
+              <section className="rounded-[28px] border border-ink/10 bg-white p-6 shadow-card">
+                <p className="font-lora text-sm uppercase tracking-[0.25em] text-warm">Strongest Categories</p>
+                <h2 className="mt-2 font-serifTc text-2xl font-semibold">目前表現較穩的分類</h2>
+                <div className="mt-5 grid gap-3">
+                  {strongestCategories.map((category) => (
+                    <div key={category.categoryName} className="rounded-[22px] border border-ink/10 bg-white px-4 py-4">
+                      <div className="flex items-center justify-between gap-3">
+                        <p className="font-medium text-ink">{category.categoryName}</p>
+                        <span className={`rounded-full px-3 py-1 text-sm font-medium ${getGradeTone(category.grade)}`}>
+                          {category.grade}
+                        </span>
+                      </div>
+                      <p className="mt-2 text-sm text-ink/60">平均分數 {category.averageScore.toFixed(2)}</p>
+                    </div>
+                  ))}
+                  {strongestCategories.length === 0 && (
+                    <div className="rounded-[22px] border border-dashed border-ink/15 px-4 py-8 text-sm text-ink/60">
+                      目前沒有足夠資料建立強項分類。
+                    </div>
+                  )}
+                </div>
+              </section>
+
+              <section className="rounded-[28px] border border-ink/10 bg-white p-6 shadow-card">
                 <p className="font-lora text-sm uppercase tracking-[0.25em] text-warm">Quick Actions</p>
-                <h2 className="mt-2 font-serifTc text-2xl font-semibold">管理快捷入口</h2>
+                <h2 className="mt-2 font-serifTc text-2xl font-semibold">常用入口</h2>
                 <div className="mt-5 flex flex-wrap gap-3">
                   {quickLinks.map((link) => (
                     <Link

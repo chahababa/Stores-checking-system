@@ -180,6 +180,12 @@ export type MonthlyInspectionReport = {
   summary: {
     totalInspections: number;
     averageScore: string;
+    overallGrade: "A" | "B" | "C" | null;
+    gradeCounts: {
+      a: number;
+      b: number;
+      c: number;
+    };
     lowScoreCount: number;
     storesCovered: number;
     pendingTasks: number;
@@ -190,12 +196,26 @@ export type MonthlyInspectionReport = {
     itemName: string;
     occurrences: number;
     averageScore: string;
+    averageGrade: "A" | "B" | "C";
+  }>;
+  categoryBreakdown: Array<{
+    categoryName: string;
+    averageScore: string;
+    grade: "A" | "B" | "C";
+    itemCount: number;
+    attentionCount: number;
+    counts: {
+      a: number;
+      b: number;
+      c: number;
+    };
   }>;
   storeBreakdown: Array<{
     storeId: string;
     storeName: string;
     inspections: number;
     averageScore: string;
+    overallGrade: "A" | "B" | "C";
     lowScoreCount: number;
   }>;
 };
@@ -1019,7 +1039,7 @@ export async function getInspectionMonthlyReport(params?: {
   const storesQuery = admin.from("stores").select("id, name").order("name");
   let inspectionsQuery = admin
     .from("inspections")
-    .select("id, store_id, total_score, stores(id, name)")
+    .select("id, store_id, total_score, stores(id, name), inspection_scores(score, applied_tag_types, inspection_items(categories(name)))")
     .gte("date", start)
     .lt("date", end);
 
@@ -1067,6 +1087,16 @@ export async function getInspectionMonthlyReport(params?: {
         storeId: inspection.store_id,
         storeName: relation?.name ?? "Unknown Store",
         totalScore: Number(inspection.total_score ?? 0),
+        scores: (inspection.inspection_scores ?? []).map((row) => {
+          const item = mapSingleRelation(row.inspection_items) as { categories?: unknown } | null;
+          const category = item ? (mapSingleRelation(item.categories as never) as { name?: string } | null) : null;
+
+          return {
+            categoryName: category?.name ?? "未分類",
+            score: row.score,
+            tagTypes: row.applied_tag_types ?? [],
+          };
+        }),
       };
     }),
     lowScores: (lowScores ?? []).map((row) => {
@@ -1089,6 +1119,7 @@ export async function getInspectionMonthlyReport(params?: {
     stores: stores ?? [],
     summary: stats.summary,
     topProblemItems: stats.topProblemItems,
+    categoryBreakdown: stats.categoryBreakdown,
     storeBreakdown: stats.storeBreakdown,
   };
 }

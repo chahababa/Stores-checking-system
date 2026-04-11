@@ -28,12 +28,41 @@ describe("reporting helpers", () => {
     expect(formatMonthValue(null)).toMatch(/^\d{4}-\d{2}$/);
   });
 
-  it("aggregates monthly report stats", () => {
+  it("aggregates monthly report stats with grades", () => {
     const stats = buildMonthlyInspectionReportStats({
       inspections: [
-        { id: "i1", storeId: "s1", storeName: "Store A", totalScore: 2.1 },
-        { id: "i2", storeId: "s1", storeName: "Store A", totalScore: 2.8 },
-        { id: "i3", storeId: "s2", storeName: "Store B", totalScore: 3.0 },
+        {
+          id: "i1",
+          storeId: "s1",
+          storeName: "Store A",
+          totalScore: 2.1,
+          scores: [
+            { categoryName: "People", score: 3 },
+            { categoryName: "Kitchen", score: 2, tagTypes: ["critical"] },
+            { categoryName: "Kitchen", score: 1, tagTypes: ["complaint_watch"] },
+          ],
+        },
+        {
+          id: "i2",
+          storeId: "s1",
+          storeName: "Store A",
+          totalScore: 2.8,
+          scores: [
+            { categoryName: "People", score: 3 },
+            { categoryName: "Kitchen", score: 2, tagTypes: ["monthly_attention"] },
+            { categoryName: "Service", score: 3 },
+          ],
+        },
+        {
+          id: "i3",
+          storeId: "s2",
+          storeName: "Store B",
+          totalScore: 3.0,
+          scores: [
+            { categoryName: "People", score: 3 },
+            { categoryName: "Kitchen", score: 3 },
+          ],
+        },
       ],
       lowScores: [
         { itemId: "item-1", itemName: "Clean Counter", score: 1, inspectionId: "i1" },
@@ -46,6 +75,8 @@ describe("reporting helpers", () => {
     expect(stats.summary).toEqual({
       totalInspections: 3,
       averageScore: "2.63",
+      overallGrade: "B",
+      gradeCounts: { a: 5, b: 2, c: 1 },
       lowScoreCount: 3,
       storesCovered: 2,
       pendingTasks: 2,
@@ -56,13 +87,41 @@ describe("reporting helpers", () => {
       itemName: "Clean Counter",
       occurrences: 2,
       averageScore: "1.50",
+      averageGrade: "B",
     });
+    expect(stats.categoryBreakdown).toEqual([
+      {
+        categoryName: "Kitchen",
+        averageScore: "2.00",
+        grade: "B",
+        itemCount: 4,
+        attentionCount: 3,
+        counts: { a: 1, b: 2, c: 1 },
+      },
+      {
+        categoryName: "People",
+        averageScore: "3.00",
+        grade: "A",
+        itemCount: 3,
+        attentionCount: 0,
+        counts: { a: 3, b: 0, c: 0 },
+      },
+      {
+        categoryName: "Service",
+        averageScore: "3.00",
+        grade: "A",
+        itemCount: 1,
+        attentionCount: 0,
+        counts: { a: 1, b: 0, c: 0 },
+      },
+    ]);
     expect(stats.storeBreakdown).toEqual([
       {
         storeId: "s1",
         storeName: "Store A",
         inspections: 2,
         averageScore: "2.45",
+        overallGrade: "C",
         lowScoreCount: 3,
       },
       {
@@ -70,6 +129,7 @@ describe("reporting helpers", () => {
         storeName: "Store B",
         inspections: 1,
         averageScore: "3.00",
+        overallGrade: "A",
         lowScoreCount: 0,
       },
     ]);
