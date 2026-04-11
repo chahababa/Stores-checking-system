@@ -13,9 +13,13 @@ export function getShiftRoleLabel(role: "kitchen" | "floor" | "counter") {
   return "櫃台";
 }
 
+export function getWorkstationScopeLabel(scope: "global" | "store") {
+  return scope === "global" ? "全部店通用" : "指定店別";
+}
+
 export function getBusynessLabel(level: "low" | "medium" | "high") {
-  if (level === "low") return "不忙";
-  if (level === "medium") return "普通";
+  if (level === "low") return "較低";
+  if (level === "medium") return "一般";
   return "忙碌";
 }
 
@@ -36,14 +40,14 @@ export function getInspectionTagLabel(type: InspectionTagType) {
 
 export function getInspectionTagDescription(type: InspectionTagType) {
   if (type === "critical") {
-    return "這類題目屬於所有門市都必須確認的重要項目，預設不帶 3 分。";
+    return "屬於每次巡店都必須人工確認的關鍵項目，不會預設帶入 3 分。";
   }
 
   if (type === "monthly_attention") {
-    return "這段時間特別要加強檢查的題目，可設定全部店別或指定單店。";
+    return "屬於這個月特別需要加強追蹤的項目，不會預設帶入 3 分。";
   }
 
-  return "近期與客訴相關的追蹤題目，可手動設定，未來也可由客訴資料自動同步。";
+  return "屬於近期客訴或風險追蹤項目，不會預設帶入 3 分，可手動設定或由未來客訴同步帶入。";
 }
 
 export function getInspectionTagSourceLabel(source: InspectionTagSource) {
@@ -55,19 +59,21 @@ export function getAuditActionLabel(action: string) {
   const labels: Record<string, string> = {
     create_or_update_authorized_user: "新增或更新授權帳號",
     create_authorized_user: "新增授權帳號",
-    update_authorized_user_status: "更新帳號狀態",
+    update_authorized_user_status: "更新授權帳號狀態",
     create_store: "新增店別",
-    update_store_name: "更新店名",
+    update_store_name: "更新店別名稱",
     create_staff_member: "新增組員",
     archive_staff_member: "封存組員",
     restore_staff_member: "恢復組員",
-    set_focus_items: "更新題目標籤",
+    create_workstation: "新增工作站",
+    update_workstation: "更新工作站",
+    set_focus_items: "更新標籤設定",
     update_inspection_item_status: "更新題目啟用狀態",
-    set_store_extra_items: "更新店別額外題目",
+    set_store_extra_items: "更新店別附加題目",
     create_inspection: "新增巡店紀錄",
     update_inspection: "更新巡店紀錄",
     lock_inspection: "鎖定巡店紀錄",
-    unlock_inspection: "解除鎖定巡店紀錄",
+    unlock_inspection: "解除巡店鎖定",
     delete_inspection: "刪除巡店紀錄",
     update_improvement_task_status: "更新改善任務狀態",
     set_inspection_photo_standard: "設為標準照片",
@@ -87,22 +93,24 @@ export function getAuditEntityLabel(entityType: string) {
     stores: "店別",
     staff_member: "組員",
     staff_members: "組員",
-    focus_items: "題目標籤",
+    workstation: "工作站",
+    workstations: "工作站",
+    focus_items: "標籤設定",
     inspection: "巡店紀錄",
     inspections: "巡店紀錄",
     inspection_item: "巡店題目",
     inspection_items: "巡店題目",
-    store_extra_items: "店別額外題目",
+    store_extra_items: "店別附加題目",
     improvement_tasks: "改善任務",
     inspection_photos: "巡店照片",
-    qa_cleanup: "QA 清理",
+    qa_cleanup: "QA 測試資料清理",
   };
 
   return labels[entityType] ?? entityType;
 }
 
 function getBooleanLabel(value: unknown) {
-  return value ? "是" : "否";
+  return value ? "啟用" : "停用";
 }
 
 function getStoreName(storeId: unknown, storeNamesById: Record<string, string>) {
@@ -131,13 +139,13 @@ export function formatAuditDetails(
         parts.push(`店別：${getStoreName(details.store_id, storeNamesById)}`);
       }
       if ("is_active" in details) {
-        parts.push(`啟用：${getBooleanLabel(details.is_active)}`);
+        parts.push(`狀態：${getBooleanLabel(details.is_active)}`);
       }
       break;
 
     case "update_authorized_user_status":
       if ("is_active" in details) {
-        parts.push(`啟用：${getBooleanLabel(details.is_active)}`);
+        parts.push(`狀態：${getBooleanLabel(details.is_active)}`);
       }
       break;
 
@@ -155,8 +163,8 @@ export function formatAuditDetails(
       if (details.store_id) {
         parts.push(`店別：${getStoreName(details.store_id, storeNamesById)}`);
       }
-      if (typeof details.position === "string") {
-        parts.push(`職位：${getShiftRoleLabel(details.position as "kitchen" | "floor" | "counter")}`);
+      if (typeof details.default_workstation_name === "string") {
+        parts.push(`常用工作站：${details.default_workstation_name}`);
       }
       break;
 
@@ -168,6 +176,21 @@ export function formatAuditDetails(
       parts.push("狀態：恢復在職");
       break;
 
+    case "create_workstation":
+    case "update_workstation":
+      if (typeof details.name === "string") parts.push(`名稱：${details.name}`);
+      if (typeof details.code === "string") parts.push(`代碼：${details.code}`);
+      if (typeof details.area === "string") {
+        parts.push(`區域：${getShiftRoleLabel(details.area as "kitchen" | "floor" | "counter")}`);
+      }
+      if ("store_id" in details) {
+        parts.push(`適用店別：${getStoreName(details.store_id, storeNamesById) ?? "全部店通用"}`);
+      }
+      if ("is_active" in details) {
+        parts.push(`狀態：${getBooleanLabel(details.is_active)}`);
+      }
+      break;
+
     case "set_focus_items":
       if (typeof details.type === "string") {
         parts.push(`標籤：${getInspectionTagLabel(details.type as InspectionTagType)}`);
@@ -176,7 +199,7 @@ export function formatAuditDetails(
         parts.push(`月份：${details.month}`);
       }
       if ("store_id" in details) {
-        parts.push(`店別：${getStoreName(details.store_id, storeNamesById) ?? "全部店別"}`);
+        parts.push(`店別：${getStoreName(details.store_id, storeNamesById) ?? "全部店通用"}`);
       }
       if (typeof details.source === "string") {
         parts.push(`來源：${getInspectionTagSourceLabel(details.source as InspectionTagSource)}`);
@@ -194,7 +217,7 @@ export function formatAuditDetails(
 
     case "update_inspection_item_status":
       if ("is_active" in details) {
-        parts.push(`啟用：${getBooleanLabel(details.is_active)}`);
+        parts.push(`狀態：${getBooleanLabel(details.is_active)}`);
       }
       break;
 
@@ -244,5 +267,5 @@ export function formatAuditDetails(
       break;
   }
 
-  return parts.join(" / ") || "無補充內容";
+  return parts.join(" / ") || "沒有額外細節";
 }

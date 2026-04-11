@@ -60,7 +60,8 @@ export type Database = {
           id: string;
           store_id: string;
           name: string;
-          position: "kitchen" | "floor" | "counter";
+          position: "kitchen" | "floor" | "counter" | null;
+          default_workstation_id: string | null;
           status: "active" | "archived";
           created_at: string;
           archived_at: string | null;
@@ -69,7 +70,8 @@ export type Database = {
           id?: string;
           store_id: string;
           name: string;
-          position: "kitchen" | "floor" | "counter";
+          position?: "kitchen" | "floor" | "counter" | null;
+          default_workstation_id?: string | null;
           status?: "active" | "archived";
           created_at?: string;
           archived_at?: string | null;
@@ -78,10 +80,43 @@ export type Database = {
           id?: string;
           store_id?: string;
           name?: string;
-          position?: "kitchen" | "floor" | "counter";
+          position?: "kitchen" | "floor" | "counter" | null;
+          default_workstation_id?: string | null;
           status?: "active" | "archived";
           created_at?: string;
           archived_at?: string | null;
+        };
+      };
+      workstations: {
+        Row: {
+          id: string;
+          code: string;
+          name: string;
+          area: "kitchen" | "floor" | "counter";
+          store_id: string | null;
+          is_active: boolean;
+          sort_order: number;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          code: string;
+          name: string;
+          area: "kitchen" | "floor" | "counter";
+          store_id?: string | null;
+          is_active?: boolean;
+          sort_order?: number;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          code?: string;
+          name?: string;
+          area?: "kitchen" | "floor" | "counter";
+          store_id?: string | null;
+          is_active?: boolean;
+          sort_order?: number;
+          created_at?: string;
         };
       };
       categories: {
@@ -223,18 +258,21 @@ export type Database = {
           inspection_id: string;
           staff_id: string;
           role_in_shift: "kitchen" | "floor" | "counter";
+          workstation_id: string;
         };
         Insert: {
           id?: string;
           inspection_id: string;
           staff_id: string;
           role_in_shift: "kitchen" | "floor" | "counter";
+          workstation_id: string;
         };
         Update: {
           id?: string;
           inspection_id?: string;
           staff_id?: string;
           role_in_shift?: "kitchen" | "floor" | "counter";
+          workstation_id?: string;
         };
       };
       inspection_scores: {

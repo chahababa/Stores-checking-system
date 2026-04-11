@@ -144,6 +144,26 @@ Stores Checking System 的部署、修復與產品體驗調整紀錄。
 - `npm run build` 通過
 - `npm run test` 通過
 
+## 2026-04-11
+
+### 工作站與排班邏輯
+- 新增 migration：`20260411_000008_workstations_and_shift_assignment.sql`
+  - 建立 `workstations` 資料表
+  - 預設建立三個通用工作站：`內場 / 外場 / 櫃台`
+  - `staff_members` 新增 `default_workstation_id`
+  - `inspection_staff` 新增 `workstation_id`
+- 新增 [工作站管理](/src/app/(protected)/settings/workstations/page.tsx)
+  - 可在後台新增、編輯、啟用或停用工作站
+  - 支援全部店通用與指定店別兩種範圍
+- 調整組員管理
+  - 組員不再被固定綁定單一站位
+  - 可選填「常用工作站」作為預設建議值
+- 調整巡店表單
+  - 勾選組員後，需為當次巡店指定工作站
+  - 同一位組員每次巡店都可被派到不同工作站
+- 調整巡店明細與 CSV
+  - 以「當班工作站」與「區域分類」取代原本固定職位顯示
+
 ## 2026-04-10
 
 ### 正式上線與部署

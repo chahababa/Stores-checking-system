@@ -9,6 +9,13 @@ import { createAdminClient } from "@/lib/supabase/admin";
 
 type ShiftRole = "kitchen" | "floor" | "counter";
 type InspectionTagType = "critical" | "monthly_attention" | "complaint_watch";
+type WorkstationSummary = {
+  id: string;
+  code: string;
+  name: string;
+  area: ShiftRole;
+  storeId: string | null;
+};
 
 type PriorInspectionRow = {
   id: string;
@@ -29,11 +36,12 @@ export type InspectionFormSeed = {
   selectedStoreId: string;
   selectedDate: string;
   selectedMonth: string;
+  workstations: WorkstationSummary[];
   activeStaff: Array<{
     id: string;
     name: string;
-    position: ShiftRole;
     store_id: string;
+    defaultWorkstationId: string | null;
   }>;
   groupedItems: Array<{
     categoryId: string;
@@ -56,7 +64,7 @@ export type InspectionMutationInput = {
   date: string;
   timeSlot: string;
   busynessLevel: "low" | "medium" | "high";
-  selectedStaff: Array<{ staffId: string; roleInShift: ShiftRole }>;
+  selectedStaff: Array<{ staffId: string; workstationId: string }>;
   scores: Array<{
     itemId: string;
     score: 1 | 2 | 3;
@@ -87,8 +95,9 @@ export type InspectionDetail = {
   staff: Array<{
     id: string;
     name: string;
-    position: ShiftRole;
-    roleInShift: ShiftRole;
+    workstationId: string;
+    workstationName: string;
+    workstationArea: ShiftRole;
   }>;
   scores: Array<{
     id: string;
@@ -153,7 +162,7 @@ export type InspectionEditSeed = {
     date: string;
     timeSlot: string;
     busynessLevel: "low" | "medium" | "high";
-    selectedStaff: Record<string, ShiftRole>;
+    selectedStaff: Record<string, string>;
     scores: Record<
       string,
       {
@@ -300,6 +309,50 @@ async function getStoreCode(admin: ReturnType<typeof createAdminClient>, storeId
   }
 
   return storeRow.code;
+}
+
+async function resolveAssignableWorkstations(
+  admin: ReturnType<typeof createAdminClient>,
+  storeId: string,
+  workstationIds: string[],
+) {
+  if (workstationIds.length === 0) {
+    return new Map<string, WorkstationSummary>();
+  }
+
+  const { data, error } = await admin
+    .from("workstations")
+    .select("id, code, name, area, store_id, is_active")
+    .in("id", workstationIds);
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  const byId = new Map<string, WorkstationSummary>();
+  for (const workstation of data ?? []) {
+    if (!workstation.is_active) {
+      continue;
+    }
+
+    if (workstation.store_id && workstation.store_id !== storeId) {
+      continue;
+    }
+
+    byId.set(workstation.id, {
+      id: workstation.id,
+      code: workstation.code,
+      name: workstation.name,
+      area: workstation.area as ShiftRole,
+      storeId: workstation.store_id,
+    });
+  }
+
+  if (byId.size !== workstationIds.length) {
+    throw new Error("巡店表單包含不適用於此店別的工作站。");
+  }
+
+  return byId;
 }
 
 function validateInspectionInput(input: InspectionMutationInput) {
@@ -466,6 +519,7 @@ export async function getInspectionFormSeed(params?: { storeId?: string; date?: 
       selectedStoreId: "",
       selectedDate,
       selectedMonth,
+      workstations: [],
       activeStaff: [],
       groupedItems: [],
       duplicateInspectionWarning: false,
@@ -474,6 +528,7 @@ export async function getInspectionFormSeed(params?: { storeId?: string; date?: 
 
   const [
     { data: staff, error: staffError },
+    { data: workstations, error: workstationsError },
     { data: categories, error: categoriesError },
     { data: items, error: itemsError },
     { data: criticalTagRows, error: criticalTagError },
@@ -484,9 +539,16 @@ export async function getInspectionFormSeed(params?: { storeId?: string; date?: 
   ] = await Promise.all([
     admin
       .from("staff_members")
-      .select("id, name, position, store_id")
+      .select("id, name, store_id, default_workstation_id")
       .eq("status", "active")
       .eq("store_id", selectedStoreId)
+      .order("name"),
+    admin
+      .from("workstations")
+      .select("id, code, name, area, store_id")
+      .eq("is_active", true)
+      .or(`store_id.is.null,store_id.eq.${selectedStoreId}`)
+      .order("sort_order")
       .order("name"),
     admin.from("categories").select("id, name, sort_order").order("sort_order"),
     admin
@@ -514,6 +576,7 @@ export async function getInspectionFormSeed(params?: { storeId?: string; date?: 
 
   if (
     staffError ||
+    workstationsError ||
     categoriesError ||
     itemsError ||
     criticalTagError ||
@@ -523,6 +586,7 @@ export async function getInspectionFormSeed(params?: { storeId?: string; date?: 
   ) {
     throw new Error(
       staffError?.message ||
+        workstationsError?.message ||
         categoriesError?.message ||
         itemsError?.message ||
         criticalTagError?.message ||
@@ -583,7 +647,19 @@ export async function getInspectionFormSeed(params?: { storeId?: string; date?: 
     selectedStoreId,
     selectedDate,
     selectedMonth,
-    activeStaff: staff ?? [],
+    workstations: (workstations ?? []).map((workstation) => ({
+      id: workstation.id,
+      code: workstation.code,
+      name: workstation.name,
+      area: workstation.area as ShiftRole,
+      storeId: workstation.store_id,
+    })),
+    activeStaff: (staff ?? []).map((member) => ({
+      id: member.id,
+      name: member.name,
+      store_id: member.store_id,
+      defaultWorkstationId: member.default_workstation_id ?? null,
+    })),
     groupedItems,
     duplicateInspectionWarning: Boolean(duplicateRows?.length),
   } satisfies InspectionFormSeed;
@@ -617,7 +693,7 @@ export async function getInspectionDetail(inspectionId: string): Promise<Inspect
   ] = await Promise.all([
     admin
       .from("inspection_staff")
-      .select("id, role_in_shift, staff_members(id, name, position)")
+      .select("id, role_in_shift, workstation_id, staff_members(id, name), workstations(id, name, area)")
       .eq("inspection_id", inspectionId),
     admin
       .from("inspection_scores")
@@ -678,6 +754,9 @@ export async function getInspectionDetail(inspectionId: string): Promise<Inspect
     inspector: mapSingleRelation(inspectionRow.users),
     staff: (staffRows ?? []).flatMap((row) => {
       const member = mapSingleRelation(row.staff_members);
+      const workstation = mapSingleRelation(row.workstations) as
+        | { id?: string; name?: string; area?: ShiftRole }
+        | null;
       if (!member) {
         return [];
       }
@@ -686,8 +765,9 @@ export async function getInspectionDetail(inspectionId: string): Promise<Inspect
         {
           id: member.id as string,
           name: member.name as string,
-          position: member.position as ShiftRole,
-          roleInShift: row.role_in_shift,
+          workstationId: (row.workstation_id as string) ?? (workstation?.id as string),
+          workstationName: (workstation?.name as string | undefined) ?? "未指定工作站",
+          workstationArea: (workstation?.area as ShiftRole | undefined) ?? (row.role_in_shift as ShiftRole),
         },
       ];
     }),
@@ -744,7 +824,7 @@ export async function getInspectionEditSeed(inspectionId: string): Promise<Inspe
     date: detail.date,
   });
 
-  const selectedStaff = Object.fromEntries(detail.staff.map((member) => [member.id, member.roleInShift]));
+  const selectedStaff = Object.fromEntries(detail.staff.map((member) => [member.id, member.workstationId]));
   const scoreMap = Object.fromEntries(
     formSeed.groupedItems.flatMap((group) =>
       group.items.map((item) => {
@@ -1159,6 +1239,11 @@ export async function createInspection(input: InspectionMutationInput) {
 
   validateInspectionInput(input);
   const storeCode = await getStoreCode(admin, input.storeId);
+  const workstationsById = await resolveAssignableWorkstations(
+    admin,
+    input.storeId,
+    input.selectedStaff.map((entry) => entry.workstationId),
+  );
   const totalScore = calculateTotalScore(input.scores);
 
   const { data: inspection, error: inspectionError } = await admin
@@ -1183,7 +1268,8 @@ export async function createInspection(input: InspectionMutationInput) {
       input.selectedStaff.map((entry) => ({
         inspection_id: inspection.id,
         staff_id: entry.staffId,
-        role_in_shift: entry.roleInShift,
+        role_in_shift: workstationsById.get(entry.workstationId)?.area ?? "floor",
+        workstation_id: entry.workstationId,
       })),
     );
 
@@ -1305,6 +1391,11 @@ export async function updateInspection(inspectionId: string, input: InspectionMu
   }
 
   const storeCode = await getStoreCode(admin, input.storeId);
+  const workstationsById = await resolveAssignableWorkstations(
+    admin,
+    input.storeId,
+    input.selectedStaff.map((entry) => entry.workstationId),
+  );
   const totalScore = calculateTotalScore(input.scores);
 
   const { error: inspectionUpdateError } = await admin
@@ -1399,7 +1490,8 @@ export async function updateInspection(inspectionId: string, input: InspectionMu
       input.selectedStaff.map((entry) => ({
         inspection_id: inspectionId,
         staff_id: entry.staffId,
-        role_in_shift: entry.roleInShift,
+        role_in_shift: workstationsById.get(entry.workstationId)?.area ?? "floor",
+        workstation_id: entry.workstationId,
       })),
     );
     if (error) {

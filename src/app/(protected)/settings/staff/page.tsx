@@ -17,7 +17,7 @@ function getSingleRelation<T>(value: T | T[] | null | undefined) {
 }
 
 function getSuccessMessage(success?: string) {
-  if (success === "staff-created") return "組員新增成功。";
+  if (success === "staff-created") return "組員已新增。";
   if (success === "staff-archived") return "組員已封存。";
   if (success === "staff-restored") return "組員已恢復為在職。";
   return null;
@@ -30,12 +30,23 @@ export default async function StaffSettingsPage({ searchParams }: { searchParams
   const storesQuery = admin.from("stores").select("id, name").order("name");
   const staffQuery = admin
     .from("staff_members")
-    .select("id, name, position, status, archived_at, store_id, stores(id, name)")
+    .select(
+      "id, name, status, archived_at, store_id, default_workstation_id, stores(id, name), workstations(id, name, area)",
+    )
     .order("created_at", { ascending: false });
+  const workstationsQuery = admin
+    .from("workstations")
+    .select("id, name, area, store_id")
+    .eq("is_active", true)
+    .order("sort_order")
+    .order("name");
 
-  const [{ data: stores }, { data: staffMembers }] = await Promise.all([
+  const [{ data: stores }, { data: staffMembers }, { data: workstations }] = await Promise.all([
     profile.role === "leader" ? storesQuery.eq("id", profile.store_id!) : storesQuery,
     profile.role === "leader" ? staffQuery.eq("store_id", profile.store_id!) : staffQuery,
+    profile.role === "leader"
+      ? workstationsQuery.or(`store_id.is.null,store_id.eq.${profile.store_id!}`)
+      : workstationsQuery,
   ]);
 
   async function createStaffAction(formData: FormData) {
@@ -44,7 +55,7 @@ export default async function StaffSettingsPage({ searchParams }: { searchParams
     await createStaffMember({
       storeId: String(formData.get("store_id")),
       name: String(formData.get("name")),
-      position: String(formData.get("position")) as "kitchen" | "floor" | "counter",
+      defaultWorkstationId: String(formData.get("default_workstation_id") || "") || null,
     });
     redirect("/settings/staff?success=staff-created");
   }
@@ -69,7 +80,10 @@ export default async function StaffSettingsPage({ searchParams }: { searchParams
     <div data-testid="staff-settings-page" className="grid gap-6 lg:grid-cols-[0.9fr_1.5fr]">
       {successMessage ? <PageToast message={successMessage} /> : null}
 
-      <SectionCard title="新增組員" description="新增在職組員後，這些人員就能出現在巡店表單的當班名單中。">
+      <SectionCard
+        title="新增組員"
+        description="組員本身只綁定店別，不再固定只能站一個工作站。若有常用工作站，可以先設定在這裡，巡店時仍可依當班狀況改派。"
+      >
         <form data-testid="staff-create-form" action={createStaffAction} className="grid gap-4">
           <select
             data-testid="staff-store-select"
@@ -88,28 +102,40 @@ export default async function StaffSettingsPage({ searchParams }: { searchParams
           <input
             name="name"
             required
-            placeholder="輸入組員姓名"
+            placeholder="請輸入組員姓名"
             className="rounded-2xl border border-ink/10 bg-white px-4 py-3"
           />
-          <select name="position" className="rounded-2xl border border-ink/10 bg-white px-4 py-3">
-            <option value="kitchen">內場</option>
-            <option value="floor">外場</option>
-            <option value="counter">櫃台</option>
-          </select>
-          <button
-            className="rounded-full bg-warm px-5 py-3 text-sm text-white"
-            type="submit"
-            disabled={profile.role === "leader"}
-          >
-            建立組員
+          <label className="grid gap-2 text-sm">
+            <span className="text-ink/70">常用工作站（可不選）</span>
+            <select
+              name="default_workstation_id"
+              className="rounded-2xl border border-ink/10 bg-white px-4 py-3"
+              defaultValue=""
+            >
+              <option value="">未指定</option>
+              {(workstations ?? []).map((workstation) => (
+                <option key={workstation.id} value={workstation.id}>
+                  {workstation.name}（{getShiftRoleLabel(workstation.area)} / {workstation.store_id ? "指定店別" : "全部店通用"}）
+                </option>
+              ))}
+            </select>
+          </label>
+          <button className="rounded-full bg-warm px-5 py-3 text-sm text-white" type="submit">
+            新增組員
           </button>
         </form>
       </SectionCard>
 
-      <SectionCard title="組員列表" description="可查看目前在職或已封存的組員，並在需要時恢復封存人員。">
+      <SectionCard
+        title="組員清單"
+        description="這裡的常用工作站只是預設值，不代表當班工作站。真正的站位會在每次巡店時再指派。"
+      >
         <div data-testid="staff-list" className="grid gap-3">
           {staffMembers?.map((member) => {
             const store = getSingleRelation(member.stores) as { name?: string } | null;
+            const defaultWorkstation = getSingleRelation(member.workstations) as
+              | { name?: string; area?: "kitchen" | "floor" | "counter" }
+              | null;
 
             return (
               <div
@@ -119,8 +145,13 @@ export default async function StaffSettingsPage({ searchParams }: { searchParams
                 <div>
                   <p className="font-medium">{member.name}</p>
                   <p className="text-sm text-ink/65">
-                    {store?.name ?? "未指定店別"} / {getShiftRoleLabel(member.position)} /{" "}
-                    {member.status === "active" ? "在職" : "已封存"}
+                    {store?.name ?? "未指定店別"} / {member.status === "active" ? "在職" : "已封存"}
+                  </p>
+                  <p className="text-xs text-ink/55">
+                    常用工作站：
+                    {defaultWorkstation
+                      ? `${defaultWorkstation.name}（${getShiftRoleLabel(defaultWorkstation.area ?? "floor")}）`
+                      : "未指定"}
                   </p>
                 </div>
                 {member.status === "active" ? (

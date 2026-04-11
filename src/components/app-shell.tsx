@@ -23,10 +23,11 @@ const inspectionLinks: NavigationLink[] = [
 const managementLinks: NavigationLink[] = [
   { href: "/settings/users", label: "帳號管理", roles: ["owner"] },
   { href: "/settings/stores", label: "店別管理", roles: ["owner"] },
+  { href: "/settings/workstations", label: "工作站管理", roles: ["owner", "manager"] },
   { href: "/settings/staff", label: "組員管理", roles: ["owner", "manager", "leader"] },
   { href: "/settings/items", label: "題目管理", roles: ["owner"] },
   { href: "/settings/focus-items", label: "標籤管理", roles: ["owner", "manager"] },
-  { href: "/settings/qa-cleanup", label: "QA 清理", roles: ["owner"] },
+  { href: "/settings/qa-cleanup", label: "測試資料清理", roles: ["owner"] },
   { href: "/audit", label: "操作紀錄", roles: ["owner", "manager"] },
 ];
 

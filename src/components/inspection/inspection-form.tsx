@@ -9,8 +9,8 @@ import type { InspectionFormSeed } from "@/lib/inspection";
 import { getInspectionTagLabel, type InspectionTagType } from "@/lib/ui-labels";
 
 type ScoreValue = 1 | 2 | 3;
-type ShiftRole = "kitchen" | "floor" | "counter";
 type DraftSaveState = "idle" | "saving" | "saved" | "error";
+type WorkstationOption = InspectionFormSeed["workstations"][number];
 
 type PhotoDraft = {
   itemId: string;
@@ -26,7 +26,7 @@ export type InspectionFormDraftState = {
   date: string;
   timeSlot: string;
   busynessLevel: "low" | "medium" | "high";
-  selectedStaff: Record<string, ShiftRole>;
+  selectedStaff: Record<string, string>;
   scores: Record<
     string,
     {
@@ -79,10 +79,12 @@ function createInitialState(seed: InspectionFormSeed): InspectionFormDraftState 
   };
 }
 
-function roleLabel(role: ShiftRole) {
-  if (role === "kitchen") return "內場";
-  if (role === "floor") return "外場";
-  return "櫃台";
+function getWorkstationLabel(workstation: WorkstationOption | undefined) {
+  if (!workstation) {
+    return "未指定工作站";
+  }
+
+  return `${workstation.name}（${workstation.area === "kitchen" ? "內場" : workstation.area === "floor" ? "外場" : "櫃台"}）`;
 }
 
 function formatDraftTimestamp(value: Date | null) {
@@ -111,7 +113,7 @@ export function InspectionForm({
     date: string;
     timeSlot: string;
     busynessLevel: "low" | "medium" | "high";
-    selectedStaff: Array<{ staffId: string; roleInShift: ShiftRole }>;
+    selectedStaff: Array<{ staffId: string; workstationId: string }>;
     scores: Array<{
       itemId: string;
       score: ScoreValue;
@@ -150,6 +152,10 @@ export function InspectionForm({
     Object.fromEntries(seed.groupedItems.map((group) => [group.categoryId, false])),
   );
   const fileInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
+  const workstationsById = useMemo(
+    () => Object.fromEntries(seed.workstations.map((workstation) => [workstation.id, workstation])),
+    [seed.workstations],
+  );
 
   const draftKey = useMemo(() => `draft_${form.storeId}_${form.date}`, [form.storeId, form.date]);
   const requiresStoreSelection = !isEditMode && !form.storeId;
@@ -261,11 +267,11 @@ export function InspectionForm({
     }));
   }
 
-  function assignStaff(staffId: string, role: ShiftRole, checked: boolean) {
+  function assignStaff(staffId: string, workstationId: string, checked: boolean) {
     setForm((current) => {
       const next = { ...current.selectedStaff };
       if (checked) {
-        next[staffId] = role;
+        next[staffId] = workstationId;
       } else {
         delete next[staffId];
       }
@@ -283,6 +289,16 @@ export function InspectionForm({
       menuItems: {
         ...current.menuItems,
         [field]: value,
+      },
+    }));
+  }
+
+  function setStaffWorkstation(staffId: string, workstationId: string) {
+    setForm((current) => ({
+      ...current,
+      selectedStaff: {
+        ...current.selectedStaff,
+        [staffId]: workstationId,
       },
     }));
   }
@@ -389,7 +405,7 @@ export function InspectionForm({
         busynessLevel: form.busynessLevel,
         selectedStaff: Object.entries(form.selectedStaff).map(([staffId, roleInShift]) => ({
           staffId,
-          roleInShift,
+          workstationId: roleInShift,
         })),
         scores: Object.entries(form.scores)
           .filter(([, value]) => value.score !== null)
@@ -575,23 +591,52 @@ export function InspectionForm({
         <div className="mt-5 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
           {seed.activeStaff.map((staff) => {
             const checked = Boolean(form.selectedStaff[staff.id]);
+            const selectedWorkstationId = form.selectedStaff[staff.id];
+            const defaultWorkstation =
+              (staff.defaultWorkstationId ? workstationsById[staff.defaultWorkstationId] : undefined) ??
+              seed.workstations[0];
+            const selectedWorkstation = selectedWorkstationId ? workstationsById[selectedWorkstationId] : undefined;
 
             return (
-              <label
+              <div
                 key={staff.id}
-                className="flex items-center justify-between rounded-2xl border border-ink/10 bg-soft/30 px-4 py-3"
+                className="rounded-2xl border border-ink/10 bg-soft/30 px-4 py-3"
               >
-                <div>
-                  <p className="font-medium text-ink">{staff.name}</p>
-                  <p className="text-sm text-ink/60">{roleLabel(staff.position)}</p>
+                <div className="flex items-start justify-between gap-4">
+                  <div>
+                    <p className="font-medium text-ink">{staff.name}</p>
+                    <p className="text-sm text-ink/60">
+                      常用工作站：{staff.defaultWorkstationId ? getWorkstationLabel(workstationsById[staff.defaultWorkstationId]) : "未指定"}
+                    </p>
+                  </div>
+                  <input
+                    type="checkbox"
+                    checked={checked}
+                    onChange={(event) => assignStaff(staff.id, defaultWorkstation?.id ?? "", event.target.checked)}
+                    disabled={!defaultWorkstation}
+                    className="mt-1 h-5 w-5 rounded border-ink/30 text-warm focus:ring-warm"
+                  />
                 </div>
-                <input
-                  type="checkbox"
-                  checked={checked}
-                  onChange={(event) => assignStaff(staff.id, staff.position, event.target.checked)}
-                  className="h-5 w-5 rounded border-ink/30 text-warm focus:ring-warm"
-                />
-              </label>
+                {checked ? (
+                  <label className="mt-3 grid gap-2 text-sm">
+                    <span className="text-ink/65">本次當班工作站</span>
+                    <select
+                      value={selectedWorkstationId}
+                      onChange={(event) => setStaffWorkstation(staff.id, event.target.value)}
+                      className="rounded-2xl border border-ink/10 bg-white px-4 py-3"
+                    >
+                      {seed.workstations.map((workstation) => (
+                        <option key={workstation.id} value={workstation.id}>
+                          {getWorkstationLabel(workstation)}
+                        </option>
+                      ))}
+                    </select>
+                    <span className="text-xs text-ink/55">
+                      這次巡店會以「{selectedWorkstation ? getWorkstationLabel(selectedWorkstation) : "未指定工作站"}」記錄。
+                    </span>
+                  </label>
+                ) : null}
+              </div>
             );
           })}
 

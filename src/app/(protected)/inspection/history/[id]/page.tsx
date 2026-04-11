@@ -243,7 +243,7 @@ export default async function InspectionDetailPage({
               <div key={member.id} className="rounded-2xl border border-ink/10 bg-soft/40 px-4 py-3 text-sm text-ink/75">
                 <p className="font-medium text-ink">{member.name}</p>
                 <p>
-                  職位：{getShiftRoleLabel(member.position)} / 當班角色：{getShiftRoleLabel(member.roleInShift)}
+                  當班工作站：{member.workstationName} / 區域分類：{getShiftRoleLabel(member.workstationArea)}
                 </p>
               </div>
             ))}

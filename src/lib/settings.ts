@@ -24,6 +24,16 @@ export type StoreInput = {
   name: string;
 };
 
+export type WorkstationArea = "kitchen" | "floor" | "counter";
+
+export type WorkstationInput = {
+  code: string;
+  name: string;
+  area: WorkstationArea;
+  storeId?: string | null;
+  isActive?: boolean;
+};
+
 export type InspectionTagType = "critical" | "monthly_attention" | "complaint_watch";
 export type InspectionTagSource = "manual" | "complaint_sync";
 export type QaCleanupPreview = {
@@ -37,6 +47,7 @@ export type QaCleanupPreview = {
 function revalidateStoreDependentPaths() {
   revalidatePath("/");
   revalidatePath("/settings/stores");
+  revalidatePath("/settings/workstations");
   revalidatePath("/settings/users");
   revalidatePath("/settings/staff");
   revalidatePath("/settings/qa-cleanup");
@@ -222,6 +233,105 @@ export async function updateStoreName(input: { id: string; name: string }) {
   revalidateStoreDependentPaths();
 }
 
+export async function createWorkstation(input: WorkstationInput) {
+  const profile = await requireRole("owner", "manager");
+  const admin = createAdminClient();
+  const code = input.code.trim().toLowerCase();
+  const name = input.name.trim();
+
+  if (!code) {
+    throw new Error("請填寫工作站代碼。");
+  }
+
+  if (!name) {
+    throw new Error("請填寫工作站名稱。");
+  }
+
+  const payload = {
+    code,
+    name,
+    area: input.area,
+    store_id: input.storeId ?? null,
+    is_active: input.isActive ?? true,
+  };
+
+  const { data, error } = await admin.from("workstations").insert(payload).select("id").single();
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  await createAuditLog({
+    actorId: profile.id,
+    actorEmail: profile.email,
+    action: "create_workstation",
+    entityType: "workstation",
+    entityId: data?.id ?? code,
+    details: {
+      code,
+      name,
+      area: input.area,
+      store_id: payload.store_id,
+      is_active: payload.is_active,
+    },
+  });
+
+  revalidateStoreDependentPaths();
+}
+
+export async function updateWorkstation(input: {
+  id: string;
+  code: string;
+  name: string;
+  area: WorkstationArea;
+  storeId?: string | null;
+  isActive: boolean;
+}) {
+  const profile = await requireRole("owner", "manager");
+  const admin = createAdminClient();
+  const code = input.code.trim().toLowerCase();
+  const name = input.name.trim();
+
+  if (!code) {
+    throw new Error("請填寫工作站代碼。");
+  }
+
+  if (!name) {
+    throw new Error("請填寫工作站名稱。");
+  }
+
+  const payload = {
+    code,
+    name,
+    area: input.area,
+    store_id: input.storeId ?? null,
+    is_active: input.isActive,
+  };
+
+  const { error } = await admin.from("workstations").update(payload).eq("id", input.id);
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  await createAuditLog({
+    actorId: profile.id,
+    actorEmail: profile.email,
+    action: "update_workstation",
+    entityType: "workstation",
+    entityId: input.id,
+    details: {
+      code,
+      name,
+      area: input.area,
+      store_id: payload.store_id,
+      is_active: payload.is_active,
+    },
+  });
+
+  revalidateStoreDependentPaths();
+}
+
 export async function createAuthorizedUser(input: AuthorizedUserInput) {
   const profile = await requireRole("owner");
   const admin = createAdminClient();
@@ -278,19 +388,48 @@ export async function updateAuthorizedUserStatus(id: string, isActive: boolean) 
   revalidatePath("/settings/users");
 }
 
+async function validateDefaultWorkstation(
+  admin: ReturnType<typeof createAdminClient>,
+  storeId: string,
+  defaultWorkstationId?: string | null,
+) {
+  if (!defaultWorkstationId) {
+    return null;
+  }
+
+  const { data, error } = await admin
+    .from("workstations")
+    .select("id, name, store_id")
+    .eq("id", defaultWorkstationId)
+    .eq("is_active", true)
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  if (!data || (data.store_id && data.store_id !== storeId)) {
+    throw new Error("選擇的常用工作站不適用於這間店。");
+  }
+
+  return data;
+}
+
 export async function createStaffMember(input: {
   storeId: string;
   name: string;
-  position: "kitchen" | "floor" | "counter";
+  defaultWorkstationId?: string | null;
 }) {
   const profile = await requireRole("owner", "manager");
   const admin = createAdminClient();
+  const defaultWorkstation = await validateDefaultWorkstation(admin, input.storeId, input.defaultWorkstationId);
   const { data, error } = await admin
     .from("staff_members")
     .insert({
       store_id: input.storeId,
       name: input.name.trim(),
-      position: input.position,
+      position: null,
+      default_workstation_id: defaultWorkstation?.id ?? null,
       status: "active",
     })
     .select("id")
@@ -309,7 +448,7 @@ export async function createStaffMember(input: {
     details: {
       store_id: input.storeId,
       name: input.name.trim(),
-      position: input.position,
+      default_workstation_name: defaultWorkstation?.name ?? null,
     },
   });
 
