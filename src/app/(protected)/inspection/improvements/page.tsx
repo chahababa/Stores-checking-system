@@ -3,7 +3,7 @@ import Link from "next/link";
 import { SectionCard } from "@/components/section-card";
 import { requireRole } from "@/lib/auth";
 import { getImprovementTasks, updateImprovementTaskStatus } from "@/lib/inspection";
-import { getImprovementStatusLabel } from "@/lib/ui-labels";
+import { getImprovementStatusLabel, getInspectionTagLabel } from "@/lib/ui-labels";
 
 function statusTone(status: "pending" | "resolved" | "verified" | "superseded") {
   if (status === "pending") return "bg-danger/10 text-danger";
@@ -65,6 +65,23 @@ export default async function ImprovementTasksPage() {
                     <span className={`rounded-full px-3 py-1 text-xs font-medium ${statusTone(task.status)}`}>
                       {getImprovementStatusLabel(task.status)}
                     </span>
+                    {task.score?.tagTypes.map((tagType) => (
+                      <span
+                        key={`${task.id}-${tagType}`}
+                        className={`rounded-full px-3 py-1 text-xs text-white ${
+                          tagType === "critical"
+                            ? "bg-danger"
+                            : tagType === "monthly_attention"
+                              ? "bg-warm"
+                              : "bg-ink"
+                        }`}
+                      >
+                        {getInspectionTagLabel(tagType)}
+                      </span>
+                    ))}
+                    {task.score?.isFocusItem && task.score.tagTypes.length === 0 ? (
+                      <span className="rounded-full bg-warm px-3 py-1 text-xs text-white">重點追蹤</span>
+                    ) : null}
                   </div>
                   <p className="text-sm text-ink/65">
                     {task.store?.name ?? "未指定店別"} / {task.score?.inspectionDate ?? "-"} / 分數{" "}

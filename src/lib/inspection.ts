@@ -139,6 +139,8 @@ export type ImprovementTaskListItem = {
     id: string;
     value: 1 | 2 | 3;
     note: string | null;
+    isFocusItem: boolean;
+    tagTypes: InspectionTagType[];
     inspectionId: string;
     inspectionDate: string | null;
   } | null;
@@ -782,7 +784,7 @@ export async function getImprovementTasks(): Promise<ImprovementTaskListItem[]> 
   let query = admin
     .from("improvement_tasks")
     .select(
-      "id, status, created_at, resolved_at, verified_at, store_id, item_id, stores(id, name), inspection_items(id, name), inspection_scores(id, score, note, inspection_id, inspections(date))",
+      "id, status, created_at, resolved_at, verified_at, store_id, item_id, stores(id, name), inspection_items(id, name), inspection_scores(id, score, note, is_focus_item, applied_tag_types, inspection_id, inspections(date))",
     )
     .order("created_at", { ascending: false });
 
@@ -799,7 +801,15 @@ export async function getImprovementTasks(): Promise<ImprovementTaskListItem[]> 
     const store = mapSingleRelation(row.stores);
     const item = mapSingleRelation(row.inspection_items);
     const score = mapSingleRelation(row.inspection_scores) as
-      | { id?: string; score?: 1 | 2 | 3; note?: string | null; inspection_id?: string; inspections?: unknown }
+      | {
+          id?: string;
+          score?: 1 | 2 | 3;
+          note?: string | null;
+          is_focus_item?: boolean;
+          applied_tag_types?: InspectionTagType[] | null;
+          inspection_id?: string;
+          inspections?: unknown;
+        }
       | null;
     const inspection = (score ? mapSingleRelation(score.inspections as never) : null) as { date?: string } | null;
 
@@ -826,6 +836,8 @@ export async function getImprovementTasks(): Promise<ImprovementTaskListItem[]> 
             id: score.id as string,
             value: score.score as 1 | 2 | 3,
             note: (score.note as string | null | undefined) ?? null,
+            isFocusItem: Boolean(score.is_focus_item),
+            tagTypes: ((score.applied_tag_types as InspectionTagType[] | null | undefined) ?? []).filter(Boolean),
             inspectionId: score.inspection_id as string,
             inspectionDate: (inspection?.date as string | undefined) ?? null,
           }

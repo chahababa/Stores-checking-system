@@ -66,12 +66,13 @@ export default async function StaffSettingsPage({ searchParams }: { searchParams
   const successMessage = getSuccessMessage(params.success);
 
   return (
-    <div className="grid gap-6 lg:grid-cols-[0.9fr_1.5fr]">
+    <div data-testid="staff-settings-page" className="grid gap-6 lg:grid-cols-[0.9fr_1.5fr]">
       {successMessage ? <PageToast message={successMessage} /> : null}
 
       <SectionCard title="新增組員" description="新增在職組員後，這些人員就能出現在巡店表單的當班名單中。">
-        <form action={createStaffAction} className="grid gap-4">
+        <form data-testid="staff-create-form" action={createStaffAction} className="grid gap-4">
           <select
+            data-testid="staff-store-select"
             name="store_id"
             defaultValue={profile.role === "leader" ? profile.store_id ?? "" : stores?.[0]?.id}
             disabled={profile.role === "leader"}
@@ -106,7 +107,7 @@ export default async function StaffSettingsPage({ searchParams }: { searchParams
       </SectionCard>
 
       <SectionCard title="組員列表" description="可查看目前在職或已封存的組員，並在需要時恢復封存人員。">
-        <div className="grid gap-3">
+        <div data-testid="staff-list" className="grid gap-3">
           {staffMembers?.map((member) => {
             const store = getSingleRelation(member.stores) as { name?: string } | null;
 

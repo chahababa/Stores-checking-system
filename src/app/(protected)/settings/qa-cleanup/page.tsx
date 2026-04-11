@@ -33,15 +33,15 @@ export default async function QaCleanupPage({ searchParams }: { searchParams: Se
     preview.scopedTags.length;
 
   return (
-    <div className="grid gap-6 lg:grid-cols-[0.9fr_1.35fr]">
+    <div data-testid="qa-cleanup-page" className="grid gap-6 lg:grid-cols-[0.9fr_1.35fr]">
       {successMessage ? <PageToast message={successMessage} /> : null}
 
       <SectionCard
         title="QA 測試資料清理"
         description="這個頁面會集中清理以 QA-、測試用- 或 QA 黑箱測試資料建立的店別、帳號、組員、巡店紀錄，以及綁定在 QA 店別上的題目標籤。操作後會留下 audit log，但不會刪除操作紀錄本身。"
       >
-        <div className="grid gap-4">
-          <div className="rounded-3xl border border-ink/10 bg-soft/60 p-5">
+          <div className="grid gap-4">
+            <div data-testid="qa-cleanup-summary" className="rounded-3xl border border-ink/10 bg-soft/60 p-5">
             <p className="text-sm text-ink/70">目前可清理項目總數</p>
             <p className="mt-2 font-lora text-4xl text-ink">{totalItems}</p>
           </div>
@@ -56,6 +56,7 @@ export default async function QaCleanupPage({ searchParams }: { searchParams: Se
 
           <form action={cleanupAction}>
             <ConfirmSubmitButton
+              testId="qa-cleanup-submit"
               label="清理 QA 測試資料"
               confirmMessage="這會刪除所有被辨識為 QA 的店別、帳號、組員、巡店紀錄與店別標籤。確定要繼續嗎？"
               className="rounded-full bg-ink px-5 py-3 text-sm text-white transition hover:bg-ink/90 disabled:cursor-not-allowed disabled:bg-ink/40"
@@ -70,7 +71,7 @@ export default async function QaCleanupPage({ searchParams }: { searchParams: Se
           description="先確認這次會影響哪些資料。若你看到不像測試資料的內容，先不要執行清理。"
         >
           <div className="grid gap-4 md:grid-cols-2">
-            <div className="rounded-3xl border border-ink/10 bg-white/80 p-4">
+            <div data-testid="qa-preview-stores" className="rounded-3xl border border-ink/10 bg-white/80 p-4">
               <p className="text-sm font-medium text-ink">QA 店別</p>
               <ul className="mt-3 grid gap-2 text-sm text-ink/70">
                 {preview.stores.length > 0 ? (
@@ -85,7 +86,7 @@ export default async function QaCleanupPage({ searchParams }: { searchParams: Se
               </ul>
             </div>
 
-            <div className="rounded-3xl border border-ink/10 bg-white/80 p-4">
+            <div data-testid="qa-preview-users" className="rounded-3xl border border-ink/10 bg-white/80 p-4">
               <p className="text-sm font-medium text-ink">QA 帳號</p>
               <ul className="mt-3 grid gap-2 text-sm text-ink/70">
                 {preview.users.length > 0 ? (
@@ -100,7 +101,7 @@ export default async function QaCleanupPage({ searchParams }: { searchParams: Se
               </ul>
             </div>
 
-            <div className="rounded-3xl border border-ink/10 bg-white/80 p-4">
+            <div data-testid="qa-preview-staff" className="rounded-3xl border border-ink/10 bg-white/80 p-4">
               <p className="text-sm font-medium text-ink">QA 組員</p>
               <ul className="mt-3 grid gap-2 text-sm text-ink/70">
                 {preview.staffMembers.length > 0 ? (
@@ -119,7 +120,7 @@ export default async function QaCleanupPage({ searchParams }: { searchParams: Se
               </ul>
             </div>
 
-            <div className="rounded-3xl border border-ink/10 bg-white/80 p-4">
+            <div data-testid="qa-preview-inspections" className="rounded-3xl border border-ink/10 bg-white/80 p-4">
               <p className="text-sm font-medium text-ink">QA 巡店紀錄</p>
               <ul className="mt-3 grid gap-2 text-sm text-ink/70">
                 {preview.inspections.length > 0 ? (
@@ -141,7 +142,7 @@ export default async function QaCleanupPage({ searchParams }: { searchParams: Se
           title="店別標籤預覽"
           description="這裡只會清理綁定在 QA 店別上的標籤設定。全店共用的正式標籤不會被碰到。"
         >
-          <ul className="grid gap-2 text-sm text-ink/75">
+          <ul data-testid="qa-preview-tags" className="grid gap-2 text-sm text-ink/75">
             {preview.scopedTags.length > 0 ? (
               preview.scopedTags.map((tag) => (
                 <li key={tag.id}>

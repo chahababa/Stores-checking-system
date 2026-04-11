@@ -115,7 +115,7 @@ export default async function FocusItemsPage({ searchParams }: { searchParams: S
   }
 
   return (
-    <div className="grid gap-6">
+    <div data-testid="tag-management-page" className="grid gap-6">
       <SectionCard
         title="題目標籤總覽"
         description="這裡管理巡店表單中的題目標籤。只要題目被標記，就不會預設為 3 分，必須由巡店人員手動確認。"
@@ -132,7 +132,7 @@ export default async function FocusItemsPage({ searchParams }: { searchParams: S
 
       {profile.role === "owner" ? (
         <SectionCard title="必查項目" description="四間店都通用的高風險題目，適合食安、衛生與絕對不能出錯的檢查項目。">
-          <form action={updateCriticalAction} className="grid gap-4">
+          <form data-testid="tag-section-critical" action={updateCriticalAction} className="grid gap-4">
             {renderItemChecklist(criticalIds)}
             <div>
               <button className="rounded-full bg-warm px-5 py-3 text-sm text-white" type="submit">
@@ -151,7 +151,7 @@ export default async function FocusItemsPage({ searchParams }: { searchParams: S
           </div>
           <div>
             <label className="mb-2 block text-sm text-ink/70">店別</label>
-            <select name="monthlyStore" defaultValue={monthlyStoreId} className="w-full rounded-2xl border border-ink/10 bg-white px-4 py-3">
+            <select data-testid="monthly-tag-store-filter" name="monthlyStore" defaultValue={monthlyStoreId} className="w-full rounded-2xl border border-ink/10 bg-white px-4 py-3">
               <option value="">全部店別</option>
               {stores?.map((store) => (
                 <option key={store.id} value={store.id}>
@@ -167,7 +167,7 @@ export default async function FocusItemsPage({ searchParams }: { searchParams: S
           </div>
         </form>
 
-        <form action={updateMonthlyAction} className="mt-4 grid gap-4">
+        <form data-testid="tag-section-monthly-attention" action={updateMonthlyAction} className="mt-4 grid gap-4">
           <input type="hidden" name="month" value={month} />
           <input type="hidden" name="store_id" value={monthlyStoreId} />
           {renderItemChecklist(monthlyIds)}
@@ -187,7 +187,7 @@ export default async function FocusItemsPage({ searchParams }: { searchParams: S
           </div>
           <div>
             <label className="mb-2 block text-sm text-ink/70">店別</label>
-            <select name="complaintStore" defaultValue={complaintStoreId} className="w-full rounded-2xl border border-ink/10 bg-white px-4 py-3">
+            <select data-testid="complaint-tag-store-filter" name="complaintStore" defaultValue={complaintStoreId} className="w-full rounded-2xl border border-ink/10 bg-white px-4 py-3">
               <option value="">全部店別</option>
               {stores?.map((store) => (
                 <option key={store.id} value={store.id}>
@@ -219,7 +219,7 @@ export default async function FocusItemsPage({ searchParams }: { searchParams: S
           </div>
         ) : null}
 
-        <form action={updateComplaintAction} className="mt-4 grid gap-4">
+        <form data-testid="tag-section-complaint-watch" action={updateComplaintAction} className="mt-4 grid gap-4">
           <input type="hidden" name="month" value={month} />
           <input type="hidden" name="store_id" value={complaintStoreId} />
           {renderItemChecklist(complaintIds)}

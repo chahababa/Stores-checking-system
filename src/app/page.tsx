@@ -11,6 +11,7 @@ import {
   type InspectionTagType,
 } from "@/lib/grading";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { getInspectionTagLabel } from "@/lib/ui-labels";
 
 function getMonthRange(month: string) {
   const [yearValue, monthValue] = month.split("-").map(Number);
@@ -62,7 +63,7 @@ export default async function HomePage() {
   let tasksQuery = admin
     .from("improvement_tasks")
     .select(
-      "id, status, created_at, store_id, item_id, stores(id, name), inspection_items(id, name), inspection_scores(id, score, note, inspection_id, inspections(date))",
+      "id, status, created_at, store_id, item_id, stores(id, name), inspection_items(id, name), inspection_scores(id, score, note, is_focus_item, applied_tag_types, inspection_id, inspections(date))",
     )
     .order("created_at", { ascending: false });
   let storesQuery = admin.from("stores").select("id, name").order("name");
@@ -192,7 +193,13 @@ export default async function HomePage() {
       const store = getSingleRelation(task.stores) as { name?: string } | null;
       const item = getSingleRelation(task.inspection_items) as { name?: string } | null;
       const score = getSingleRelation(task.inspection_scores) as
-        | { score?: 1 | 2 | 3; note?: string | null; inspections?: unknown }
+        | {
+            score?: 1 | 2 | 3;
+            note?: string | null;
+            is_focus_item?: boolean | null;
+            applied_tag_types?: InspectionTagType[] | null;
+            inspections?: unknown;
+          }
         | null;
       const inspection = score ? (getSingleRelation(score.inspections as never) as { date?: string } | null) : null;
 
@@ -203,6 +210,8 @@ export default async function HomePage() {
         score: score?.score ?? null,
         note: score?.note ?? null,
         inspectionDate: inspection?.date ?? null,
+        isFocusItem: Boolean(score?.is_focus_item),
+        tagTypes: ((score?.applied_tag_types as InspectionTagType[] | null | undefined) ?? []).filter(Boolean),
       };
     });
 
@@ -431,6 +440,27 @@ export default async function HomePage() {
                         </div>
                         <span className="rounded-full bg-danger/10 px-3 py-1 text-xs text-danger">待處理</span>
                       </div>
+                      {task.tagTypes.length > 0 || task.isFocusItem ? (
+                        <div className="mt-3 flex flex-wrap gap-2">
+                          {task.tagTypes.map((tagType) => (
+                            <span
+                              key={`${task.id}-${tagType}`}
+                              className={`rounded-full px-3 py-1 text-xs text-white ${
+                                tagType === "critical"
+                                  ? "bg-danger"
+                                  : tagType === "monthly_attention"
+                                    ? "bg-warm"
+                                    : "bg-ink"
+                              }`}
+                            >
+                              {getInspectionTagLabel(tagType)}
+                            </span>
+                          ))}
+                          {task.isFocusItem && task.tagTypes.length === 0 ? (
+                            <span className="rounded-full bg-warm px-3 py-1 text-xs text-white">重點追蹤</span>
+                          ) : null}
+                        </div>
+                      ) : null}
                       {task.note ? <p className="mt-3 text-sm leading-6 text-ink/70">{task.note}</p> : null}
                     </div>
                   ))}

@@ -2,6 +2,22 @@
 
 ## 2026-04-11
 
+### 標籤摘要與管理頁驗證補強
+- 改善追蹤卡片現在會顯示 `必查項目`、`本月加強`、`客訴項目` 等標籤 badge
+- 首頁待改善清單同步補上標籤語義，讓 owner / manager / leader 都能更快判斷風險來源
+- 標籤管理、組員管理、QA 測試資料清理頁都補上穩定的 `data-testid`
+- 新增 Playwright `settings-workspaces.spec.ts`
+  - owner 可開啟標籤管理頁
+  - owner 可開啟組員管理頁
+  - owner 可預覽 QA 測試資料清理頁，不會真的執行刪除
+
+### 驗證
+- `npm run test`
+- `npm run build`
+- `npx playwright test --list`
+
+## 2026-04-11
+
 ### 核心流程 E2E 補強
 - 新增 Playwright `inspection-flow.spec.ts`
 - 補上 owner 的巡店建立、明細查看、編輯與改善任務流轉測試腳本

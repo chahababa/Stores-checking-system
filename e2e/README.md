@@ -70,6 +70,9 @@ The authenticated coverage now focuses on:
 - leader reports visibility
 - leader navigation restrictions
 - owner inspection create / detail / edit / improvement flow
+- owner tag management workspace visibility
+- owner staff management workspace visibility
+- owner QA cleanup preview visibility
 
 Example:
 
