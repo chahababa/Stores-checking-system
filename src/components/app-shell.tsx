@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { PropsWithChildren } from "react";
 
+import { SignOutButton } from "@/components/sign-out-button";
 import { UserProfile } from "@/lib/auth";
 import { getRoleLabel } from "@/lib/ui-labels";
 import { cn } from "@/lib/utils";
@@ -11,7 +12,7 @@ const links = [
   { href: "/inspection/improvements", label: "改善追蹤", roles: ["owner", "manager", "leader"] },
   { href: "/inspection/reports", label: "報表分析", roles: ["owner", "manager", "leader"] },
   { href: "/audit", label: "操作紀錄", roles: ["owner", "manager"] },
-  { href: "/settings/users", label: "帳號權限", roles: ["owner"] },
+  { href: "/settings/users", label: "帳號管理", roles: ["owner"] },
   { href: "/settings/stores", label: "店別管理", roles: ["owner"] },
   { href: "/settings/staff", label: "組員管理", roles: ["owner", "manager", "leader"] },
   { href: "/settings/items", label: "題目管理", roles: ["owner"] },
@@ -29,11 +30,14 @@ export function AppShell({
         <div className="mx-auto flex max-w-6xl flex-col gap-4 px-4 py-5 md:flex-row md:items-center md:justify-between">
           <div>
             <p className="font-lora text-sm uppercase tracking-[0.3em] text-warm">Warm Morning Ops</p>
-            <h1 className="font-serifTc text-2xl font-semibold">門市巡檢系統</h1>
+            <h1 className="font-serifTc text-2xl font-semibold">門市巡檢營運系統</h1>
           </div>
-          <div className="rounded-2xl bg-soft px-4 py-3 text-sm shadow-card">
-            <p>{profile.name || profile.email}</p>
-            <p className="text-ink/70">{getRoleLabel(profile.role)}</p>
+          <div className="flex items-center gap-3 rounded-2xl bg-soft px-4 py-3 text-sm shadow-card">
+            <div>
+              <p>{profile.name || profile.email}</p>
+              <p className="text-ink/70">{getRoleLabel(profile.role)}</p>
+            </div>
+            <SignOutButton />
           </div>
         </div>
         <nav className="mx-auto flex max-w-6xl flex-wrap gap-2 px-4 pb-4">
@@ -51,7 +55,13 @@ export function AppShell({
                 {link.label}
               </Link>
             ))}
-          <Link href="/" className="rounded-full bg-white/70 px-4 py-2 text-sm hover:bg-soft">
+          <Link
+            href="/"
+            className={cn(
+              "rounded-full px-4 py-2 text-sm transition",
+              pathname === "/" ? "bg-warm text-white" : "bg-white/70 hover:bg-soft",
+            )}
+          >
             首頁
           </Link>
         </nav>

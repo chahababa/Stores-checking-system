@@ -53,15 +53,16 @@ export async function requireUser() {
 
   const profile = await getCurrentUserProfile();
   if (!profile) {
-    redirect("/forbidden");
+    redirect("/forbidden?reason=unauthorized");
   }
+
   return profile;
 }
 
 export async function requireRole(...roles: UserRole[]) {
   const profile = await requireUser();
   if (!roles.includes(profile.role)) {
-    redirect("/forbidden");
+    redirect("/forbidden?reason=role");
   }
   return profile;
 }

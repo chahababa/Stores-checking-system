@@ -1,5 +1,6 @@
 import Link from "next/link";
 
+import { requireRole } from "@/lib/auth";
 import { getInspectionMonthlyReport } from "@/lib/inspection";
 import { formatMonthValue } from "@/lib/utils";
 
@@ -15,6 +16,7 @@ export default async function InspectionReportsPage({
 }: {
   searchParams: SearchParams;
 }) {
+  const profile = await requireRole("owner", "manager", "leader");
   const params = await searchParams;
   const report = await getInspectionMonthlyReport({
     month: formatMonthValue(params.month),
@@ -28,12 +30,12 @@ export default async function InspectionReportsPage({
   return (
     <div className="grid gap-6">
       <div className="rounded-[28px] border border-ink/10 bg-white/85 p-6 shadow-card">
-        <p className="font-lora text-sm uppercase tracking-[0.25em] text-warm">月報</p>
+        <p className="font-lora text-sm uppercase tracking-[0.25em] text-warm">報表</p>
         <div className="mt-2 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
           <div>
             <h1 className="font-serifTc text-3xl font-semibold">巡店月報</h1>
             <p className="mt-3 text-sm text-ink/70">
-              查看單月的巡店量、分數趨勢、常見問題，以及各店的整體表現。
+              這裡整理指定月份的巡店結果、低分題目與改善任務分布，方便你快速掌握本月重點。
             </p>
           </div>
           <Link href={exportHref} className="rounded-full bg-warm px-5 py-3 text-sm text-white">
@@ -53,21 +55,23 @@ export default async function InspectionReportsPage({
               className="w-full rounded-2xl border border-ink/10 bg-white px-4 py-3"
             />
           </div>
-          <div>
-            <label className="mb-2 block text-sm text-ink/70">店別</label>
-            <select
-              name="store"
-              defaultValue={report.selectedStoreId}
-              className="w-full rounded-2xl border border-ink/10 bg-white px-4 py-3"
-            >
-              <option value="">全部店別</option>
-              {report.stores.map((store) => (
-                <option key={store.id} value={store.id}>
-                  {store.name}
-                </option>
-              ))}
-            </select>
-          </div>
+          {profile.role !== "leader" ? (
+            <div>
+              <label className="mb-2 block text-sm text-ink/70">店別</label>
+              <select
+                name="store"
+                defaultValue={report.selectedStoreId}
+                className="w-full rounded-2xl border border-ink/10 bg-white px-4 py-3"
+              >
+                <option value="">全部店別</option>
+                {report.stores.map((store) => (
+                  <option key={store.id} value={store.id}>
+                    {store.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          ) : null}
           <div className="flex items-end gap-3">
             <button type="submit" className="rounded-full bg-warm px-5 py-3 text-sm text-white">
               更新報表
@@ -89,7 +93,7 @@ export default async function InspectionReportsPage({
           <p className="mt-2 font-serifTc text-3xl font-semibold">{report.summary.averageScore}</p>
         </div>
         <div className="rounded-[24px] border border-ink/10 bg-white/85 px-5 py-4 shadow-card">
-          <p className="text-sm text-ink/60">低分項目數</p>
+          <p className="text-sm text-ink/60">低分題目數</p>
           <p className="mt-2 font-serifTc text-3xl font-semibold">{report.summary.lowScoreCount}</p>
         </div>
         <div className="rounded-[24px] border border-ink/10 bg-white/85 px-5 py-4 shadow-card">
@@ -108,7 +112,7 @@ export default async function InspectionReportsPage({
 
       <div className="grid gap-6 lg:grid-cols-2">
         <div className="rounded-[28px] border border-ink/10 bg-white/85 p-6 shadow-card">
-          <p className="font-lora text-sm uppercase tracking-[0.25em] text-warm">常見問題</p>
+          <p className="font-lora text-sm uppercase tracking-[0.25em] text-warm">Top Problems</p>
           <h2 className="mt-2 font-serifTc text-2xl font-semibold">常見低分題目</h2>
           <div className="mt-5 grid gap-3">
             {report.topProblemItems.map((item) => (
@@ -124,21 +128,21 @@ export default async function InspectionReportsPage({
                   />
                 </div>
                 <p className="mt-2 text-sm text-ink/65">
-                  共出現 {item.occurrences} 次低分，平均分數 {item.averageScore}
+                  本月出現 {item.occurrences} 次 / 平均分數 {item.averageScore}
                 </p>
               </div>
             ))}
             {report.topProblemItems.length === 0 && (
               <div className="rounded-2xl border border-dashed border-ink/15 px-4 py-8 text-sm text-ink/60">
-                本月沒有重複出現的低分題目。
+                本月沒有低分題目，可以持續維持目前狀態。
               </div>
             )}
           </div>
         </div>
 
         <div className="rounded-[28px] border border-ink/10 bg-white/85 p-6 shadow-card">
-          <p className="font-lora text-sm uppercase tracking-[0.25em] text-warm">各店拆解</p>
-          <h2 className="mt-2 font-serifTc text-2xl font-semibold">各店表現</h2>
+          <p className="font-lora text-sm uppercase tracking-[0.25em] text-warm">Store Breakdown</p>
+          <h2 className="mt-2 font-serifTc text-2xl font-semibold">店別表現</h2>
           <div className="mt-5 grid gap-3">
             {report.storeBreakdown.map((store) => (
               <div key={store.storeId} className="rounded-2xl border border-ink/10 bg-soft/40 px-4 py-3">
@@ -153,13 +157,13 @@ export default async function InspectionReportsPage({
                   />
                 </div>
                 <p className="mt-2 text-sm text-ink/65">
-                  巡店 {store.inspections} 次 / 平均分數 {store.averageScore} / 低分項目 {store.lowScoreCount}
+                  巡店 {store.inspections} 次 / 平均分數 {store.averageScore} / 低分題目 {store.lowScoreCount}
                 </p>
               </div>
             ))}
             {report.storeBreakdown.length === 0 && (
               <div className="rounded-2xl border border-dashed border-ink/15 px-4 py-8 text-sm text-ink/60">
-                本月查無店別資料。
+                本月沒有可用的店別資料。
               </div>
             )}
           </div>
