@@ -277,81 +277,227 @@ export default async function HomePage() {
           </div>
         </section>
 
-        <section className="grid gap-6 lg:grid-cols-[1.15fr_0.85fr]">
-          <div className="rounded-[28px] border border-ink/10 bg-white/85 p-6 shadow-card">
-            <div className="flex items-center justify-between gap-3">
-              <div>
-                <p className="font-lora text-sm uppercase tracking-[0.25em] text-warm">Recent Activity</p>
-                <h2 className="mt-2 font-serifTc text-2xl font-semibold">
-                  {profile.role === "leader" ? "本店最近巡店紀錄" : "近期巡店動態"}
-                </h2>
-              </div>
-              <Link href="/inspection/history" className="text-sm text-warm underline-offset-4 hover:underline">
-                查看全部
-              </Link>
-            </div>
-
-            <div className="mt-5 grid gap-3">
-              {inspectionRows.slice(0, 5).map((inspection) => {
-                const store = getSingleRelation(inspection.stores) as { name?: string } | null;
-                const score = Number(inspection.total_score ?? 0);
-
-                return (
-                  <div
-                    key={inspection.id}
-                    className="flex flex-col gap-3 rounded-[22px] border border-ink/10 bg-white px-4 py-4 md:flex-row md:items-center md:justify-between"
-                  >
-                    <div>
-                      <p className="text-sm text-ink/55">{inspection.date}</p>
-                      <p className="mt-1 text-base font-medium text-ink">
-                        {store?.name ?? "未指定店別"} / {inspection.time_slot}
-                      </p>
-                    </div>
-                    <div className="flex items-center gap-3">
-                      <span className={`rounded-full px-3 py-1 text-sm ${getScoreTone(score)}`}>
-                        總分 {score.toFixed(2)}
-                      </span>
-                      <Link
-                        href={`/inspection/history/${inspection.id}`}
-                        className="rounded-full bg-soft px-4 py-2 text-sm text-ink/75 transition hover:bg-warm hover:text-white"
-                      >
-                        查看明細
-                      </Link>
-                    </div>
-                  </div>
-                );
-              })}
-
-              {inspectionRows.length === 0 && (
-                <div className="rounded-[22px] border border-dashed border-ink/15 px-4 py-8 text-sm text-ink/60">
-                  本月還沒有巡店紀錄，建議先安排一次巡店，之後首頁就會開始累積本店動態。
-                </div>
-              )}
-            </div>
-          </div>
-
+        {profile.role === "leader" ? (
           <div className="grid gap-6">
             <section className="rounded-[28px] border border-ink/10 bg-white/85 p-6 shadow-card">
-              <p className="font-lora text-sm uppercase tracking-[0.25em] text-warm">
-                {profile.role === "leader" ? "Today Focus" : "Store Overview"}
-              </p>
-              <h2 className="mt-2 font-serifTc text-2xl font-semibold">
-                {profile.role === "leader" ? "今天先看這三件事" : "店別概況"}
-              </h2>
-
-              {profile.role === "leader" ? (
-                <div className="mt-5 grid gap-3">
-                  {leaderChecklist.map((item) => (
-                    <div key={item.title} className="rounded-[22px] border border-ink/10 bg-white px-4 py-4">
-                      <div className="flex items-center justify-between gap-3">
-                        <p className="text-sm text-ink/60">{item.title}</p>
-                        <span className="rounded-full bg-soft px-3 py-1 text-sm text-ink/75">{item.value}</span>
-                      </div>
-                      <p className="mt-3 text-sm leading-6 text-ink/70">{item.description}</p>
-                    </div>
-                  ))}
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <p className="font-lora text-sm uppercase tracking-[0.25em] text-warm">Today Focus</p>
+                  <h2 className="mt-2 font-serifTc text-2xl font-semibold">今天先看這三件事</h2>
                 </div>
-              ) : (
+              </div>
+
+              <div className="mt-5 grid gap-3 lg:grid-cols-3">
+                {leaderChecklist.map((item) => (
+                  <div key={item.title} className="rounded-[22px] border border-ink/10 bg-white px-4 py-4">
+                    <div className="flex items-center justify-between gap-3">
+                      <p className="text-sm text-ink/60">{item.title}</p>
+                      <span className="rounded-full bg-soft px-3 py-1 text-sm text-ink/75">{item.value}</span>
+                    </div>
+                    <p className="mt-3 text-sm leading-6 text-ink/70">{item.description}</p>
+                  </div>
+                ))}
+              </div>
+            </section>
+
+            <section className="rounded-[28px] border border-ink/10 bg-white/85 p-6 shadow-card">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <p className="font-lora text-sm uppercase tracking-[0.25em] text-warm">Recent Activity</p>
+                  <h2 className="mt-2 font-serifTc text-2xl font-semibold">本店最近巡店紀錄</h2>
+                </div>
+                <Link href="/inspection/history" className="text-sm text-warm underline-offset-4 hover:underline">
+                  查看全部
+                </Link>
+              </div>
+
+              <div className="mt-5 grid gap-3">
+                {inspectionRows.slice(0, 5).map((inspection) => {
+                  const store = getSingleRelation(inspection.stores) as { name?: string } | null;
+                  const score = Number(inspection.total_score ?? 0);
+
+                  return (
+                    <div
+                      key={inspection.id}
+                      className="flex flex-col gap-3 rounded-[22px] border border-ink/10 bg-white px-4 py-4 md:flex-row md:items-center md:justify-between"
+                    >
+                      <div>
+                        <p className="text-sm text-ink/55">{inspection.date}</p>
+                        <p className="mt-1 text-base font-medium text-ink">
+                          {store?.name ?? "未指定店別"} / {inspection.time_slot}
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <span className={`rounded-full px-3 py-1 text-sm ${getScoreTone(score)}`}>
+                          總分 {score.toFixed(2)}
+                        </span>
+                        <Link
+                          href={`/inspection/history/${inspection.id}`}
+                          className="rounded-full bg-soft px-4 py-2 text-sm text-ink/75 transition hover:bg-warm hover:text-white"
+                        >
+                          查看明細
+                        </Link>
+                      </div>
+                    </div>
+                  );
+                })}
+
+                {inspectionRows.length === 0 && (
+                  <div className="rounded-[22px] border border-dashed border-ink/15 px-4 py-8 text-sm text-ink/60">
+                    本月還沒有巡店紀錄，建議先安排一次巡店，之後首頁就會開始累積本店動態。
+                  </div>
+                )}
+              </div>
+            </section>
+
+            <section className="rounded-[28px] border border-ink/10 bg-white/85 p-6 shadow-card">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <p className="font-lora text-sm uppercase tracking-[0.25em] text-warm">Action Queue</p>
+                  <h2 className="mt-2 font-serifTc text-2xl font-semibold">本店待改善清單</h2>
+                </div>
+                <Link
+                  href="/inspection/improvements"
+                  className="text-sm text-warm underline-offset-4 hover:underline"
+                >
+                  前往追蹤
+                </Link>
+              </div>
+
+              <div className="mt-5 grid gap-3 lg:grid-cols-2">
+                {pendingTaskHighlights.map((task) => (
+                  <div key={task.id} className="rounded-[22px] border border-ink/10 bg-white px-4 py-4">
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <p className="font-medium text-ink">{task.itemName}</p>
+                        <p className="mt-1 text-sm text-ink/60">
+                          {task.storeName}
+                          {task.inspectionDate ? ` / ${task.inspectionDate}` : ""}
+                          {task.score ? ` / 分數 ${task.score}` : ""}
+                        </p>
+                      </div>
+                      <span className="rounded-full bg-danger/10 px-3 py-1 text-xs text-danger">待處理</span>
+                    </div>
+                    {task.note ? <p className="mt-3 text-sm leading-6 text-ink/70">{task.note}</p> : null}
+                  </div>
+                ))}
+
+                {pendingTaskHighlights.length === 0 && (
+                  <div className="rounded-[22px] border border-dashed border-ink/15 px-4 py-8 text-sm text-ink/60 lg:col-span-2">
+                    目前沒有待改善清單，本店狀態算穩定，可以把重點放在日常巡檢與組員安排。
+                  </div>
+                )}
+              </div>
+            </section>
+
+            <section className="rounded-[28px] border border-ink/10 bg-white/85 p-6 shadow-card">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <p className="font-lora text-sm uppercase tracking-[0.25em] text-warm">Low Score Watch</p>
+                  <h2 className="mt-2 font-serifTc text-2xl font-semibold">最近低分提醒</h2>
+                </div>
+                <Link href="/inspection/history" className="text-sm text-warm underline-offset-4 hover:underline">
+                  看巡店紀錄
+                </Link>
+              </div>
+
+              <div className="mt-5 grid gap-3 lg:grid-cols-3">
+                {leaderLatestLowInspections.map((inspection) => (
+                  <div key={inspection.id} className="rounded-[22px] border border-ink/10 bg-white px-4 py-4">
+                    <div className="flex items-center justify-between gap-3">
+                      <div>
+                        <p className="font-medium text-ink">{inspection.storeName}</p>
+                        <p className="mt-1 text-sm text-ink/60">
+                          {inspection.date} / {inspection.timeSlot}
+                        </p>
+                      </div>
+                      <span className={`rounded-full px-3 py-1 text-sm ${getScoreTone(inspection.totalScore)}`}>
+                        總分 {inspection.totalScore.toFixed(2)}
+                      </span>
+                    </div>
+                  </div>
+                ))}
+
+                {leaderLatestLowInspections.length === 0 && (
+                  <div className="rounded-[22px] border border-dashed border-ink/15 px-4 py-8 text-sm text-ink/60 lg:col-span-3">
+                    最近沒有低分巡店紀錄，這裡會在需要關注時提醒你快速回看。
+                  </div>
+                )}
+              </div>
+            </section>
+
+          <section className="rounded-[28px] border border-ink/10 bg-white/85 p-6 shadow-card">
+            <p className="font-lora text-sm uppercase tracking-[0.25em] text-warm">Quick Actions</p>
+            <h2 className="mt-2 font-serifTc text-2xl font-semibold">店長常用入口</h2>
+            <div className="mt-5 flex flex-wrap gap-3">
+              {quickLinks.map((link) => (
+                <Link
+                  key={link.href}
+                  href={link.href}
+                  className="rounded-full bg-soft px-5 py-3 text-sm text-ink/75 transition hover:bg-warm hover:text-white"
+                >
+                  {link.label}
+                </Link>
+              ))}
+            </div>
+          </section>
+          </div>
+        ) : (
+          <section className="grid gap-6 lg:grid-cols-[1.15fr_0.85fr]">
+            <div className="rounded-[28px] border border-ink/10 bg-white/85 p-6 shadow-card">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <p className="font-lora text-sm uppercase tracking-[0.25em] text-warm">Recent Activity</p>
+                  <h2 className="mt-2 font-serifTc text-2xl font-semibold">近期巡店動態</h2>
+                </div>
+                <Link href="/inspection/history" className="text-sm text-warm underline-offset-4 hover:underline">
+                  查看全部
+                </Link>
+              </div>
+
+              <div className="mt-5 grid gap-3">
+                {inspectionRows.slice(0, 5).map((inspection) => {
+                  const store = getSingleRelation(inspection.stores) as { name?: string } | null;
+                  const score = Number(inspection.total_score ?? 0);
+
+                  return (
+                    <div
+                      key={inspection.id}
+                      className="flex flex-col gap-3 rounded-[22px] border border-ink/10 bg-white px-4 py-4 md:flex-row md:items-center md:justify-between"
+                    >
+                      <div>
+                        <p className="text-sm text-ink/55">{inspection.date}</p>
+                        <p className="mt-1 text-base font-medium text-ink">
+                          {store?.name ?? "未指定店別"} / {inspection.time_slot}
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <span className={`rounded-full px-3 py-1 text-sm ${getScoreTone(score)}`}>
+                          總分 {score.toFixed(2)}
+                        </span>
+                        <Link
+                          href={`/inspection/history/${inspection.id}`}
+                          className="rounded-full bg-soft px-4 py-2 text-sm text-ink/75 transition hover:bg-warm hover:text-white"
+                        >
+                          查看明細
+                        </Link>
+                      </div>
+                    </div>
+                  );
+                })}
+
+                {inspectionRows.length === 0 && (
+                  <div className="rounded-[22px] border border-dashed border-ink/15 px-4 py-8 text-sm text-ink/60">
+                    本月還沒有足夠的巡店資料，等各店開始巡店後，這裡就會顯示跨店概況。
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div className="grid gap-6">
+              <section className="rounded-[28px] border border-ink/10 bg-white/85 p-6 shadow-card">
+                <p className="font-lora text-sm uppercase tracking-[0.25em] text-warm">Store Overview</p>
+                <h2 className="mt-2 font-serifTc text-2xl font-semibold">店別概況</h2>
                 <div className="mt-5 grid gap-3">
                   {groupedByStore.map((store) => (
                     <div key={store.storeName} className="rounded-[22px] border border-ink/10 bg-white px-4 py-4">
@@ -370,50 +516,8 @@ export default async function HomePage() {
                     </div>
                   )}
                 </div>
-              )}
-            </section>
-
-            {profile.role === "leader" ? (
-              <section className="rounded-[28px] border border-ink/10 bg-white/85 p-6 shadow-card">
-                <div className="flex items-center justify-between gap-3">
-                  <div>
-                    <p className="font-lora text-sm uppercase tracking-[0.25em] text-warm">Action Queue</p>
-                    <h2 className="mt-2 font-serifTc text-2xl font-semibold">本店待改善清單</h2>
-                  </div>
-                  <Link
-                    href="/inspection/improvements"
-                    className="text-sm text-warm underline-offset-4 hover:underline"
-                  >
-                    前往追蹤
-                  </Link>
-                </div>
-
-                <div className="mt-5 grid gap-3">
-                  {pendingTaskHighlights.map((task) => (
-                    <div key={task.id} className="rounded-[22px] border border-ink/10 bg-white px-4 py-4">
-                      <div className="flex items-start justify-between gap-3">
-                        <div>
-                          <p className="font-medium text-ink">{task.itemName}</p>
-                          <p className="mt-1 text-sm text-ink/60">
-                            {task.storeName}
-                            {task.inspectionDate ? ` / ${task.inspectionDate}` : ""}
-                            {task.score ? ` / 分數 ${task.score}` : ""}
-                          </p>
-                        </div>
-                        <span className="rounded-full bg-danger/10 px-3 py-1 text-xs text-danger">待處理</span>
-                      </div>
-                      {task.note ? <p className="mt-3 text-sm leading-6 text-ink/70">{task.note}</p> : null}
-                    </div>
-                  ))}
-
-                  {pendingTaskHighlights.length === 0 && (
-                    <div className="rounded-[22px] border border-dashed border-ink/15 px-4 py-8 text-sm text-ink/60">
-                      目前沒有待改善清單，本店狀態算穩定，可以把重點放在日常巡檢與組員安排。
-                    </div>
-                  )}
-                </div>
               </section>
-            ) : (
+
               <section className="rounded-[28px] border border-ink/10 bg-white/85 p-6 shadow-card">
                 <p className="font-lora text-sm uppercase tracking-[0.25em] text-warm">Quick Actions</p>
                 <h2 className="mt-2 font-serifTc text-2xl font-semibold">管理快捷入口</h2>
@@ -429,65 +533,9 @@ export default async function HomePage() {
                   ))}
                 </div>
               </section>
-            )}
-
-            {profile.role === "leader" ? (
-              <section className="rounded-[28px] border border-ink/10 bg-white/85 p-6 shadow-card">
-                <div className="flex items-center justify-between gap-3">
-                  <div>
-                    <p className="font-lora text-sm uppercase tracking-[0.25em] text-warm">Low Score Watch</p>
-                    <h2 className="mt-2 font-serifTc text-2xl font-semibold">最近低分提醒</h2>
-                  </div>
-                  <Link href="/inspection/history" className="text-sm text-warm underline-offset-4 hover:underline">
-                    看巡店紀錄
-                  </Link>
-                </div>
-
-                <div className="mt-5 grid gap-3">
-                  {leaderLatestLowInspections.map((inspection) => (
-                    <div key={inspection.id} className="rounded-[22px] border border-ink/10 bg-white px-4 py-4">
-                      <div className="flex items-center justify-between gap-3">
-                        <div>
-                          <p className="font-medium text-ink">{inspection.storeName}</p>
-                          <p className="mt-1 text-sm text-ink/60">
-                            {inspection.date} / {inspection.timeSlot}
-                          </p>
-                        </div>
-                        <span className={`rounded-full px-3 py-1 text-sm ${getScoreTone(inspection.totalScore)}`}>
-                          總分 {inspection.totalScore.toFixed(2)}
-                        </span>
-                      </div>
-                    </div>
-                  ))}
-
-                  {leaderLatestLowInspections.length === 0 && (
-                    <div className="rounded-[22px] border border-dashed border-ink/15 px-4 py-8 text-sm text-ink/60">
-                      最近沒有低分巡店紀錄，這裡會在需要關注時提醒你快速回看。
-                    </div>
-                  )}
-                </div>
-              </section>
-            ) : null}
-          </div>
-        </section>
-
-        {profile.role === "leader" ? (
-          <section className="rounded-[28px] border border-ink/10 bg-white/85 p-6 shadow-card">
-            <p className="font-lora text-sm uppercase tracking-[0.25em] text-warm">Quick Actions</p>
-            <h2 className="mt-2 font-serifTc text-2xl font-semibold">店長常用入口</h2>
-            <div className="mt-5 flex flex-wrap gap-3">
-              {quickLinks.map((link) => (
-                <Link
-                  key={link.href}
-                  href={link.href}
-                  className="rounded-full bg-soft px-5 py-3 text-sm text-ink/75 transition hover:bg-warm hover:text-white"
-                >
-                  {link.label}
-                </Link>
-              ))}
             </div>
           </section>
-        ) : null}
+        )}
       </div>
     </AppShell>
   );
