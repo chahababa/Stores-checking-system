@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 
 import { compressImage } from "@/lib/image";
 import type { InspectionFormSeed } from "@/lib/inspection";
+import { getInspectionTagLabel, type InspectionTagType } from "@/lib/ui-labels";
 
 type ScoreValue = 1 | 2 | 3;
 type ShiftRole = "kitchen" | "floor" | "counter";
@@ -32,6 +33,7 @@ export type InspectionFormDraftState = {
       score: ScoreValue | null;
       note: string;
       isFocusItem: boolean;
+      tagTypes: InspectionTagType[];
       hasPrevIssue: boolean;
       consecutiveWeeks: number;
     }
@@ -60,6 +62,7 @@ function createInitialState(seed: InspectionFormSeed): InspectionFormDraftState 
             score: item.defaultScore,
             note: "",
             isFocusItem: item.isFocusItem,
+            tagTypes: item.tagTypes,
             hasPrevIssue: item.hasPrevIssue,
             consecutiveWeeks: item.consecutiveWeeks,
           },
@@ -114,6 +117,7 @@ export function InspectionForm({
       score: ScoreValue;
       note?: string;
       isFocusItem: boolean;
+      tagTypes: InspectionTagType[];
       hasPrevIssue: boolean;
       consecutiveWeeks: number;
     }>;
@@ -348,7 +352,7 @@ export function InspectionForm({
     }
 
     if (missingFocusCount > 0) {
-      setError(`還有 ${missingFocusCount} 個重點項目尚未評分。`);
+      setError(`還有 ${missingFocusCount} 個標籤項目尚未評分。`);
       return;
     }
 
@@ -379,6 +383,7 @@ export function InspectionForm({
             score: value.score as ScoreValue,
             note: value.note,
             isFocusItem: value.isFocusItem,
+            tagTypes: value.tagTypes,
             hasPrevIssue: value.hasPrevIssue,
             consecutiveWeeks: value.consecutiveWeeks,
           })),
@@ -507,7 +512,7 @@ export function InspectionForm({
             <div className="mt-2 flex flex-wrap gap-3 text-sm text-ink/70">
               <span>已完成 {completedCategoryCount} / {seed.groupedItems.length} 個分類</span>
               <span>已填 {scoredItemCount} / {totalItemCount} 題</span>
-              <span>未填重點項目 {missingFocusCount} 題</span>
+              <span>未填標籤項目 {missingFocusCount} 題</span>
             </div>
             <div className="mt-3 h-2 rounded-full bg-cream">
               <div
@@ -642,6 +647,7 @@ export function InspectionForm({
                     score: item.defaultScore,
                     note: "",
                     isFocusItem: item.isFocusItem,
+                    tagTypes: item.tagTypes,
                     hasPrevIssue: item.hasPrevIssue,
                     consecutiveWeeks: item.consecutiveWeeks,
                   };
@@ -653,9 +659,20 @@ export function InspectionForm({
                         <div className="max-w-2xl">
                           <div className="flex flex-wrap items-center gap-2">
                             <h3 className="text-lg font-medium text-ink">{item.name}</h3>
-                            {value.isFocusItem ? (
-                              <span className="rounded-full bg-warm px-3 py-1 text-xs font-medium text-white">重點項目</span>
-                            ) : null}
+                            {value.tagTypes.map((tagType) => (
+                              <span
+                                key={tagType}
+                                className={`rounded-full px-3 py-1 text-xs font-medium ${
+                                  tagType === "critical"
+                                    ? "bg-danger text-white"
+                                    : tagType === "monthly_attention"
+                                      ? "bg-warm px-3 py-1 text-white"
+                                      : "bg-ink text-white"
+                                }`}
+                              >
+                                {getInspectionTagLabel(tagType)}
+                              </span>
+                            ))}
                             {value.hasPrevIssue ? (
                               <span className="rounded-full bg-danger/10 px-3 py-1 text-xs font-medium text-danger">
                                 連續低分 {value.consecutiveWeeks} 週
@@ -830,7 +847,7 @@ export function InspectionForm({
 
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <p className="text-sm text-ink/65">
-          尚未完成評分的重點項目：<span className="font-medium text-danger">{missingFocusCount}</span>
+          尚未完成評分的標籤項目：<span className="font-medium text-danger">{missingFocusCount}</span>
         </p>
         <button
           type="button"

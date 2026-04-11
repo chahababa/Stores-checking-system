@@ -25,7 +25,7 @@ const managementLinks: NavigationLink[] = [
   { href: "/settings/stores", label: "店別管理", roles: ["owner"] },
   { href: "/settings/staff", label: "組員管理", roles: ["owner", "manager", "leader"] },
   { href: "/settings/items", label: "題目管理", roles: ["owner"] },
-  { href: "/settings/focus-items", label: "重點項目", roles: ["owner", "manager"] },
+  { href: "/settings/focus-items", label: "標籤管理", roles: ["owner", "manager"] },
   { href: "/audit", label: "操作紀錄", roles: ["owner", "manager"] },
 ];
 

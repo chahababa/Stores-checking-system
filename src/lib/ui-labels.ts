@@ -1,3 +1,6 @@
+export type InspectionTagType = "critical" | "monthly_attention" | "complaint_watch";
+export type InspectionTagSource = "manual" | "complaint_sync";
+
 export function getRoleLabel(role: "owner" | "manager" | "leader") {
   if (role === "owner") return "系統擁有者";
   if (role === "manager") return "主管";
@@ -11,18 +14,35 @@ export function getShiftRoleLabel(role: "kitchen" | "floor" | "counter") {
 }
 
 export function getBusynessLabel(level: "low" | "medium" | "high") {
-  if (level === "low") return "較低";
+  if (level === "low") return "較空";
   if (level === "medium") return "一般";
-  return "繁忙";
+  return "忙碌";
 }
 
 export function getImprovementStatusLabel(
   status: "pending" | "resolved" | "verified" | "superseded",
 ) {
-  if (status === "pending") return "待改善";
-  if (status === "resolved") return "已處理";
+  if (status === "pending") return "待處理";
+  if (status === "resolved") return "已改善";
   if (status === "verified") return "已確認";
-  return "已取代";
+  return "已替代";
+}
+
+export function getInspectionTagLabel(type: InspectionTagType) {
+  if (type === "critical") return "必查項目";
+  if (type === "monthly_attention") return "本月加強";
+  return "客訴項目";
+}
+
+export function getInspectionTagDescription(type: InspectionTagType) {
+  if (type === "critical") return "全店都必須確認的高風險題目，預設不可直接帶 3 分。";
+  if (type === "monthly_attention") return "這個月特別需要加強追蹤的題目，可選擇全部店別或單店。";
+  return "最近一個月有客訴或需要特別追蹤的題目，可由人工設定，未來也會支援客訴資料自動標記。";
+}
+
+export function getInspectionTagSourceLabel(source: InspectionTagSource) {
+  if (source === "complaint_sync") return "客訴自動標記";
+  return "人工設定";
 }
 
 export function getAuditActionLabel(action: string) {
@@ -35,16 +55,16 @@ export function getAuditActionLabel(action: string) {
     create_staff_member: "新增組員",
     archive_staff_member: "封存組員",
     restore_staff_member: "恢復組員",
-    set_focus_items: "更新重點項目",
-    update_inspection_item_status: "更新巡檢題目狀態",
-    set_store_extra_items: "更新店別額外題目",
-    create_inspection: "新增巡店紀錄",
+    set_focus_items: "更新題目標籤",
+    update_inspection_item_status: "更新題目啟用狀態",
+    set_store_extra_items: "更新店別加開題目",
+    create_inspection: "建立巡店紀錄",
     update_inspection: "更新巡店紀錄",
     lock_inspection: "鎖定巡店紀錄",
     unlock_inspection: "解除鎖定巡店紀錄",
     delete_inspection: "刪除巡店紀錄",
     update_improvement_task_status: "更新改善任務狀態",
-    set_inspection_photo_standard: "設為標準照片",
+    set_inspection_photo_standard: "設定標準照片",
     unset_inspection_photo_standard: "取消標準照片",
     delete_inspection_photo: "刪除巡店照片",
   };
@@ -60,12 +80,12 @@ export function getAuditEntityLabel(entityType: string) {
     stores: "店別",
     staff_member: "組員",
     staff_members: "組員",
-    focus_items: "重點項目",
+    focus_items: "題目標籤",
     inspection: "巡店紀錄",
     inspections: "巡店紀錄",
     inspection_item: "巡店題目",
     inspection_items: "巡店題目",
-    store_extra_items: "店別額外題目",
+    store_extra_items: "店別加開題目",
     improvement_tasks: "改善任務",
     inspection_photos: "巡店照片",
   };
@@ -135,10 +155,16 @@ export function formatAuditDetails(
       break;
     case "set_focus_items":
       if (typeof details.type === "string") {
-        parts.push(`類型：${details.type === "permanent" ? "永久重點" : "每月重點"}`);
+        parts.push(`標籤：${getInspectionTagLabel(details.type as InspectionTagType)}`);
       }
       if (typeof details.month === "string" && details.month) {
         parts.push(`月份：${details.month}`);
+      }
+      if ("store_id" in details) {
+        parts.push(`店別：${getStoreName(details.store_id, storeNamesById) ?? "全部店別"}`);
+      }
+      if (typeof details.source === "string") {
+        parts.push(`來源：${getInspectionTagSourceLabel(details.source as InspectionTagSource)}`);
       }
       if (Array.isArray(details.item_ids)) {
         parts.push(`題目數：${details.item_ids.length}`);
@@ -161,7 +187,7 @@ export function formatAuditDetails(
       }
       if (typeof details.date === "string") parts.push(`日期：${details.date}`);
       if (typeof details.time_slot === "string") parts.push(`時段：${details.time_slot}`);
-      if (typeof details.total_score === "string") parts.push(`總分：${details.total_score}`);
+      if (typeof details.total_score === "string") parts.push(`平均分數：${details.total_score}`);
       break;
     case "update_improvement_task_status":
       if (typeof details.status === "string") {
@@ -190,5 +216,5 @@ export function formatAuditDetails(
       break;
   }
 
-  return parts.join(" / ") || "沒有額外內容";
+  return parts.join(" / ") || "沒有補充資訊";
 }

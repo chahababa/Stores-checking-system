@@ -10,7 +10,7 @@ import {
   setInspectionEditable,
   setInspectionPhotoStandard,
 } from "@/lib/inspection";
-import { getBusynessLabel, getImprovementStatusLabel, getShiftRoleLabel } from "@/lib/ui-labels";
+import { getBusynessLabel, getImprovementStatusLabel, getInspectionTagLabel, getShiftRoleLabel } from "@/lib/ui-labels";
 
 type PageParams = Promise<{ id: string }>;
 type PageSearchParams = Promise<{ show?: string }>;
@@ -243,7 +243,21 @@ export default async function InspectionDetailPage({
                       <div>
                         <div className="flex flex-wrap items-center gap-2">
                           <p className="font-medium text-ink">{row.itemName}</p>
-                          {row.isFocusItem ? (
+                          {row.tagTypes.map((tagType) => (
+                            <span
+                              key={tagType}
+                              className={`rounded-full px-3 py-1 text-xs text-white ${
+                                tagType === "critical"
+                                  ? "bg-danger"
+                                  : tagType === "monthly_attention"
+                                    ? "bg-warm"
+                                    : "bg-ink"
+                              }`}
+                            >
+                              {getInspectionTagLabel(tagType)}
+                            </span>
+                          ))}
+                          {row.isFocusItem && row.tagTypes.length === 0 ? (
                             <span className="rounded-full bg-warm px-3 py-1 text-xs text-white">重點項目</span>
                           ) : null}
                           {row.hasPrevIssue ? (

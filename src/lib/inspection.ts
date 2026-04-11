@@ -8,6 +8,7 @@ import { buildMonthlyInspectionReportStats, getMonthRange } from "@/lib/reportin
 import { createAdminClient } from "@/lib/supabase/admin";
 
 type ShiftRole = "kitchen" | "floor" | "counter";
+type InspectionTagType = "critical" | "monthly_attention" | "complaint_watch";
 
 type PriorInspectionRow = {
   id: string;
@@ -41,6 +42,7 @@ export type InspectionFormSeed = {
       id: string;
       name: string;
       isFocusItem: boolean;
+      tagTypes: InspectionTagType[];
       defaultScore: 1 | 2 | 3 | null;
       hasPrevIssue: boolean;
       consecutiveWeeks: number;
@@ -60,6 +62,7 @@ export type InspectionMutationInput = {
     score: 1 | 2 | 3;
     note?: string;
     isFocusItem: boolean;
+    tagTypes: InspectionTagType[];
     hasPrevIssue: boolean;
     consecutiveWeeks: number;
   }>;
@@ -95,6 +98,7 @@ export type InspectionDetail = {
     score: 1 | 2 | 3;
     note: string | null;
     isFocusItem: boolean;
+    tagTypes: InspectionTagType[];
     hasPrevIssue: boolean;
     consecutiveWeeks: number;
     photos: Array<{
@@ -154,6 +158,7 @@ export type InspectionEditSeed = {
         score: 1 | 2 | 3 | null;
         note: string;
         isFocusItem: boolean;
+        tagTypes: InspectionTagType[];
         hasPrevIssue: boolean;
         consecutiveWeeks: number;
       }
@@ -273,7 +278,7 @@ async function getStoreCode(admin: ReturnType<typeof createAdminClient>, storeId
 function validateInspectionInput(input: InspectionMutationInput) {
   const missingFocus = input.scores.filter((item) => item.isFocusItem && !item.score);
   if (missingFocus.length > 0) {
-    throw new Error("所有重點項目都必須完成評分後才能儲存。");
+    throw new Error("所有標籤項目都必須完成評分後才能儲存。");
   }
 
   const invalidScores = input.scores.filter((item) => item.score <= 2 && !item.note?.trim());
@@ -432,8 +437,8 @@ export async function getInspectionFormSeed(params?: { storeId?: string; date?: 
     { data: staff, error: staffError },
     { data: categories, error: categoriesError },
     { data: items, error: itemsError },
-    { data: permanentFocusRows, error: permanentFocusError },
-    { data: monthlyFocusRows, error: monthlyFocusError },
+    { data: criticalTagRows, error: criticalTagError },
+    { data: scopedTagRows, error: scopedTagError },
     { data: recentInspections, error: inspectionsError },
     { data: duplicateRows, error: duplicateError },
     extraAssignments,
@@ -450,8 +455,13 @@ export async function getInspectionFormSeed(params?: { storeId?: string; date?: 
       .select("id, name, category_id, sort_order, is_base, is_active")
       .eq("is_active", true)
       .order("sort_order"),
-    admin.from("focus_items").select("item_id").eq("type", "permanent"),
-    admin.from("focus_items").select("item_id").eq("type", "monthly").eq("month", selectedMonth),
+    admin.from("focus_items").select("item_id, type").eq("type", "critical"),
+    admin
+      .from("focus_items")
+      .select("item_id, type, store_id")
+      .in("type", ["monthly_attention", "complaint_watch"])
+      .eq("month", selectedMonth)
+      .or(`store_id.is.null,store_id.eq.${selectedStoreId}`),
     admin
       .from("inspections")
       .select("id, date, inspection_scores(item_id, score)")
@@ -467,8 +477,8 @@ export async function getInspectionFormSeed(params?: { storeId?: string; date?: 
     staffError ||
     categoriesError ||
     itemsError ||
-    permanentFocusError ||
-    monthlyFocusError ||
+    criticalTagError ||
+    scopedTagError ||
     inspectionsError ||
     duplicateError
   ) {
@@ -476,8 +486,8 @@ export async function getInspectionFormSeed(params?: { storeId?: string; date?: 
       staffError?.message ||
         categoriesError?.message ||
         itemsError?.message ||
-        permanentFocusError?.message ||
-        monthlyFocusError?.message ||
+        criticalTagError?.message ||
+        scopedTagError?.message ||
         inspectionsError?.message ||
         duplicateError?.message ||
         "載入巡店表單資料失敗。",
@@ -488,10 +498,17 @@ export async function getInspectionFormSeed(params?: { storeId?: string; date?: 
     throw new Error(extraAssignments.error.message);
   }
 
-  const focusRows = [...(permanentFocusRows ?? []), ...(monthlyFocusRows ?? [])];
+  const focusRows = [...(criticalTagRows ?? []), ...(scopedTagRows ?? [])];
   const extraItemIds = new Set((extraAssignments.data ?? []).map((row) => row.item_id));
   const allowedItems = (items ?? []).filter((item) => item.is_base || extraItemIds.has(item.id));
-  const focusIds = new Set((focusRows ?? []).map((row) => row.item_id));
+  const tagTypesByItemId = new Map<string, InspectionTagType[]>();
+  for (const row of focusRows ?? []) {
+    const existing = tagTypesByItemId.get(row.item_id) ?? [];
+    if (!existing.includes(row.type as InspectionTagType)) {
+      existing.push(row.type as InspectionTagType);
+    }
+    tagTypesByItemId.set(row.item_id, existing);
+  }
   const prevIssueMap = buildPreviousIssueMap((recentInspections ?? []) as PriorInspectionRow[], selectedDate);
 
   const groupedItems = (categories ?? [])
@@ -500,12 +517,14 @@ export async function getInspectionFormSeed(params?: { storeId?: string; date?: 
         .filter((item) => item.category_id === category.id)
         .map((item) => {
           const previousIssue = prevIssueMap.get(item.id);
-          const isFocusItem = focusIds.has(item.id);
+          const tagTypes = tagTypesByItemId.get(item.id) ?? [];
+          const isFocusItem = tagTypes.length > 0;
 
           return {
             id: item.id,
             name: item.name,
             isFocusItem,
+            tagTypes,
             defaultScore: isFocusItem ? null : (3 as const),
             hasPrevIssue: Boolean(previousIssue),
             consecutiveWeeks: previousIssue?.consecutiveWeeks ?? 0,
@@ -564,7 +583,7 @@ export async function getInspectionDetail(inspectionId: string): Promise<Inspect
     admin
       .from("inspection_scores")
       .select(
-        "id, item_id, score, note, is_focus_item, has_prev_issue, consecutive_weeks, inspection_items(name, categories(name)), improvement_tasks(id, status, created_at, resolved_at, verified_at)",
+        "id, item_id, score, note, is_focus_item, applied_tag_types, has_prev_issue, consecutive_weeks, inspection_items(name, categories(name)), improvement_tasks(id, status, created_at, resolved_at, verified_at)",
       )
       .eq("inspection_id", inspectionId),
     admin
@@ -646,6 +665,7 @@ export async function getInspectionDetail(inspectionId: string): Promise<Inspect
         score: row.score,
         note: row.note,
         isFocusItem: row.is_focus_item,
+        tagTypes: ((row.applied_tag_types as InspectionTagType[] | null | undefined) ?? []).filter(Boolean),
         hasPrevIssue: row.has_prev_issue,
         consecutiveWeeks: row.consecutive_weeks,
         photos: photosByScoreId.get(row.id) ?? [],
@@ -696,6 +716,7 @@ export async function getInspectionEditSeed(inspectionId: string): Promise<Inspe
             score: saved?.score ?? item.defaultScore,
             note: saved?.note ?? "",
             isFocusItem: item.isFocusItem,
+            tagTypes: saved?.tagTypes ?? item.tagTypes,
             hasPrevIssue: saved?.hasPrevIssue ?? item.hasPrevIssue,
             consecutiveWeeks: saved?.consecutiveWeeks ?? item.consecutiveWeeks,
           },
@@ -1120,6 +1141,7 @@ export async function createInspection(input: InspectionMutationInput) {
         score: entry.score,
         note: entry.note?.trim() || null,
         is_focus_item: entry.isFocusItem,
+        applied_tag_types: entry.tagTypes,
         has_prev_issue: entry.hasPrevIssue,
         consecutive_weeks: entry.score <= 2 ? entry.consecutiveWeeks : 0,
       })),
@@ -1264,6 +1286,7 @@ export async function updateInspection(inspectionId: string, input: InspectionMu
           score: entry.score,
           note: entry.note?.trim() || null,
           is_focus_item: entry.isFocusItem,
+          applied_tag_types: entry.tagTypes,
           has_prev_issue: entry.hasPrevIssue,
           consecutive_weeks: entry.score <= 2 ? entry.consecutiveWeeks : 0,
         })
@@ -1283,6 +1306,7 @@ export async function updateInspection(inspectionId: string, input: InspectionMu
           score: entry.score,
           note: entry.note?.trim() || null,
           is_focus_item: entry.isFocusItem,
+          applied_tag_types: entry.tagTypes,
           has_prev_issue: entry.hasPrevIssue,
           consecutive_weeks: entry.score <= 2 ? entry.consecutiveWeeks : 0,
         })

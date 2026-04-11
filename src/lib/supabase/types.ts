@@ -151,24 +151,30 @@ export type Database = {
         Row: {
           id: string;
           item_id: string;
-          type: "permanent" | "monthly";
+          type: "critical" | "monthly_attention" | "complaint_watch";
           month: string | null;
+          store_id: string | null;
+          source: "manual" | "complaint_sync";
           set_by: string | null;
           created_at: string;
         };
         Insert: {
           id?: string;
           item_id: string;
-          type: "permanent" | "monthly";
+          type: "critical" | "monthly_attention" | "complaint_watch";
           month?: string | null;
+          store_id?: string | null;
+          source?: "manual" | "complaint_sync";
           set_by?: string | null;
           created_at?: string;
         };
         Update: {
           id?: string;
           item_id?: string;
-          type?: "permanent" | "monthly";
+          type?: "critical" | "monthly_attention" | "complaint_watch";
           month?: string | null;
+          store_id?: string | null;
+          source?: "manual" | "complaint_sync";
           set_by?: string | null;
           created_at?: string;
         };
@@ -239,6 +245,7 @@ export type Database = {
           score: 1 | 2 | 3;
           note: string | null;
           is_focus_item: boolean;
+          applied_tag_types: Array<"critical" | "monthly_attention" | "complaint_watch">;
           has_prev_issue: boolean;
           consecutive_weeks: number;
         };
@@ -249,6 +256,7 @@ export type Database = {
           score: 1 | 2 | 3;
           note?: string | null;
           is_focus_item?: boolean;
+          applied_tag_types?: Array<"critical" | "monthly_attention" | "complaint_watch">;
           has_prev_issue?: boolean;
           consecutive_weeks?: number;
         };
@@ -259,6 +267,7 @@ export type Database = {
           score?: 1 | 2 | 3;
           note?: string | null;
           is_focus_item?: boolean;
+          applied_tag_types?: Array<"critical" | "monthly_attention" | "complaint_watch">;
           has_prev_issue?: boolean;
           consecutive_weeks?: number;
         };
@@ -426,7 +435,8 @@ export type Database = {
       staff_status: "active" | "archived";
       staff_position: "kitchen" | "floor" | "counter";
       field_type: "kitchen" | "floor" | "none";
-      focus_type: "permanent" | "monthly";
+      focus_type: "critical" | "monthly_attention" | "complaint_watch";
+      focus_source: "manual" | "complaint_sync";
       busyness_level: "low" | "medium" | "high";
       menu_item_type: "dine_in" | "takeout";
       improvement_status: "pending" | "resolved" | "verified" | "superseded";

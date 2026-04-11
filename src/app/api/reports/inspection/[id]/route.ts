@@ -35,7 +35,7 @@ export async function GET(_: Request, context: { params: RouteParams }) {
     `巡店人,${csvEscape(detail.inspector?.email ?? "-")}`,
     "",
     "評分項目",
-    "分類,題目,分數,是否重點項目,是否上次扣分項,連續週數,備註",
+    "分類,題目,分數,是否標籤項目,是否上次扣分項,連續週數,備註",
     ...detail.scores.map(
       (row) =>
         `${csvEscape(row.categoryName)},${csvEscape(row.itemName)},${csvEscape(row.score)},${csvEscape(row.isFocusItem)},${csvEscape(row.hasPrevIssue)},${csvEscape(row.consecutiveWeeks)},${csvEscape(row.note ?? "")}`,

@@ -2,8 +2,8 @@ import "server-only";
 
 import { revalidatePath } from "next/cache";
 
-import { requireRole } from "@/lib/auth";
 import { createAuditLog } from "@/lib/audit";
+import { requireRole } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 export type AuthorizedUserInput = {
@@ -18,12 +18,16 @@ export type StoreInput = {
   name: string;
 };
 
+export type InspectionTagType = "critical" | "monthly_attention" | "complaint_watch";
+export type InspectionTagSource = "manual" | "complaint_sync";
+
 function revalidateStoreDependentPaths() {
   revalidatePath("/");
   revalidatePath("/settings/stores");
   revalidatePath("/settings/users");
   revalidatePath("/settings/staff");
   revalidatePath("/settings/items");
+  revalidatePath("/settings/focus-items");
   revalidatePath("/inspection/new");
   revalidatePath("/inspection/history");
   revalidatePath("/inspection/reports");
@@ -246,53 +250,52 @@ export async function restoreStaffMember(id: string) {
   revalidatePath("/settings/staff");
 }
 
-export async function getFocusItems(month: string) {
+export async function getInspectionItemTags(month: string) {
   await requireRole("owner", "manager");
   const admin = createAdminClient();
-  const [{ data: permanent, error: permanentError }, { data: monthly, error: monthlyError }] =
-    await Promise.all([
-      admin
-        .from("focus_items")
-        .select("id, item_id, type, month, set_by, inspection_items(id, name)")
-        .eq("type", "permanent"),
-      admin
-        .from("focus_items")
-        .select("id, item_id, type, month, set_by, inspection_items(id, name)")
-        .eq("type", "monthly")
-        .eq("month", month),
-    ]);
+  const [{ data: critical, error: criticalError }, { data: scoped, error: scopedError }] = await Promise.all([
+    admin
+      .from("focus_items")
+      .select("id, item_id, type, month, store_id, source, set_by, inspection_items(id, name), stores(id, name)")
+      .eq("type", "critical")
+      .eq("source", "manual"),
+    admin
+      .from("focus_items")
+      .select("id, item_id, type, month, store_id, source, set_by, inspection_items(id, name), stores(id, name)")
+      .in("type", ["monthly_attention", "complaint_watch"])
+      .eq("month", month)
+      .eq("source", "manual"),
+  ]);
 
-  if (permanentError || monthlyError) {
-    throw new Error(permanentError?.message || monthlyError?.message);
+  if (criticalError || scopedError) {
+    throw new Error(criticalError?.message || scopedError?.message);
   }
 
-  const merged = [...(permanent ?? []), ...(monthly ?? [])];
-  const seen = new Set<string>();
-  return merged.filter((entry) => {
-    const key = entry.item_id as string;
-    if (seen.has(key)) return false;
-    seen.add(key);
-    return true;
-  });
+  return [...(critical ?? []), ...(scoped ?? [])];
 }
 
-export async function setFocusItems(input: {
+export async function setInspectionItemTags(input: {
   month?: string | null;
-  type: "permanent" | "monthly";
+  type: InspectionTagType;
+  storeId?: string | null;
+  source?: InspectionTagSource;
   itemIds: string[];
 }) {
   const profile = await requireRole("owner", "manager");
+  const source = input.source ?? "manual";
 
-  if (input.type === "permanent" && profile.role !== "owner") {
-    throw new Error("只有 owner 可以管理永久重點項目。");
+  if (input.type === "critical" && profile.role !== "owner") {
+    throw new Error("只有 owner 可以管理必查項目。");
   }
 
   const admin = createAdminClient();
-  const month = input.type === "monthly" ? input.month : null;
+  const month = input.type === "critical" ? null : input.month ?? null;
+  const storeId = input.type === "critical" ? null : input.storeId ?? null;
 
-  const deleteQuery = admin.from("focus_items").delete().eq("type", input.type);
+  const deleteQuery = admin.from("focus_items").delete().eq("type", input.type).eq("source", source);
+  const monthScopedQuery = month === null ? deleteQuery.is("month", null) : deleteQuery.eq("month", month);
   const { error: deleteError } =
-    month ? await deleteQuery.eq("month", month) : await deleteQuery.is("month", null);
+    storeId === null ? await monthScopedQuery.is("store_id", null) : await monthScopedQuery.eq("store_id", storeId);
 
   if (deleteError) {
     throw new Error(deleteError.message);
@@ -303,6 +306,8 @@ export async function setFocusItems(input: {
       item_id: itemId,
       type: input.type,
       month,
+      store_id: storeId,
+      source,
       set_by: profile.id,
     }));
     const { error: insertError } = await admin.from("focus_items").insert(rows);
@@ -316,15 +321,75 @@ export async function setFocusItems(input: {
     actorEmail: profile.email,
     action: "set_focus_items",
     entityType: "focus_items",
-    entityId: `${input.type}:${month ?? "permanent"}`,
+    entityId: `${input.type}:${month ?? "always"}:${storeId ?? "all"}`,
     details: {
       type: input.type,
       month,
+      store_id: storeId,
+      source,
       item_ids: input.itemIds,
     },
   });
 
-  revalidatePath("/settings/focus-items");
+  revalidateStoreDependentPaths();
+}
+
+export async function syncComplaintWatchTags(input: {
+  month: string;
+  storeId?: string | null;
+  itemIds: string[];
+}) {
+  const profile = await requireRole("owner", "manager");
+  const admin = createAdminClient();
+  const storeId = input.storeId ?? null;
+
+  const deleteQuery = admin
+    .from("focus_items")
+    .delete()
+    .eq("type", "complaint_watch")
+    .eq("source", "complaint_sync")
+    .eq("month", input.month);
+
+  const { error: deleteError } =
+    storeId === null ? await deleteQuery.is("store_id", null) : await deleteQuery.eq("store_id", storeId);
+
+  if (deleteError) {
+    throw new Error(deleteError.message);
+  }
+
+  if (input.itemIds.length > 0) {
+    const { error: insertError } = await admin.from("focus_items").insert(
+      input.itemIds.map((itemId) => ({
+        item_id: itemId,
+        type: "complaint_watch" as const,
+        month: input.month,
+        store_id: storeId,
+        source: "complaint_sync" as const,
+        set_by: profile.id,
+      })),
+    );
+
+    if (insertError) {
+      throw new Error(insertError.message);
+    }
+  }
+
+  await createAuditLog({
+    actorId: profile.id,
+    actorEmail: profile.email,
+    action: "set_focus_items",
+    entityType: "focus_items",
+    entityId: `complaint_watch:${input.month}:${storeId ?? "all"}:sync`,
+    details: {
+      type: "complaint_watch",
+      month: input.month,
+      store_id: storeId,
+      source: "complaint_sync",
+      item_ids: input.itemIds,
+    },
+  });
+
+  revalidateStoreDependentPaths();
 }
 
 export async function updateInspectionItemStatus(id: string, isActive: boolean) {

@@ -18,7 +18,7 @@ export default async function AuditPage() {
             <p className="font-lora text-sm uppercase tracking-[0.25em] text-warm">Audit Trail</p>
             <h1 className="mt-2 font-serifTc text-3xl font-semibold">操作紀錄</h1>
             <p className="mt-3 text-sm text-ink/70">
-              這裡會記錄帳號、組員、巡店、重點項目等重要操作，方便日後追查與回顧。
+              這裡會記錄帳號、組員、巡店、題目標籤等重要操作，方便日後追查與回顧。
             </p>
           </div>
           <a href="/api/reports/audit" className="rounded-full bg-warm px-5 py-3 text-sm text-white">
