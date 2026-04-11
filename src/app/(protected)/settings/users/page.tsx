@@ -48,11 +48,11 @@ export default async function UsersSettingsPage({ searchParams }: { searchParams
   const successMessage = getSuccessMessage(params.success);
 
   return (
-    <div className="grid gap-6 lg:grid-cols-[1.1fr_1.4fr]">
+    <div data-testid="users-settings-page" className="grid gap-6 lg:grid-cols-[1.1fr_1.4fr]">
       {successMessage ? <PageToast message={successMessage} /> : null}
 
       <SectionCard title="新增授權帳號" description="建立可登入系統的帳號。使用者仍需透過 Google 登入，系統再依 email 判斷是否授權。">
-        <form action={createUserAction} className="grid gap-4">
+        <form data-testid="users-create-form" action={createUserAction} className="grid gap-4">
           <input
             name="name"
             placeholder="輸入顯示名稱"
@@ -65,12 +65,12 @@ export default async function UsersSettingsPage({ searchParams }: { searchParams
             placeholder="email@example.com"
             className="rounded-2xl border border-ink/10 bg-white px-4 py-3"
           />
-          <select name="role" className="rounded-2xl border border-ink/10 bg-white px-4 py-3">
+          <select data-testid="users-role-select" name="role" className="rounded-2xl border border-ink/10 bg-white px-4 py-3">
             <option value="leader">店長</option>
             <option value="manager">主管</option>
             <option value="owner">系統擁有者</option>
           </select>
-          <select name="store_id" className="rounded-2xl border border-ink/10 bg-white px-4 py-3">
+          <select data-testid="users-store-select" name="store_id" className="rounded-2xl border border-ink/10 bg-white px-4 py-3">
             <option value="">不指定店別</option>
             {stores?.map((store) => (
               <option key={store.id} value={store.id}>
@@ -85,7 +85,7 @@ export default async function UsersSettingsPage({ searchParams }: { searchParams
       </SectionCard>
 
       <SectionCard title="已授權帳號" description="可查看目前已授權的帳號，並停用或重新啟用個別使用者。">
-        <div className="overflow-x-auto">
+        <div data-testid="users-table" className="overflow-x-auto">
           <table className="min-w-full text-left text-sm">
             <thead className="text-ink/60">
               <tr>

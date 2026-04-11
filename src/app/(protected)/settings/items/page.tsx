@@ -45,9 +45,9 @@ export default async function ItemsSettingsPage({ searchParams }: { searchParams
   const optionalItems = (items ?? []).filter((item) => !item.is_base);
 
   return (
-    <div className="grid gap-6">
+    <div data-testid="items-settings-page" className="grid gap-6">
       <SectionCard title="基礎題目" description="系統擁有者可控制所有基礎題目的啟用狀態，停用後就不會出現在巡店表單。">
-        <div className="grid gap-3">
+        <div data-testid="items-base-list" className="grid gap-3">
           {baseItems.map((item) => (
             <div
               key={item.id}
@@ -70,8 +70,9 @@ export default async function ItemsSettingsPage({ searchParams }: { searchParams
       </SectionCard>
 
       <SectionCard title="店別加題" description="可替指定門市設定額外題目，這些題目會在該店巡店時一併出現。">
-        <form method="get" className="mb-5 max-w-xs">
+        <form data-testid="items-store-filter-form" method="get" className="mb-5 max-w-xs">
           <select
+            data-testid="items-store-select"
             name="store"
             defaultValue={selectedStoreId}
             className="w-full rounded-2xl border border-ink/10 bg-white px-4 py-3"
@@ -87,7 +88,7 @@ export default async function ItemsSettingsPage({ searchParams }: { searchParams
           </button>
         </form>
 
-        <form action={updateExtraItemsAction} className="grid gap-4">
+        <form data-testid="items-extra-form" action={updateExtraItemsAction} className="grid gap-4">
           <input type="hidden" name="store_id" value={selectedStoreId} />
           {optionalItems.length === 0 ? (
             <p className="text-sm text-ink/65">目前還沒有店別加題。若要新增，請透過 seed 或 migration 補入。</p>

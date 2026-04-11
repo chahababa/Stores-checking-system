@@ -47,12 +47,12 @@ export default async function StoresSettingsPage() {
   }
 
   return (
-    <div className="grid gap-6 lg:grid-cols-[0.95fr_1.45fr]">
+    <div data-testid="stores-settings-page" className="grid gap-6 lg:grid-cols-[0.95fr_1.45fr]">
       <SectionCard
         title="新增店別"
         description="之後要開第 5 店、第 6 店時，直接在這裡新增即可。建議代碼延續使用 store_數字，顯示名稱使用數字店。"
       >
-        <form action={createStoreAction} className="grid gap-4">
+        <form data-testid="stores-create-form" action={createStoreAction} className="grid gap-4">
           <label className="grid gap-2 text-sm">
             <span className="text-ink/70">店別代碼</span>
             <input
@@ -83,7 +83,7 @@ export default async function StoresSettingsPage() {
         title="現有店別"
         description="這裡可以直接修正顯示名稱。既有資料會沿用同一個店別 ID，所以不會影響帳號、組員或巡店紀錄的關聯。"
       >
-        <div className="grid gap-3">
+        <div data-testid="stores-list" className="grid gap-3">
           {(stores ?? []).map((store) => (
             <form
               key={store.id}

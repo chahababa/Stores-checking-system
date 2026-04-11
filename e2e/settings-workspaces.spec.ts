@@ -38,4 +38,25 @@ test.describe("owner settings workspaces", () => {
     await expect(page.getByTestId("qa-preview-tags")).toBeVisible();
     await expect(page.getByTestId("qa-cleanup-submit")).toBeVisible();
   });
+
+  test("owner can open users, stores, and items workspaces", async ({ page }) => {
+    await page.goto("/settings/users");
+    await expect(page.getByTestId("users-settings-page")).toBeVisible();
+    await expect(page.getByTestId("users-create-form")).toBeVisible();
+    await expect(page.getByTestId("users-role-select")).toBeVisible();
+    await expect(page.getByTestId("users-store-select")).toBeVisible();
+    await expect(page.getByTestId("users-table")).toBeVisible();
+
+    await page.goto("/settings/stores");
+    await expect(page.getByTestId("stores-settings-page")).toBeVisible();
+    await expect(page.getByTestId("stores-create-form")).toBeVisible();
+    await expect(page.getByTestId("stores-list")).toBeVisible();
+
+    await page.goto("/settings/items");
+    await expect(page.getByTestId("items-settings-page")).toBeVisible();
+    await expect(page.getByTestId("items-base-list")).toBeVisible();
+    await expect(page.getByTestId("items-store-filter-form")).toBeVisible();
+    await expect(page.getByTestId("items-store-select")).toBeVisible();
+    await expect(page.getByTestId("items-extra-form")).toBeVisible();
+  });
 });

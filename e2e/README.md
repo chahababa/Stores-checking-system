@@ -73,6 +73,7 @@ The authenticated coverage now focuses on:
 - owner tag management workspace visibility
 - owner staff management workspace visibility
 - owner QA cleanup preview visibility
+- owner users / stores / items workspace visibility
 
 Example:
 

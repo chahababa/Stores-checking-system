@@ -6,10 +6,12 @@
 - 改善追蹤卡片現在會顯示 `必查項目`、`本月加強`、`客訴項目` 等標籤 badge
 - 首頁待改善清單同步補上標籤語義，讓 owner / manager / leader 都能更快判斷風險來源
 - 標籤管理、組員管理、QA 測試資料清理頁都補上穩定的 `data-testid`
+- 帳號管理、店別管理、題目管理頁也補上 read-only 驗證用 `data-testid`
 - 新增 Playwright `settings-workspaces.spec.ts`
   - owner 可開啟標籤管理頁
   - owner 可開啟組員管理頁
   - owner 可預覽 QA 測試資料清理頁，不會真的執行刪除
+  - owner 可開啟帳號管理、店別管理、題目管理頁
 
 ### 驗證
 - `npm run test`
