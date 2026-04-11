@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 
 import { SectionCard } from "@/components/section-card";
 import { getCurrentUserProfile } from "@/lib/auth";
+import { buildCategoryGrades, buildOverallInspectionGrade, getScoreGrade, type InspectionGrade } from "@/lib/grading";
 import {
   deleteInspection,
   deleteInspectionPhoto,
@@ -16,7 +17,13 @@ type PageParams = Promise<{ id: string }>;
 type PageSearchParams = Promise<{ show?: string }>;
 type ScoreFilter = "all" | "attention" | "notes" | "photos";
 
-function scoreTone(score: 1 | 2 | 3) {
+function getGradeTone(grade: InspectionGrade) {
+  if (grade === "A") return "bg-green-100 text-green-700";
+  if (grade === "B") return "bg-warm/15 text-warm";
+  return "bg-danger/10 text-danger";
+}
+
+function getScoreTone(score: 1 | 2 | 3) {
   if (score === 3) return "bg-green-100 text-green-700";
   if (score === 2) return "bg-warm/15 text-warm";
   return "bg-danger/10 text-danger";
@@ -99,6 +106,7 @@ export default async function InspectionDetailPage({
       categoryName: row.categoryName,
       rows: [row],
     });
+
     return groups;
   }, []);
 
@@ -110,14 +118,30 @@ export default async function InspectionDetailPage({
     .filter((group) => group.rows.length > 0);
 
   const visibleScoreCount = filteredGroups.reduce((sum, group) => sum + group.rows.length, 0);
+  const categoryGrades = buildCategoryGrades(
+    detail.scores.map((row) => ({
+      categoryName: row.categoryName,
+      score: row.score,
+      tagTypes: row.tagTypes,
+    })),
+  );
+  const categoryGradeMap = new Map(categoryGrades.map((group) => [group.categoryName, group]));
+  const overallGrade = buildOverallInspectionGrade(
+    detail.scores.map((row) => ({
+      categoryName: row.categoryName,
+      score: row.score,
+      tagTypes: row.tagTypes,
+    })),
+  );
+  const concernCount = detail.scores.filter((row) => row.score <= 2 || row.isFocusItem).length;
 
   return (
     <div className="grid gap-6">
       <div className="flex flex-col gap-4 rounded-[28px] border border-ink/10 bg-white p-6 shadow-card md:flex-row md:items-center md:justify-between">
         <div>
-          <p className="font-lora text-sm uppercase tracking-[0.25em] text-warm">巡店明細</p>
+          <p className="font-lora text-sm uppercase tracking-[0.25em] text-warm">Inspection Detail</p>
           <h1 className="mt-2 font-serifTc text-3xl font-semibold">
-            {detail.store?.name ?? "門市"} / {detail.date}
+            {detail.store?.name ?? "未指定店別"} / {detail.date}
           </h1>
           <div className="mt-3 flex flex-wrap items-center gap-2 text-sm text-ink/70">
             <span>{detail.timeSlot}</span>
@@ -125,12 +149,15 @@ export default async function InspectionDetailPage({
             <span>{getBusynessLabel(detail.busynessLevel)}</span>
             <span>/</span>
             <span>平均分數 {detail.totalScore}</span>
+            <span className={`rounded-full px-3 py-1 text-xs font-medium ${getGradeTone(overallGrade.finalGrade)}`}>
+              總評 {overallGrade.finalGrade}
+            </span>
             <span
               className={`rounded-full px-3 py-1 text-xs ${
                 detail.isEditable ? "bg-warm/15 text-warm" : "bg-ink/10 text-ink/70"
               }`}
             >
-              {detail.isEditable ? "可編輯" : "已鎖單"}
+              {detail.isEditable ? "可編輯" : "已鎖定"}
             </span>
           </div>
         </div>
@@ -150,7 +177,7 @@ export default async function InspectionDetailPage({
       </div>
 
       {canManageInspection ? (
-        <SectionCard title="巡店控管" description="這筆紀錄可以鎖單、解鎖，必要時也能由系統擁有者刪除。">
+        <SectionCard title="巡店管理" description="主管與系統擁有者可以控制鎖單狀態，也能刪除整筆巡店紀錄。">
           <div className="flex flex-wrap gap-3">
             <form action={toggleEditableAction}>
               <input type="hidden" name="inspection_id" value={id} />
@@ -164,7 +191,7 @@ export default async function InspectionDetailPage({
               <form action={deleteInspectionAction}>
                 <input type="hidden" name="inspection_id" value={id} />
                 <button type="submit" className="rounded-full bg-danger px-5 py-3 text-sm text-white">
-                  刪除此巡店紀錄
+                  刪除這筆巡店
                 </button>
               </form>
             ) : null}
@@ -173,18 +200,34 @@ export default async function InspectionDetailPage({
       ) : null}
 
       <div className="grid gap-6 lg:grid-cols-[0.9fr_1.4fr]">
-        <SectionCard title="巡店摘要" description="這筆巡店的基本資料與執行人員。">
+        <SectionCard title="巡店摘要" description="先看總評、關注題數與這筆巡店的基本資料。">
           <div className="grid gap-3 text-sm text-ink/75">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className={`rounded-full px-3 py-1 text-xs font-medium ${getGradeTone(overallGrade.finalGrade)}`}>
+                總評 {overallGrade.finalGrade}
+              </span>
+              <span className="rounded-full bg-soft px-3 py-1 text-xs text-ink/75">需關注 {concernCount} 題</span>
+            </div>
             <p>店別：{detail.store?.name ?? "-"}</p>
             <p>巡店人：{detail.inspector?.name || detail.inspector?.email || "-"}</p>
             <p>日期：{detail.date}</p>
             <p>時段：{detail.timeSlot}</p>
             <p>忙碌程度：{getBusynessLabel(detail.busynessLevel)}</p>
             <p>平均分數：{detail.totalScore}</p>
+            {overallGrade.adjustments.length > 0 ? (
+              <div className="rounded-2xl border border-danger/20 bg-danger/5 px-4 py-3 text-xs leading-6 text-danger">
+                <p className="font-medium">總評調整原因</p>
+                <ul className="mt-2 grid gap-1">
+                  {overallGrade.adjustments.map((adjustment) => (
+                    <li key={adjustment}>- {adjustment}</li>
+                  ))}
+                </ul>
+              </div>
+            ) : null}
           </div>
         </SectionCard>
 
-        <SectionCard title="當班人員" description="本次巡店記錄的當班組員與角色。">
+        <SectionCard title="當班人員" description="這筆巡店當下有哪些人員在場，以及他們當班扮演的角色。">
           <div className="grid gap-3 md:grid-cols-2">
             {detail.staff.map((member) => (
               <div key={member.id} className="rounded-2xl border border-ink/10 bg-soft/40 px-4 py-3 text-sm text-ink/75">
@@ -205,7 +248,7 @@ export default async function InspectionDetailPage({
 
       <SectionCard
         title="評分項目"
-        description={`目前顯示 ${visibleScoreCount} / ${detail.scores.length} 個項目。可切換成只看低分、備註或照片。`}
+        description={`目前顯示 ${visibleScoreCount} / ${detail.scores.length} 題。先看各分類評級，再往下追蹤低分、備註與照片。`}
       >
         <div className="flex flex-wrap gap-2">
           {[
@@ -227,105 +270,129 @@ export default async function InspectionDetailPage({
         </div>
 
         <div className="mt-5 grid gap-4">
-          {filteredGroups.map((group) => (
-            <details key={group.categoryName} open className="rounded-[24px] border border-ink/10 bg-white">
-              <summary className="flex cursor-pointer list-none items-center justify-between gap-4 px-5 py-4">
-                <div>
-                  <p className="font-serifTc text-xl font-semibold text-ink">{group.categoryName}</p>
-                  <p className="mt-1 text-sm text-ink/60">共 {group.rows.length} 個項目</p>
-                </div>
-                <span className="rounded-full bg-soft px-3 py-1 text-xs text-ink/70">展開 / 收合</span>
-              </summary>
-              <div className="grid gap-4 border-t border-ink/10 px-5 py-5">
-                {group.rows.map((row) => (
-                  <article key={row.id} className="rounded-[24px] border border-ink/10 bg-soft/30 p-4">
-                    <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
-                      <div>
-                        <div className="flex flex-wrap items-center gap-2">
-                          <p className="font-medium text-ink">{row.itemName}</p>
-                          {row.tagTypes.map((tagType) => (
-                            <span
-                              key={tagType}
-                              className={`rounded-full px-3 py-1 text-xs text-white ${
-                                tagType === "critical"
-                                  ? "bg-danger"
-                                  : tagType === "monthly_attention"
-                                    ? "bg-warm"
-                                    : "bg-ink"
-                              }`}
-                            >
-                              {getInspectionTagLabel(tagType)}
-                            </span>
-                          ))}
-                          {row.isFocusItem && row.tagTypes.length === 0 ? (
-                            <span className="rounded-full bg-warm px-3 py-1 text-xs text-white">重點項目</span>
-                          ) : null}
-                          {row.hasPrevIssue ? (
-                            <span className="rounded-full bg-danger/10 px-3 py-1 text-xs text-danger">
-                              連續低分 {row.consecutiveWeeks} 週
-                            </span>
+          {filteredGroups.map((group) => {
+            const categorySummary = categoryGradeMap.get(group.categoryName);
+
+            return (
+              <details key={group.categoryName} open className="rounded-[24px] border border-ink/10 bg-white">
+                <summary className="flex cursor-pointer list-none items-center justify-between gap-4 px-5 py-4">
+                  <div className="flex flex-col gap-2">
+                    <p className="font-serifTc text-xl font-semibold text-ink">{group.categoryName}</p>
+                    <div className="flex flex-wrap items-center gap-2 text-sm text-ink/60">
+                      <span>共 {group.rows.length} 題</span>
+                      {categorySummary ? (
+                        <>
+                          <span>/</span>
+                          <span>平均分數 {categorySummary.averageScore.toFixed(2)}</span>
+                          <span
+                            className={`rounded-full px-3 py-1 text-xs font-medium ${getGradeTone(categorySummary.grade)}`}
+                          >
+                            分類評級 {categorySummary.grade}
+                          </span>
+                        </>
+                      ) : null}
+                    </div>
+                  </div>
+                  <span className="rounded-full bg-soft px-3 py-1 text-xs text-ink/70">展開 / 收合</span>
+                </summary>
+                <div className="grid gap-4 border-t border-ink/10 px-5 py-5">
+                  {group.rows.map((row) => (
+                    <article key={row.id} className="rounded-[24px] border border-ink/10 bg-soft/30 p-4">
+                      <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+                        <div>
+                          <div className="flex flex-wrap items-center gap-2">
+                            <p className="font-medium text-ink">{row.itemName}</p>
+                            {row.tagTypes.map((tagType) => (
+                              <span
+                                key={tagType}
+                                className={`rounded-full px-3 py-1 text-xs text-white ${
+                                  tagType === "critical"
+                                    ? "bg-danger"
+                                    : tagType === "monthly_attention"
+                                      ? "bg-warm"
+                                      : "bg-ink"
+                                }`}
+                              >
+                                {getInspectionTagLabel(tagType)}
+                              </span>
+                            ))}
+                            {row.isFocusItem && row.tagTypes.length === 0 ? (
+                              <span className="rounded-full bg-warm px-3 py-1 text-xs text-white">重點項目</span>
+                            ) : null}
+                            {row.hasPrevIssue ? (
+                              <span className="rounded-full bg-danger/10 px-3 py-1 text-xs text-danger">
+                                連續低分 {row.consecutiveWeeks} 週
+                              </span>
+                            ) : null}
+                          </div>
+                          {row.note ? <p className="mt-3 text-sm leading-6 text-ink/75">{row.note}</p> : null}
+                          {row.task ? (
+                            <p className="mt-2 text-xs text-ink/55">
+                              改善任務：{getImprovementStatusLabel(row.task.status)} / 建立於 {row.task.createdAt.slice(0, 10)}
+                            </p>
                           ) : null}
                         </div>
-                        {row.note ? <p className="mt-3 text-sm leading-6 text-ink/75">{row.note}</p> : null}
-                        {row.task ? (
-                          <p className="mt-2 text-xs text-ink/55">
-                            改善狀態：{getImprovementStatusLabel(row.task.status)} / 建立於 {row.task.createdAt.slice(0, 10)}
-                          </p>
-                        ) : null}
+                        <div className="flex flex-col items-end gap-2">
+                          <span className={`rounded-full px-4 py-2 text-sm font-medium ${getGradeTone(getScoreGrade(row.score))}`}>
+                            評級 {getScoreGrade(row.score)}
+                          </span>
+                          <span className={`rounded-full px-4 py-2 text-xs font-medium ${getScoreTone(row.score)}`}>
+                            原始分數 {row.score}
+                          </span>
+                        </div>
                       </div>
-                      <span className={`rounded-full px-4 py-2 text-sm font-medium ${scoreTone(row.score)}`}>分數 {row.score}</span>
-                    </div>
 
-                    {row.photos.length > 0 ? (
-                      <div className="mt-4 grid grid-cols-2 gap-3 md:grid-cols-4">
-                        {row.photos.map((photo) => (
-                          <div key={photo.id} className="overflow-hidden rounded-2xl border border-ink/10 bg-white">
-                            <a href={photo.photoUrl} target="_blank" rel="noreferrer" className="group block">
-                              <div
-                                className="aspect-square w-full bg-cover bg-center transition group-hover:scale-[1.02]"
-                                style={{ backgroundImage: `url(${photo.photoUrl})` }}
-                              />
-                            </a>
-                            <div className="grid gap-2 px-3 py-3">
-                              <div className="text-xs text-ink/70">{photo.isStandard ? "標準照片" : "巡店照片"}</div>
-                              {canManagePhotos ? (
-                                <div className="flex flex-wrap gap-2">
-                                  <form action={toggleStandardAction}>
-                                    <input type="hidden" name="photo_id" value={photo.id} />
-                                    <input type="hidden" name="next_value" value={String(!photo.isStandard)} />
-                                    <button type="submit" className="rounded-full bg-soft px-3 py-2 text-xs text-ink/70">
-                                      {photo.isStandard ? "取消標準" : "設為標準"}
-                                    </button>
-                                  </form>
-                                  <form action={deletePhotoAction}>
-                                    <input type="hidden" name="photo_id" value={photo.id} />
-                                    <button type="submit" className="rounded-full bg-danger/10 px-3 py-2 text-xs text-danger">
-                                      刪除照片
-                                    </button>
-                                  </form>
-                                </div>
-                              ) : null}
+                      {row.photos.length > 0 ? (
+                        <div className="mt-4 grid grid-cols-2 gap-3 md:grid-cols-4">
+                          {row.photos.map((photo) => (
+                            <div key={photo.id} className="overflow-hidden rounded-2xl border border-ink/10 bg-white">
+                              <a href={photo.photoUrl} target="_blank" rel="noreferrer" className="group block">
+                                <div
+                                  className="aspect-square w-full bg-cover bg-center transition group-hover:scale-[1.02]"
+                                  style={{ backgroundImage: `url(${photo.photoUrl})` }}
+                                />
+                              </a>
+                              <div className="grid gap-2 px-3 py-3">
+                                <div className="text-xs text-ink/70">{photo.isStandard ? "標準照片" : "巡店照片"}</div>
+                                {canManagePhotos ? (
+                                  <div className="flex flex-wrap gap-2">
+                                    <form action={toggleStandardAction}>
+                                      <input type="hidden" name="photo_id" value={photo.id} />
+                                      <input type="hidden" name="next_value" value={String(!photo.isStandard)} />
+                                      <button type="submit" className="rounded-full bg-soft px-3 py-2 text-xs text-ink/70">
+                                        {photo.isStandard ? "取消標準照" : "設為標準照"}
+                                      </button>
+                                    </form>
+                                    <form action={deletePhotoAction}>
+                                      <input type="hidden" name="photo_id" value={photo.id} />
+                                      <button type="submit" className="rounded-full bg-danger/10 px-3 py-2 text-xs text-danger">
+                                        刪除照片
+                                      </button>
+                                    </form>
+                                  </div>
+                                ) : null}
+                              </div>
                             </div>
-                          </div>
-                        ))}
-                      </div>
-                    ) : null}
-                  </article>
-                ))}
-              </div>
-            </details>
-          ))}
+                          ))}
+                        </div>
+                      ) : null}
+                    </article>
+                  ))}
+                </div>
+              </details>
+            );
+          })}
 
           {filteredGroups.length === 0 ? (
             <div className="rounded-2xl border border-dashed border-ink/15 px-4 py-6 text-sm text-ink/60">
-              目前這個篩選條件下沒有符合的評分項目。
+              目前沒有符合這個條件的評分項目。
             </div>
           ) : null}
         </div>
       </SectionCard>
 
       <div className="grid gap-6 lg:grid-cols-2">
-        <SectionCard title="餐點抽查記錄" description="內用與外帶的餐點品質抽查資訊。">
+        <SectionCard title="餐點品質抽查" description="保留這次抽查的餐點名稱與份量，方便回頭比對。">
           <div className="grid gap-3">
             {detail.menuItems.map((item) => (
               <div key={item.id} className="rounded-2xl border border-ink/10 bg-soft/40 px-4 py-3 text-sm text-ink/75">
@@ -342,7 +409,7 @@ export default async function InspectionDetailPage({
           </div>
         </SectionCard>
 
-        <SectionCard title="改善與補充說明" description="巡店過程中的額外備註與後續追蹤資訊。">
+        <SectionCard title="其他備註" description="保留這次巡店額外記錄的補充內容。">
           <div className="grid gap-3">
             {detail.legacyNotes.map((note) => (
               <div key={note.id} className="rounded-2xl border border-ink/10 bg-soft/40 px-4 py-3 text-sm leading-6 text-ink/75">

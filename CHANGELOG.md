@@ -1,5 +1,31 @@
 # Changelog
 
+Stores Checking System 的開發、部署、驗證與修復紀錄。
+
+## 2026-04-11
+
+### A / B / C 評級規則與顯示
+- 新增 `SCORING_GRADING_SPEC.md`，整理 `3 分 = A / 2 分 = B / 1 分 = C` 的規則與後續實作階段。
+- 新增 `src/lib/grading.ts`
+  - 單題分數轉換為 `A / B / C`
+  - 分類平均評級
+  - 全店總評與標籤降級規則
+- 新增 `src/lib/grading.test.ts`，覆蓋評級 helper 的主要邏輯。
+- 巡店紀錄頁改成顯示：
+  - 本月整體評級
+  - A / B / C 巡店數
+  - 每筆巡店的總評等級
+- 巡店明細頁改成顯示：
+  - 總評等級
+  - 分類評級
+  - 單題評級
+  - 總評調整原因
+  - 巡店人優先顯示姓名，無姓名時才 fallback email
+
+### 驗證
+- `npm run test` 通過
+- `npm run build` 通過
+
 Stores Checking System 的部署、修復與產品體驗調整紀錄。
 
 ## 2026-04-11
