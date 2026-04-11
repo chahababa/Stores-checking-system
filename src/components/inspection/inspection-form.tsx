@@ -79,6 +79,103 @@ function createInitialState(seed: InspectionFormSeed): InspectionFormDraftState 
   };
 }
 
+function isScoreValue(value: unknown): value is ScoreValue {
+  return value === 1 || value === 2 || value === 3;
+}
+
+function normalizeDraftState(raw: unknown, seed: InspectionFormSeed): InspectionFormDraftState {
+  const fallback = createInitialState(seed);
+  if (!raw || typeof raw !== "object") {
+    return fallback;
+  }
+
+  const draft = raw as Partial<InspectionFormDraftState> & {
+    selectedStaff?: Record<string, unknown>;
+    scores?: Record<string, Partial<InspectionFormDraftState["scores"][string]>>;
+  };
+
+  const workstationByArea = {
+    kitchen: seed.workstations.find((workstation) => workstation.area === "kitchen")?.id ?? null,
+    floor: seed.workstations.find((workstation) => workstation.area === "floor")?.id ?? null,
+    counter: seed.workstations.find((workstation) => workstation.area === "counter")?.id ?? null,
+  };
+
+  const normalizedSelectedStaff = Object.fromEntries(
+    Object.entries(draft.selectedStaff ?? {})
+      .map(([staffId, workstationId]) => {
+        if (typeof workstationId !== "string") {
+          return null;
+        }
+
+        if (seed.workstations.some((workstation) => workstation.id === workstationId)) {
+          return [staffId, workstationId] as const;
+        }
+
+        if (workstationId in workstationByArea) {
+          const mapped = workstationByArea[workstationId as keyof typeof workstationByArea];
+          return mapped ? ([staffId, mapped] as const) : null;
+        }
+
+        return null;
+      })
+      .filter((entry): entry is readonly [string, string] => Boolean(entry)),
+  );
+
+  const normalizedScores = Object.fromEntries(
+    Object.entries(fallback.scores).map(([itemId, baseScore]) => {
+      const rawScore = draft.scores?.[itemId];
+      return [
+        itemId,
+        {
+          ...baseScore,
+          score: isScoreValue(rawScore?.score) ? rawScore.score : baseScore.score,
+          note: typeof rawScore?.note === "string" ? rawScore.note : baseScore.note,
+          isFocusItem: typeof rawScore?.isFocusItem === "boolean" ? rawScore.isFocusItem : baseScore.isFocusItem,
+          tagTypes: Array.isArray(rawScore?.tagTypes)
+            ? rawScore.tagTypes.filter((tag): tag is InspectionTagType =>
+                tag === "critical" || tag === "monthly_attention" || tag === "complaint_watch",
+              )
+            : baseScore.tagTypes,
+          hasPrevIssue:
+            typeof rawScore?.hasPrevIssue === "boolean" ? rawScore.hasPrevIssue : baseScore.hasPrevIssue,
+          consecutiveWeeks:
+            typeof rawScore?.consecutiveWeeks === "number" ? rawScore.consecutiveWeeks : baseScore.consecutiveWeeks,
+        },
+      ];
+    }),
+  );
+
+  return {
+    ...fallback,
+    storeId: typeof draft.storeId === "string" && draft.storeId ? draft.storeId : fallback.storeId,
+    date: typeof draft.date === "string" && draft.date ? draft.date : fallback.date,
+    timeSlot: typeof draft.timeSlot === "string" ? draft.timeSlot : fallback.timeSlot,
+    busynessLevel:
+      draft.busynessLevel === "low" || draft.busynessLevel === "medium" || draft.busynessLevel === "high"
+        ? draft.busynessLevel
+        : fallback.busynessLevel,
+    selectedStaff: normalizedSelectedStaff,
+    scores: normalizedScores,
+    menuItems: {
+      dineInDishName:
+        typeof draft.menuItems?.dineInDishName === "string" ? draft.menuItems.dineInDishName : fallback.menuItems.dineInDishName,
+      dineInPortionWeight:
+        typeof draft.menuItems?.dineInPortionWeight === "string"
+          ? draft.menuItems.dineInPortionWeight
+          : fallback.menuItems.dineInPortionWeight,
+      takeoutDishName:
+        typeof draft.menuItems?.takeoutDishName === "string"
+          ? draft.menuItems.takeoutDishName
+          : fallback.menuItems.takeoutDishName,
+      takeoutPortionWeight:
+        typeof draft.menuItems?.takeoutPortionWeight === "string"
+          ? draft.menuItems.takeoutPortionWeight
+          : fallback.menuItems.takeoutPortionWeight,
+    },
+    legacyNote: typeof draft.legacyNote === "string" ? draft.legacyNote : fallback.legacyNote,
+  };
+}
+
 function getWorkstationLabel(workstation: WorkstationOption | undefined) {
   if (!workstation) {
     return "未指定工作站";
@@ -181,7 +278,7 @@ export function InspectionForm({
       const shouldLoad = window.confirm("發現這個店別與日期已有草稿，要繼續接著填寫嗎？");
       if (shouldLoad) {
         try {
-          setForm(JSON.parse(existingDraft) as InspectionFormDraftState);
+          setForm(normalizeDraftState(JSON.parse(existingDraft), seed));
           setDraftSaveState("saved");
           setLastDraftSavedAt(new Date());
         } catch {
