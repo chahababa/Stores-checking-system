@@ -80,7 +80,7 @@ export type InspectionDetail = {
   totalScore: string;
   isEditable: boolean;
   store: { id: string; name: string } | null;
-  inspector: { id: string; email: string } | null;
+  inspector: { id: string; email: string; name: string | null } | null;
   staff: Array<{
     id: string;
     name: string;
@@ -537,7 +537,9 @@ export async function getInspectionDetail(inspectionId: string): Promise<Inspect
 
   const { data: inspectionRow, error: inspectionError } = await admin
     .from("inspections")
-    .select("id, date, time_slot, busyness_level, total_score, is_editable, store_id, stores(id, name), users(id, email)")
+    .select(
+      "id, date, time_slot, busyness_level, total_score, is_editable, store_id, stores(id, name), users(id, email, name)",
+    )
     .eq("id", inspectionId)
     .maybeSingle();
 
