@@ -46,6 +46,18 @@ export type InspectionItemUpdateInput = InspectionItemInput & {
   isActive: boolean;
 };
 
+export type CategoryFieldType = "kitchen" | "floor" | "none";
+
+export type CategoryInput = {
+  name: string;
+  sortOrder?: number | null;
+  fieldType: CategoryFieldType;
+};
+
+export type CategoryUpdateInput = CategoryInput & {
+  id: string;
+};
+
 export type InspectionTagType = "critical" | "monthly_attention" | "complaint_watch";
 export type InspectionTagSource = "manual" | "complaint_sync";
 export type QaCleanupPreview = {
@@ -539,6 +551,102 @@ export async function restoreStaffMember(id: string) {
   });
 
   revalidatePath("/settings/staff");
+}
+
+export async function createInspectionCategory(input: CategoryInput) {
+  const profile = await requireRole("owner");
+  const admin = createAdminClient();
+  const name = input.name.trim();
+
+  if (!name) {
+    throw new Error("請填寫類別名稱。");
+  }
+
+  let sortOrder = input.sortOrder ?? null;
+  if (sortOrder === null || Number.isNaN(sortOrder)) {
+    const { data: sortRow, error: sortError } = await admin
+      .from("categories")
+      .select("sort_order")
+      .order("sort_order", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (sortError) {
+      throw new Error(sortError.message);
+    }
+
+    sortOrder = (sortRow?.sort_order ?? 0) + 10;
+  }
+
+  const { data, error } = await admin
+    .from("categories")
+    .insert({
+      name,
+      sort_order: sortOrder,
+      field_type: input.fieldType,
+    })
+    .select("id")
+    .single();
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  await createAuditLog({
+    actorId: profile.id,
+    actorEmail: profile.email,
+    action: "create_category",
+    entityType: "category",
+    entityId: data?.id ?? name,
+    details: {
+      name,
+      sort_order: sortOrder,
+      field_type: input.fieldType,
+    },
+  });
+
+  revalidatePath("/settings/items");
+  revalidatePath("/inspection/new");
+}
+
+export async function updateInspectionCategory(input: CategoryUpdateInput) {
+  const profile = await requireRole("owner");
+  const admin = createAdminClient();
+  const name = input.name.trim();
+
+  if (!name) {
+    throw new Error("請填寫類別名稱。");
+  }
+
+  const sortOrder = input.sortOrder ?? 100;
+  const { error } = await admin
+    .from("categories")
+    .update({
+      name,
+      sort_order: sortOrder,
+      field_type: input.fieldType,
+    })
+    .eq("id", input.id);
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  await createAuditLog({
+    actorId: profile.id,
+    actorEmail: profile.email,
+    action: "update_category",
+    entityType: "category",
+    entityId: input.id,
+    details: {
+      name,
+      sort_order: sortOrder,
+      field_type: input.fieldType,
+    },
+  });
+
+  revalidatePath("/settings/items");
+  revalidatePath("/inspection/new");
 }
 
 export async function getInspectionItemTags(month: string) {

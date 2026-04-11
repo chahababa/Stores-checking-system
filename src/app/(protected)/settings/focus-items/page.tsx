@@ -1,3 +1,6 @@
+import { redirect } from "next/navigation";
+
+import { PageToast } from "@/components/page-toast";
 import { SectionCard } from "@/components/section-card";
 import { requireRole } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -5,7 +8,7 @@ import { getInspectionTagDescription, getInspectionTagLabel, getInspectionTagSou
 import { formatMonthValue } from "@/lib/utils";
 import { getInspectionItemTags } from "@/lib/settings";
 
-type SearchParams = Promise<{ month?: string; monthlyStore?: string; complaintStore?: string }>;
+type SearchParams = Promise<{ month?: string; monthlyStore?: string; complaintStore?: string; success?: string }>;
 
 function getRelation<T>(value: T | T[] | null | undefined) {
   if (Array.isArray(value)) {
@@ -13,6 +16,13 @@ function getRelation<T>(value: T | T[] | null | undefined) {
   }
 
   return value ?? null;
+}
+
+function getSuccessMessage(success?: string) {
+  if (success === "critical-updated") return "必查項目已更新。";
+  if (success === "monthly-updated") return "本月加強標籤已更新。";
+  if (success === "complaint-updated") return "客訴項目標籤已更新。";
+  return null;
 }
 
 export default async function FocusItemsPage({ searchParams }: { searchParams: SearchParams }) {
@@ -62,6 +72,31 @@ export default async function FocusItemsPage({ searchParams }: { searchParams: S
       ((complaintStoreId && entry.store_id === complaintStoreId) || (!complaintStoreId && !entry.store_id)),
   );
 
+  const groupedItems = Object.values(
+    (items ?? []).reduce<Record<string, { categoryName: string; items: NonNullable<typeof items> }>>((carry, item) => {
+      const category = getRelation(item.categories) as { name?: string } | null;
+      const key = category?.name ?? "未分類";
+      const group = carry[key] ?? {
+        categoryName: key,
+        items: [],
+      };
+      group.items.push(item);
+      carry[key] = group;
+      return carry;
+    }, {}),
+  );
+
+  const successMessage = getSuccessMessage(params.success);
+
+  function getScopedRedirect(segment: string) {
+    const query = new URLSearchParams();
+    query.set("success", segment);
+    query.set("month", month);
+    if (monthlyStoreId) query.set("monthlyStore", monthlyStoreId);
+    if (complaintStoreId) query.set("complaintStore", complaintStoreId);
+    return `/settings/focus-items?${query.toString()}`;
+  }
+
   async function updateCriticalAction(formData: FormData) {
     "use server";
     const { setInspectionItemTags } = await import("@/lib/settings");
@@ -69,6 +104,7 @@ export default async function FocusItemsPage({ searchParams }: { searchParams: S
       type: "critical",
       itemIds: formData.getAll("item_ids").map(String),
     });
+    redirect(getScopedRedirect("critical-updated"));
   }
 
   async function updateMonthlyAction(formData: FormData) {
@@ -81,6 +117,7 @@ export default async function FocusItemsPage({ searchParams }: { searchParams: S
       storeId: storeValue || null,
       itemIds: formData.getAll("item_ids").map(String),
     });
+    redirect(getScopedRedirect("monthly-updated"));
   }
 
   async function updateComplaintAction(formData: FormData) {
@@ -93,29 +130,40 @@ export default async function FocusItemsPage({ searchParams }: { searchParams: S
       storeId: storeValue || null,
       itemIds: formData.getAll("item_ids").map(String),
     });
+    redirect(getScopedRedirect("complaint-updated"));
   }
 
   function renderItemChecklist(selectedIds: Set<string>) {
     return (
-      <div className="grid gap-3 md:grid-cols-2">
-        {items?.map((item) => {
-          const category = getRelation(item.categories) as { name?: string } | null;
-          return (
-            <label key={item.id} className="flex items-start gap-3 rounded-2xl border border-ink/10 bg-white/70 p-3">
-              <input type="checkbox" name="item_ids" value={item.id} defaultChecked={selectedIds.has(item.id)} className="mt-1" />
-              <span>
-                <span className="block font-medium">{item.name}</span>
-                <span className="text-xs text-ink/60">{category?.name ?? "未分類"}</span>
-              </span>
-            </label>
-          );
-        })}
+      <div className="grid gap-4">
+        {groupedItems.map((group) => (
+          <div key={group.categoryName} className="rounded-[24px] border border-ink/10 bg-soft/30 p-4">
+            <div className="mb-4 flex items-center justify-between gap-3">
+              <div>
+                <p className="font-medium text-ink">{group.categoryName}</p>
+                <p className="text-xs text-ink/60">{group.items.length} 題 / 已選 {group.items.filter((item) => selectedIds.has(item.id)).length} 題</p>
+              </div>
+            </div>
+            <div className="grid gap-3 md:grid-cols-2">
+              {group.items.map((item) => (
+                <label key={item.id} className="flex items-start gap-3 rounded-2xl border border-ink/10 bg-white/80 p-3">
+                  <input type="checkbox" name="item_ids" value={item.id} defaultChecked={selectedIds.has(item.id)} className="mt-1" />
+                  <span>
+                    <span className="block font-medium">{item.name}</span>
+                    <span className="text-xs text-ink/60">{group.categoryName}</span>
+                  </span>
+                </label>
+              ))}
+            </div>
+          </div>
+        ))}
       </div>
     );
   }
 
   return (
     <div data-testid="tag-management-page" className="grid gap-6">
+      {successMessage ? <PageToast message={successMessage} /> : null}
       <SectionCard
         title="題目標籤總覽"
         description="這裡管理巡店表單中的題目標籤。只要題目被標記，就不會預設為 3 分，必須由巡店人員手動確認。"
@@ -127,6 +175,11 @@ export default async function FocusItemsPage({ searchParams }: { searchParams: S
               <p className="mt-2 text-sm leading-6 text-ink/70">{getInspectionTagDescription(type)}</p>
             </div>
           ))}
+        </div>
+        <div className="mt-4 flex flex-wrap gap-2 text-xs text-ink/70">
+          <span className="rounded-full bg-soft px-3 py-2">必查：{criticalIds.size} 題</span>
+          <span className="rounded-full bg-soft px-3 py-2">本月加強：{monthlyIds.size} 題</span>
+          <span className="rounded-full bg-soft px-3 py-2">客訴項目：{complaintIds.size + complaintAutoTags.length} 題</span>
         </div>
       </SectionCard>
 

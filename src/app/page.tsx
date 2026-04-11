@@ -10,6 +10,7 @@ import {
   type InspectionGrade,
   type InspectionTagType,
 } from "@/lib/grading";
+import { buildNotificationFeed, getNotificationLevelLabel, getNotificationTone } from "@/lib/notification-rules";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getInspectionTagLabel } from "@/lib/ui-labels";
 
@@ -55,7 +56,7 @@ export default async function HomePage() {
 
   let inspectionsQuery = admin
     .from("inspections")
-    .select("id, date, time_slot, total_score, created_at, store_id, stores(id, name), inspection_scores(score, applied_tag_types, inspection_items(categories(name)))")
+    .select("id, date, time_slot, total_score, created_at, store_id, stores(id, name), inspection_scores(score, consecutive_weeks, applied_tag_types, inspection_items(name, categories(name)))")
     .gte("date", start)
     .lt("date", end)
     .order("date", { ascending: false })
@@ -262,6 +263,30 @@ export default async function HomePage() {
     },
   ];
 
+  const notificationFeed = buildNotificationFeed({
+    inspections: inspectionRows.map((inspection) => {
+      const store = getSingleRelation(inspection.stores) as { name?: string } | null;
+      return {
+        id: inspection.id,
+        date: inspection.date,
+        timeSlot: inspection.time_slot,
+        storeName: store?.name ?? "未指定店別",
+        scores: (inspection.inspection_scores ?? []).map((row) => {
+          const item = getSingleRelation(row.inspection_items) as { name?: string; categories?: unknown } | null;
+          const category = item ? (getSingleRelation(item.categories as never) as { name?: string } | null) : null;
+          return {
+            itemName: item?.name ?? "未命名題目",
+            categoryName: category?.name ?? "未分類",
+            score: row.score,
+            tagTypes: row.applied_tag_types ?? [],
+            consecutiveWeeks: row.consecutive_weeks ?? 0,
+          };
+        }),
+      };
+    }),
+    pendingTasks,
+  });
+
   return (
     <AppShell profile={profile} pathname="/">
       <div className="grid gap-6">
@@ -360,6 +385,44 @@ export default async function HomePage() {
             <p className="text-sm text-ink/60">客訴項目異常</p>
             <p className="mt-2 font-serifTc text-3xl font-semibold text-ink">{tagIssueCounts.complaintWatch}</p>
             <p className="mt-2 text-xs text-ink/55">目前被標記為客訴項目且落在 B / C 的題目數</p>
+          </div>
+        </section>
+
+        <section className="rounded-[28px] border border-ink/10 bg-white p-6 shadow-card">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <p className="font-lora text-sm uppercase tracking-[0.25em] text-warm">Notifications</p>
+              <h2 className="mt-2 font-serifTc text-2xl font-semibold">通知摘要</h2>
+            </div>
+            <Link href="/notifications" className="text-sm text-warm underline-offset-4 hover:underline">
+              查看全部
+            </Link>
+          </div>
+          <div className="mt-5 grid gap-3">
+            {notificationFeed.items.slice(0, 4).map((item) => (
+              <div key={item.id} className={`rounded-[22px] border px-4 py-4 ${getNotificationTone(item.level)}`}>
+                <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+                  <div>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="rounded-full bg-white/90 px-3 py-1 text-xs font-medium">
+                        {getNotificationLevelLabel(item.level)} 優先級
+                      </span>
+                      {item.storeName ? <span className="text-xs opacity-80">{item.storeName}</span> : null}
+                    </div>
+                    <p className="mt-3 font-medium">{item.title}</p>
+                    <p className="mt-2 text-sm leading-6 opacity-85">{item.description}</p>
+                  </div>
+                  {item.href ? (
+                    <Link
+                      href={item.href}
+                      className="rounded-full bg-white/90 px-4 py-2 text-sm text-ink transition hover:bg-white"
+                    >
+                      前往查看
+                    </Link>
+                  ) : null}
+                </div>
+              </div>
+            ))}
           </div>
         </section>
 

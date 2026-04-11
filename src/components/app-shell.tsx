@@ -18,6 +18,7 @@ const inspectionLinks: NavigationLink[] = [
   { href: "/inspection/history", label: "巡店紀錄", roles: ["owner", "manager", "leader"] },
   { href: "/inspection/improvements", label: "改善追蹤", roles: ["owner", "manager", "leader"] },
   { href: "/inspection/reports", label: "報表分析", roles: ["owner", "manager", "leader"] },
+  { href: "/notifications", label: "通知中心", roles: ["owner", "manager", "leader"] },
 ];
 
 const peopleAndItemLinks: NavigationLink[] = [

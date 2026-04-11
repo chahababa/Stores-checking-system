@@ -4,10 +4,13 @@ import { PageToast } from "@/components/page-toast";
 import { SectionCard } from "@/components/section-card";
 import { requireRole } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { getCategoryFieldTypeLabel } from "@/lib/ui-labels";
 
 type SearchParams = Promise<{ store?: string; success?: string }>;
 
 function getSuccessMessage(success?: string) {
+  if (success === "category-created") return "題目類別已新增。";
+  if (success === "category-updated") return "題目類別已更新。";
   if (success === "item-created") return "題目已新增。";
   if (success === "item-updated") return "題目內容已更新。";
   if (success === "item-scope-updated") return "店別加題適用範圍已更新。";
@@ -21,7 +24,7 @@ export default async function ItemsSettingsPage({ searchParams }: { searchParams
 
   const [{ data: stores }, { data: categories }, { data: items }, { data: extraRows }] = await Promise.all([
     admin.from("stores").select("id, name, code").order("name"),
-    admin.from("categories").select("id, name, sort_order").order("sort_order"),
+    admin.from("categories").select("id, name, sort_order, field_type").order("sort_order"),
     admin
       .from("inspection_items")
       .select("id, name, is_base, is_active, category_id, sort_order, categories(id, name)")
@@ -54,6 +57,29 @@ export default async function ItemsSettingsPage({ searchParams }: { searchParams
     });
     const nextStore = storeIds[0] || String(formData.get("selected_store") || "");
     redirect(nextStore ? `/settings/items?success=item-created&store=${nextStore}` : "/settings/items?success=item-created");
+  }
+
+  async function createCategoryAction(formData: FormData) {
+    "use server";
+    const { createInspectionCategory } = await import("@/lib/settings");
+    await createInspectionCategory({
+      name: String(formData.get("name") || ""),
+      sortOrder: Number(formData.get("sort_order") || 0) || null,
+      fieldType: String(formData.get("field_type") || "none") as "kitchen" | "floor" | "none",
+    });
+    redirect(`/settings/items?success=category-created${selectedStoreId ? `&store=${selectedStoreId}` : ""}`);
+  }
+
+  async function updateCategoryAction(formData: FormData) {
+    "use server";
+    const { updateInspectionCategory } = await import("@/lib/settings");
+    await updateInspectionCategory({
+      id: String(formData.get("id") || ""),
+      name: String(formData.get("name") || ""),
+      sortOrder: Number(formData.get("sort_order") || 0) || 100,
+      fieldType: String(formData.get("field_type") || "none") as "kitchen" | "floor" | "none",
+    });
+    redirect(`/settings/items?success=category-updated${selectedStoreId ? `&store=${selectedStoreId}` : ""}`);
   }
 
   async function updateItemAction(formData: FormData) {
@@ -105,6 +131,98 @@ export default async function ItemsSettingsPage({ searchParams }: { searchParams
   return (
     <div data-testid="items-settings-page" className="grid gap-6">
       {successMessage ? <PageToast message={successMessage} /> : null}
+
+      <SectionCard
+        title="題目類別管理"
+        description="先把類別整理好，新增題目時才不會越來越混亂。類別區域只用來幫助題目分群與後續報表判讀，不等於工作站。"
+      >
+        <div className="grid gap-6 xl:grid-cols-[0.9fr_1.1fr]">
+          <form action={createCategoryAction} className="grid gap-4 rounded-[28px] border border-ink/10 bg-soft/30 p-5">
+            <div>
+              <p className="font-medium text-ink">新增類別</p>
+              <p className="mt-1 text-sm text-ink/65">例如人員管理、內場作業環境、服務品質。若不特別填排序，系統會自動排在最後。</p>
+            </div>
+            <label className="grid gap-2 text-sm">
+              <span className="text-ink/70">類別名稱</span>
+              <input
+                name="name"
+                required
+                placeholder="例如：出餐流程"
+                className="rounded-2xl border border-ink/10 bg-white px-4 py-3"
+              />
+            </label>
+            <label className="grid gap-2 text-sm">
+              <span className="text-ink/70">排序（可不填）</span>
+              <input
+                name="sort_order"
+                type="number"
+                min={1}
+                placeholder="例如：70"
+                className="rounded-2xl border border-ink/10 bg-white px-4 py-3"
+              />
+            </label>
+            <label className="grid gap-2 text-sm">
+              <span className="text-ink/70">類別區域</span>
+              <select name="field_type" defaultValue="none" className="rounded-2xl border border-ink/10 bg-white px-4 py-3">
+                <option value="none">共用</option>
+                <option value="kitchen">內場</option>
+                <option value="floor">外場</option>
+              </select>
+            </label>
+            <button className="rounded-full bg-warm px-5 py-3 text-sm text-white" type="submit">
+              新增題目類別
+            </button>
+          </form>
+
+          <div className="grid gap-4">
+            {(categories ?? []).map((category) => (
+              <form key={category.id} action={updateCategoryAction} className="grid gap-4 rounded-[28px] border border-ink/10 bg-white/85 p-5 shadow-card">
+                <input type="hidden" name="id" value={category.id} />
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <p className="font-medium text-ink">{category.name}</p>
+                    <p className="mt-1 text-sm text-ink/60">
+                      目前排序 {category.sort_order} / 區域 {getCategoryFieldTypeLabel(category.field_type)}
+                    </p>
+                  </div>
+                  <span className="rounded-full bg-soft px-3 py-1 text-xs text-ink/70">
+                    {(items ?? []).filter((item) => item.category_id === category.id).length} 題
+                  </span>
+                </div>
+                <div className="grid gap-3 md:grid-cols-3">
+                  <input
+                    name="name"
+                    defaultValue={category.name}
+                    required
+                    className="rounded-2xl border border-ink/10 bg-white px-4 py-3"
+                  />
+                  <input
+                    name="sort_order"
+                    type="number"
+                    min={1}
+                    defaultValue={category.sort_order}
+                    className="rounded-2xl border border-ink/10 bg-white px-4 py-3"
+                  />
+                  <select
+                    name="field_type"
+                    defaultValue={category.field_type}
+                    className="rounded-2xl border border-ink/10 bg-white px-4 py-3"
+                  >
+                    <option value="none">共用</option>
+                    <option value="kitchen">內場</option>
+                    <option value="floor">外場</option>
+                  </select>
+                </div>
+                <div className="flex justify-end">
+                  <button className="rounded-full bg-soft px-4 py-2 text-sm text-ink/80" type="submit">
+                    儲存類別設定
+                  </button>
+                </div>
+              </form>
+            ))}
+          </div>
+        </div>
+      </SectionCard>
 
       <SectionCard
         title="新增題目"

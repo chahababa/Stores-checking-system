@@ -13,6 +13,12 @@ export function getShiftRoleLabel(role: "kitchen" | "floor" | "counter") {
   return "櫃台";
 }
 
+export function getCategoryFieldTypeLabel(fieldType: "kitchen" | "floor" | "none") {
+  if (fieldType === "kitchen") return "內場";
+  if (fieldType === "floor") return "外場";
+  return "共用";
+}
+
 export function getWorkstationScopeLabel(scope: "global" | "store") {
   return scope === "global" ? "全部店通用" : "指定店別";
 }
@@ -67,6 +73,8 @@ export function getAuditActionLabel(action: string) {
     restore_staff_member: "恢復組員",
     create_workstation: "新增工作站",
     update_workstation: "更新工作站",
+    create_category: "新增題目類別",
+    update_category: "更新題目類別",
     create_inspection_item: "新增巡店題目",
     update_inspection_item: "更新巡店題目",
     set_focus_items: "更新標籤設定",
@@ -97,6 +105,8 @@ export function getAuditEntityLabel(entityType: string) {
     staff_members: "組員",
     workstation: "工作站",
     workstations: "工作站",
+    category: "題目類別",
+    categories: "題目類別",
     focus_items: "標籤設定",
     inspection: "巡店紀錄",
     inspections: "巡店紀錄",
@@ -190,6 +200,15 @@ export function formatAuditDetails(
       }
       if ("is_active" in details) {
         parts.push(`狀態：${getBooleanLabel(details.is_active)}`);
+      }
+      break;
+
+    case "create_category":
+    case "update_category":
+      if (typeof details.name === "string") parts.push(`名稱：${details.name}`);
+      if (typeof details.sort_order === "number") parts.push(`排序：${details.sort_order}`);
+      if (typeof details.field_type === "string") {
+        parts.push(`分類區域：${getCategoryFieldTypeLabel(details.field_type as "kitchen" | "floor" | "none")}`);
       }
       break;
 
