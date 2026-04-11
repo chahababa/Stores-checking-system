@@ -152,6 +152,7 @@ export function InspectionForm({
   const fileInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
 
   const draftKey = useMemo(() => `draft_${form.storeId}_${form.date}`, [form.storeId, form.date]);
+  const requiresStoreSelection = !isEditMode && !form.storeId;
 
   useEffect(() => {
     const freshState = initialState ?? createInitialState(seed);
@@ -162,6 +163,10 @@ export function InspectionForm({
     setCollapsedCategoryIds(Object.fromEntries(seed.groupedItems.map((group) => [group.categoryId, false])));
 
     if (isEditMode) {
+      return;
+    }
+
+    if (!seed.selectedStoreId) {
       return;
     }
 
@@ -181,7 +186,7 @@ export function InspectionForm({
   }, [initialState, isEditMode, seed]);
 
   useEffect(() => {
-    if (isEditMode) {
+    if (isEditMode || !form.storeId) {
       return;
     }
 
@@ -290,7 +295,12 @@ export function InspectionForm({
   }
 
   function navigateToSeed(nextStoreId: string, nextDate: string) {
-    router.push(`/inspection/new?store=${nextStoreId}&date=${nextDate}`);
+    const params = new URLSearchParams();
+    if (nextStoreId) {
+      params.set("store", nextStoreId);
+    }
+    params.set("date", nextDate);
+    router.push(`/inspection/new?${params.toString()}`);
   }
 
   async function handlePhotoChange(itemId: string, fileList: FileList | null) {
@@ -345,6 +355,11 @@ export function InspectionForm({
 
   async function handleSubmit() {
     setError("");
+
+    if (!form.storeId) {
+      setError("請先選擇要巡店的店別。");
+      return;
+    }
 
     if (!form.timeSlot.trim()) {
       setError("請先填寫巡店時段。");
@@ -424,7 +439,7 @@ export function InspectionForm({
     }
   }
 
-  const draftStatusLabel = isEditMode
+  const draftStatusLabel = requiresStoreSelection ? "選定店別後才會開始讀取與儲存草稿。" : isEditMode
     ? "編輯模式不會另外保存瀏覽器草稿。"
     : draftSaveState === "saving"
       ? "正在儲存草稿..."
@@ -436,6 +451,14 @@ export function InspectionForm({
 
   return (
     <div className="grid gap-6" data-testid={isEditMode ? "inspection-edit-form" : "inspection-create-form"}>
+      {requiresStoreSelection ? (
+        <section className="rounded-[28px] border border-dashed border-ink/15 bg-white p-6 shadow-card">
+          <h2 className="font-serifTc text-2xl font-semibold text-ink">先選擇店別，再開始巡店</h2>
+          <p className="mt-3 max-w-2xl text-sm leading-6 text-ink/70">
+            這一頁不再預設帶入一店，避免一進來就跳出舊草稿提示。請先從上方選擇要巡的店別，系統才會載入該店的當班人員、題目與草稿。
+          </p>
+        </section>
+      ) : null}
       <section className="rounded-[28px] border border-ink/10 bg-white p-5 shadow-card">
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
           <div>
@@ -447,6 +470,7 @@ export function InspectionForm({
               disabled={isEditMode}
               className="w-full rounded-2xl border border-ink/10 bg-white px-4 py-3 disabled:bg-soft/60 disabled:text-ink/45"
             >
+              {!isEditMode ? <option value="">請先選擇店別</option> : null}
               {seed.stores.map((store) => (
                 <option key={store.id} value={store.id}>
                   {store.name}
@@ -877,7 +901,7 @@ export function InspectionForm({
           type="button"
           onClick={handleSubmit}
           data-testid="inspection-submit-button"
-          disabled={isSaving}
+          disabled={isSaving || requiresStoreSelection}
           className="rounded-full bg-warm px-6 py-3 text-sm font-medium text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
         >
           {isSaving ? "儲存中..." : submitLabel}

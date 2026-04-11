@@ -456,9 +456,21 @@ export async function getInspectionFormSeed(params?: { storeId?: string; date?: 
     throw new Error(storesError?.message || "目前尚未設定任何店別。");
   }
 
-  const selectedStoreId = params?.storeId || stores[0].id;
+  const selectedStoreId = params?.storeId ?? "";
   const selectedDate = params?.date || today;
   const selectedMonth = selectedDate.slice(0, 7) || month;
+
+  if (!selectedStoreId) {
+    return {
+      stores,
+      selectedStoreId: "",
+      selectedDate,
+      selectedMonth,
+      activeStaff: [],
+      groupedItems: [],
+      duplicateInspectionWarning: false,
+    } satisfies InspectionFormSeed;
+  }
 
   const [
     { data: staff, error: staffError },
