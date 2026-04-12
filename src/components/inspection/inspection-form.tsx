@@ -12,12 +12,15 @@ type ScoreValue = 1 | 2 | 3;
 type DraftSaveState = "idle" | "saving" | "saved" | "error";
 type WorkstationOption = InspectionFormSeed["workstations"][number];
 const TIME_SLOT_OPTIONS = [
-  "\u958b\u5e97",
-  "\u65e9\u9910",
-  "\u5348\u73ed",
-  "\u4e0b\u5348",
-  "\u665a\u73ed",
-  "\u6253\u70ca",
+  "7\u9ede-8\u9ede",
+  "8\u9ede-9\u9ede",
+  "9\u9ede-10\u9ede",
+  "10\u9ede-11\u9ede",
+  "11\u9ede-12\u9ede",
+  "12\u9ede-13\u9ede",
+  "13\u9ede-14\u9ede",
+  "14\u9ede-15\u9ede",
+  "15\u9ede-16\u9ede",
 ] as const;
 const CUSTOM_TIME_SLOT_VALUE = "__custom__";
 const SCORE_OPTIONS = [
