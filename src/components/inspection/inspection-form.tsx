@@ -11,6 +11,8 @@ import { getInspectionTagLabel, type InspectionTagType } from "@/lib/ui-labels";
 type ScoreValue = 1 | 2 | 3;
 type DraftSaveState = "idle" | "saving" | "saved" | "error";
 type WorkstationOption = InspectionFormSeed["workstations"][number];
+const TIME_SLOT_OPTIONS = ["??", "??", "??", "??", "??", "??"] as const;
+const CUSTOM_TIME_SLOT_VALUE = "__custom__";
 const SCORE_OPTIONS = [
   { score: 3 as const, grade: "A", label: "??" },
   { score: 2 as const, grade: "B", label: "???" },
@@ -261,6 +263,11 @@ export function InspectionForm({
 
   const draftKey = useMemo(() => `draft_${form.storeId}_${form.date}`, [form.storeId, form.date]);
   const requiresStoreSelection = !isEditMode && !form.storeId;
+  const selectedTimeSlotValue = TIME_SLOT_OPTIONS.includes(form.timeSlot as (typeof TIME_SLOT_OPTIONS)[number])
+    ? form.timeSlot
+    : form.timeSlot
+      ? CUSTOM_TIME_SLOT_VALUE
+      : "";
 
   useEffect(() => {
     const freshState = initialState ?? createInitialState(seed);
@@ -610,14 +617,38 @@ export function InspectionForm({
           </div>
 
           <div>
-            <label className="mb-2 block text-sm text-ink/70">巡店時段</label>
-            <input
-              data-testid="inspection-time-slot-input"
-              value={form.timeSlot}
-              onChange={(event) => setForm((current) => ({ ...current, timeSlot: event.target.value }))}
-              placeholder="例如 14:30-15:15"
-              className="w-full rounded-2xl border border-ink/10 bg-white px-4 py-3"
-            />
+            <label className="mb-2 block text-sm text-ink/70">????</label>
+            <div className="grid gap-2">
+              <select
+                data-testid="inspection-time-slot-select"
+                value={selectedTimeSlotValue}
+                onChange={(event) =>
+                  setForm((current) => ({
+                    ...current,
+                    timeSlot: event.target.value === CUSTOM_TIME_SLOT_VALUE ? current.timeSlot : event.target.value,
+                  }))
+                }
+                className="w-full rounded-2xl border border-ink/10 bg-white px-4 py-3"
+              >
+                <option value="">???????</option>
+                {TIME_SLOT_OPTIONS.map((option) => (
+                  <option key={option} value={option}>
+                    {option}
+                  </option>
+                ))}
+                <option value={CUSTOM_TIME_SLOT_VALUE}>??????</option>
+              </select>
+
+              {selectedTimeSlotValue === CUSTOM_TIME_SLOT_VALUE ? (
+                <input
+                  data-testid="inspection-time-slot-input"
+                  value={form.timeSlot}
+                  onChange={(event) => setForm((current) => ({ ...current, timeSlot: event.target.value }))}
+                  placeholder="?????????????14:30-15:15"
+                  className="w-full rounded-2xl border border-ink/10 bg-white px-4 py-3"
+                />
+              ) : null}
+            </div>
           </div>
 
           <div>
