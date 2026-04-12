@@ -17,6 +17,13 @@ type WorkstationSummary = {
   storeId: string | null;
 };
 
+type ActiveStaffSummary = {
+  id: string;
+  name: string;
+  store_id: string;
+  defaultWorkstationId: string | null;
+};
+
 type PriorInspectionRow = {
   id: string;
   date: string;
@@ -247,6 +254,11 @@ export type AuditLogListItem = {
 };
 
 const ONE_WEEK_MS = 1000 * 60 * 60 * 24 * 7;
+const LEGACY_WORKSTATIONS: WorkstationSummary[] = [
+  { id: "legacy-kitchen", code: "kitchen", name: "內場", area: "kitchen", storeId: null },
+  { id: "legacy-floor", code: "floor", name: "外場", area: "floor", storeId: null },
+  { id: "legacy-counter", code: "counter", name: "櫃台", area: "counter", storeId: null },
+];
 
 function normalizeDate(value: string) {
   return new Date(`${value}T00:00:00`);
@@ -301,6 +313,28 @@ function mapSingleRelation<T extends Record<string, unknown>>(value: T | T[] | n
   return value ?? null;
 }
 
+function isWorkstationSchemaError(message?: string | null) {
+  if (!message) {
+    return false;
+  }
+
+  return (
+    message.includes("workstations") ||
+    message.includes("default_workstation_id") ||
+    message.includes("workstation_id")
+  );
+}
+
+function getLegacyWorkstationById(id: string) {
+  return LEGACY_WORKSTATIONS.find((workstation) => workstation.id === id) ?? null;
+}
+
+function getLegacyWorkstationIdFromRole(role?: string | null) {
+  if (role === "kitchen") return "legacy-kitchen";
+  if (role === "counter") return "legacy-counter";
+  return "legacy-floor";
+}
+
 async function getStoreCode(admin: ReturnType<typeof createAdminClient>, storeId: string) {
   const { data: storeRow, error: storeError } = await admin.from("stores").select("code").eq("id", storeId).single();
 
@@ -311,6 +345,175 @@ async function getStoreCode(admin: ReturnType<typeof createAdminClient>, storeId
   return storeRow.code;
 }
 
+async function getActiveStaffAndWorkstations(
+  admin: ReturnType<typeof createAdminClient>,
+  storeId: string,
+): Promise<{ activeStaff: ActiveStaffSummary[]; workstations: WorkstationSummary[] }> {
+  const [staffResult, workstationResult] = await Promise.all([
+    admin
+      .from("staff_members")
+      .select("id, name, store_id, default_workstation_id")
+      .eq("status", "active")
+      .eq("store_id", storeId)
+      .order("name"),
+    admin
+      .from("workstations")
+      .select("id, code, name, area, store_id")
+      .eq("is_active", true)
+      .or(`store_id.is.null,store_id.eq.${storeId}`)
+      .order("sort_order")
+      .order("name"),
+  ]);
+
+  if (!staffResult.error && !workstationResult.error) {
+    return {
+      activeStaff: (staffResult.data ?? []).map((member) => ({
+        id: member.id,
+        name: member.name,
+        store_id: member.store_id,
+        defaultWorkstationId: member.default_workstation_id ?? null,
+      })),
+      workstations: (workstationResult.data ?? []).map((workstation) => ({
+        id: workstation.id,
+        code: workstation.code,
+        name: workstation.name,
+        area: workstation.area as ShiftRole,
+        storeId: workstation.store_id,
+      })),
+    };
+  }
+
+  const schemaMessage = staffResult.error?.message || workstationResult.error?.message;
+  if (!isWorkstationSchemaError(schemaMessage)) {
+    throw new Error(schemaMessage || "讀取工作站資料失敗。");
+  }
+
+  const { data: legacyStaff, error: legacyStaffError } = await admin
+    .from("staff_members")
+    .select("id, name, store_id, position")
+    .eq("status", "active")
+    .eq("store_id", storeId)
+    .order("name");
+
+  if (legacyStaffError) {
+    throw new Error(legacyStaffError.message);
+  }
+
+  return {
+    activeStaff: (legacyStaff ?? []).map((member) => ({
+      id: member.id,
+      name: member.name,
+      store_id: member.store_id,
+      defaultWorkstationId: getLegacyWorkstationIdFromRole(member.position),
+    })),
+    workstations: LEGACY_WORKSTATIONS,
+  };
+}
+
+async function getInspectionShiftAssignments(
+  admin: ReturnType<typeof createAdminClient>,
+  inspectionId: string,
+) {
+  const modernResult = await admin
+    .from("inspection_staff")
+    .select("id, role_in_shift, workstation_id, staff_members(id, name), workstations(id, name, area)")
+    .eq("inspection_id", inspectionId);
+
+  if (!modernResult.error) {
+    return (modernResult.data ?? []).flatMap((row) => {
+      const member = mapSingleRelation(row.staff_members);
+      const workstation = mapSingleRelation(row.workstations) as
+        | { id?: string; name?: string; area?: ShiftRole }
+        | null;
+
+      if (!member) {
+        return [];
+      }
+
+      return [
+        {
+          id: member.id as string,
+          name: member.name as string,
+          workstationId: (row.workstation_id as string) ?? (workstation?.id as string),
+          workstationName: (workstation?.name as string | undefined) ?? "未指定工作站",
+          workstationArea: (workstation?.area as ShiftRole | undefined) ?? (row.role_in_shift as ShiftRole),
+        },
+      ];
+    });
+  }
+
+  if (!isWorkstationSchemaError(modernResult.error?.message)) {
+    throw new Error(modernResult.error?.message || "讀取當班人員失敗。");
+  }
+
+  const legacyResult = await admin
+    .from("inspection_staff")
+    .select("id, role_in_shift, staff_members(id, name)")
+    .eq("inspection_id", inspectionId);
+
+  if (legacyResult.error) {
+    throw new Error(legacyResult.error.message);
+  }
+
+  return (legacyResult.data ?? []).flatMap((row) => {
+    const member = mapSingleRelation(row.staff_members);
+    if (!member) {
+      return [];
+    }
+
+    const workstation = getLegacyWorkstationById(getLegacyWorkstationIdFromRole(row.role_in_shift));
+    return [
+      {
+        id: member.id as string,
+        name: member.name as string,
+        workstationId: workstation?.id ?? getLegacyWorkstationIdFromRole(row.role_in_shift),
+        workstationName: workstation?.name ?? "未指定工作站",
+        workstationArea: (workstation?.area as ShiftRole | undefined) ?? (row.role_in_shift as ShiftRole),
+      },
+    ];
+  });
+}
+
+async function insertInspectionShiftAssignments(params: {
+  admin: ReturnType<typeof createAdminClient>;
+  inspectionId: string;
+  selectedStaff: InspectionMutationInput["selectedStaff"];
+  workstationsById: Map<string, WorkstationSummary>;
+}) {
+  const { admin, inspectionId, selectedStaff, workstationsById } = params;
+  if (selectedStaff.length === 0) {
+    return;
+  }
+
+  const rows = selectedStaff.map((entry) => ({
+    inspection_id: inspectionId,
+    staff_id: entry.staffId,
+    role_in_shift: workstationsById.get(entry.workstationId)?.area ?? "floor",
+    workstation_id: entry.workstationId,
+  }));
+
+  const modernInsert = await admin.from("inspection_staff").insert(rows);
+  if (!modernInsert.error) {
+    return;
+  }
+
+  if (!isWorkstationSchemaError(modernInsert.error.message)) {
+    throw new Error(modernInsert.error.message);
+  }
+
+  const legacyInsert = await admin.from("inspection_staff").insert(
+    rows.map((row) => ({
+      inspection_id: row.inspection_id,
+      staff_id: row.staff_id,
+      role_in_shift: row.role_in_shift,
+    })),
+  );
+
+  if (legacyInsert.error) {
+    throw new Error(legacyInsert.error.message);
+  }
+}
+
 async function resolveAssignableWorkstations(
   admin: ReturnType<typeof createAdminClient>,
   storeId: string,
@@ -318,6 +521,19 @@ async function resolveAssignableWorkstations(
 ) {
   if (workstationIds.length === 0) {
     return new Map<string, WorkstationSummary>();
+  }
+
+  const allLegacy = workstationIds.every((workstationId) => workstationId.startsWith("legacy-"));
+  if (allLegacy) {
+    return new Map(
+      workstationIds.map((workstationId) => {
+        const workstation = getLegacyWorkstationById(workstationId);
+        if (!workstation) {
+          throw new Error("找不到對應的工作站。");
+        }
+        return [workstationId, workstation] as const;
+      }),
+    );
   }
 
   const { data, error } = await admin
@@ -527,8 +743,7 @@ export async function getInspectionFormSeed(params?: { storeId?: string; date?: 
   }
 
   const [
-    { data: staff, error: staffError },
-    { data: workstations, error: workstationsError },
+    staffAndWorkstations,
     { data: categories, error: categoriesError },
     { data: items, error: itemsError },
     { data: criticalTagRows, error: criticalTagError },
@@ -537,19 +752,7 @@ export async function getInspectionFormSeed(params?: { storeId?: string; date?: 
     { data: duplicateRows, error: duplicateError },
     extraAssignments,
   ] = await Promise.all([
-    admin
-      .from("staff_members")
-      .select("id, name, store_id, default_workstation_id")
-      .eq("status", "active")
-      .eq("store_id", selectedStoreId)
-      .order("name"),
-    admin
-      .from("workstations")
-      .select("id, code, name, area, store_id")
-      .eq("is_active", true)
-      .or(`store_id.is.null,store_id.eq.${selectedStoreId}`)
-      .order("sort_order")
-      .order("name"),
+    getActiveStaffAndWorkstations(admin, selectedStoreId),
     admin.from("categories").select("id, name, sort_order").order("sort_order"),
     admin
       .from("inspection_items")
@@ -575,8 +778,6 @@ export async function getInspectionFormSeed(params?: { storeId?: string; date?: 
   ]);
 
   if (
-    staffError ||
-    workstationsError ||
     categoriesError ||
     itemsError ||
     criticalTagError ||
@@ -585,9 +786,7 @@ export async function getInspectionFormSeed(params?: { storeId?: string; date?: 
     duplicateError
   ) {
     throw new Error(
-      staffError?.message ||
-        workstationsError?.message ||
-        categoriesError?.message ||
+      categoriesError?.message ||
         itemsError?.message ||
         criticalTagError?.message ||
         scopedTagError?.message ||
@@ -647,19 +846,8 @@ export async function getInspectionFormSeed(params?: { storeId?: string; date?: 
     selectedStoreId,
     selectedDate,
     selectedMonth,
-    workstations: (workstations ?? []).map((workstation) => ({
-      id: workstation.id,
-      code: workstation.code,
-      name: workstation.name,
-      area: workstation.area as ShiftRole,
-      storeId: workstation.store_id,
-    })),
-    activeStaff: (staff ?? []).map((member) => ({
-      id: member.id,
-      name: member.name,
-      store_id: member.store_id,
-      defaultWorkstationId: member.default_workstation_id ?? null,
-    })),
+    workstations: staffAndWorkstations.workstations,
+    activeStaff: staffAndWorkstations.activeStaff,
     groupedItems,
     duplicateInspectionWarning: Boolean(duplicateRows?.length),
   } satisfies InspectionFormSeed;
@@ -686,15 +874,12 @@ export async function getInspectionDetail(inspectionId: string): Promise<Inspect
   }
 
   const [
-    { data: staffRows, error: staffError },
+    staffRows,
     { data: scoreRows, error: scoreError },
     { data: menuRows, error: menuError },
     { data: legacyRows, error: legacyError },
   ] = await Promise.all([
-    admin
-      .from("inspection_staff")
-      .select("id, role_in_shift, workstation_id, staff_members(id, name), workstations(id, name, area)")
-      .eq("inspection_id", inspectionId),
+    getInspectionShiftAssignments(admin, inspectionId),
     admin
       .from("inspection_scores")
       .select(
@@ -713,9 +898,9 @@ export async function getInspectionDetail(inspectionId: string): Promise<Inspect
       .order("created_at", { ascending: true }),
   ]);
 
-  if (staffError || scoreError || menuError || legacyError) {
+  if (scoreError || menuError || legacyError) {
     throw new Error(
-      staffError?.message || scoreError?.message || menuError?.message || legacyError?.message || "載入巡店明細失敗。",
+      scoreError?.message || menuError?.message || legacyError?.message || "載入巡店明細失敗。",
     );
   }
 
@@ -752,25 +937,7 @@ export async function getInspectionDetail(inspectionId: string): Promise<Inspect
     isEditable: inspectionRow.is_editable,
     store: mapSingleRelation(inspectionRow.stores),
     inspector: mapSingleRelation(inspectionRow.users),
-    staff: (staffRows ?? []).flatMap((row) => {
-      const member = mapSingleRelation(row.staff_members);
-      const workstation = mapSingleRelation(row.workstations) as
-        | { id?: string; name?: string; area?: ShiftRole }
-        | null;
-      if (!member) {
-        return [];
-      }
-
-      return [
-        {
-          id: member.id as string,
-          name: member.name as string,
-          workstationId: (row.workstation_id as string) ?? (workstation?.id as string),
-          workstationName: (workstation?.name as string | undefined) ?? "未指定工作站",
-          workstationArea: (workstation?.area as ShiftRole | undefined) ?? (row.role_in_shift as ShiftRole),
-        },
-      ];
-    }),
+    staff: staffRows,
     scores: (scoreRows ?? []).map((row) => {
       const item = mapSingleRelation(row.inspection_items) as { name?: string; categories?: unknown } | null;
       const category = (item ? mapSingleRelation(item.categories as never) : null) as { name?: string } | null;
@@ -1264,18 +1431,12 @@ export async function createInspection(input: InspectionMutationInput) {
   }
 
   if (input.selectedStaff.length > 0) {
-    const { error } = await admin.from("inspection_staff").insert(
-      input.selectedStaff.map((entry) => ({
-        inspection_id: inspection.id,
-        staff_id: entry.staffId,
-        role_in_shift: workstationsById.get(entry.workstationId)?.area ?? "floor",
-        workstation_id: entry.workstationId,
-      })),
-    );
-
-    if (error) {
-      throw new Error(error.message);
-    }
+    await insertInspectionShiftAssignments({
+      admin,
+      inspectionId: inspection.id,
+      selectedStaff: input.selectedStaff,
+      workstationsById,
+    });
   }
 
   const { data: scoreRows, error: scoresError } = await admin
@@ -1486,17 +1647,12 @@ export async function updateInspection(inspectionId: string, input: InspectionMu
   }
 
   if (input.selectedStaff.length > 0) {
-    const { error } = await admin.from("inspection_staff").insert(
-      input.selectedStaff.map((entry) => ({
-        inspection_id: inspectionId,
-        staff_id: entry.staffId,
-        role_in_shift: workstationsById.get(entry.workstationId)?.area ?? "floor",
-        workstation_id: entry.workstationId,
-      })),
-    );
-    if (error) {
-      throw new Error(error.message);
-    }
+    await insertInspectionShiftAssignments({
+      admin,
+      inspectionId,
+      selectedStaff: input.selectedStaff,
+      workstationsById,
+    });
   }
 
   const { error: menuDeleteError } = await admin.from("inspection_menu_items").delete().eq("inspection_id", inspectionId);
