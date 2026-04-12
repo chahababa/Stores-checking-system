@@ -11,6 +11,11 @@ import { getInspectionTagLabel, type InspectionTagType } from "@/lib/ui-labels";
 type ScoreValue = 1 | 2 | 3;
 type DraftSaveState = "idle" | "saving" | "saved" | "error";
 type WorkstationOption = InspectionFormSeed["workstations"][number];
+const SCORE_OPTIONS = [
+  { score: 3 as const, grade: "A", label: "??" },
+  { score: 2 as const, grade: "B", label: "???" },
+  { score: 1 as const, grade: "C", label: "??" },
+];
 
 type PhotoDraft = {
   itemId: string;
@@ -758,7 +763,7 @@ export function InspectionForm({
               onClick={() => applyBulkScore(3)}
               className="rounded-full bg-warm px-4 py-2 text-sm text-white"
             >
-              全部設為 3 分
+              ???? A
             </button>
             <button
               type="button"
@@ -766,7 +771,7 @@ export function InspectionForm({
               onClick={resetScoresToDefault}
               className="rounded-full bg-soft px-4 py-2 text-sm text-ink/75"
             >
-              重設評分
+              ??????
             </button>
           </div>
         </div>
@@ -867,25 +872,28 @@ export function InspectionForm({
                             ) : null}
                           </div>
                           <p className="mt-2 text-sm text-ink/65">
-                            1 分代表明顯不合格，2 分代表需要改善，3 分代表符合標準。
+                            ?? A / B / C ???A ?????B ??????C ?????
                           </p>
                         </div>
 
                         <div className="flex gap-2">
-                          {[1, 2, 3].map((score) => (
+                          {SCORE_OPTIONS.map((option) => (
                             <button
-                              key={score}
+                              key={option.score}
                               type="button"
-                              data-testid={`inspection-score-${item.id}-${score}`}
-                              data-score={score}
-                              onClick={() => setScore(item.id, score as ScoreValue)}
-                              className={`rounded-full px-4 py-2 text-sm font-medium transition ${
-                                value.score === score
+                              data-testid={`inspection-score-${item.id}-${option.score}`}
+                              data-score={option.score}
+                              onClick={() => setScore(item.id, option.score)}
+                              className={`flex min-w-[72px] flex-col items-center rounded-2xl px-4 py-2 text-sm font-medium transition ${
+                                value.score === option.score
                                   ? "bg-warm text-white"
                                   : "border border-ink/10 bg-white text-ink/70 hover:bg-cream"
                               }`}
                             >
-                              {score}
+                              <span className="text-base">{option.grade}</span>
+                              <span className={`text-[11px] ${value.score === option.score ? "text-white/85" : "text-ink/55"}`}>
+                                {option.label}
+                              </span>
                             </button>
                           ))}
                         </div>
