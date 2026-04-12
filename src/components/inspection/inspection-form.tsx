@@ -11,12 +11,12 @@ import { getInspectionTagLabel, type InspectionTagType } from "@/lib/ui-labels";
 type ScoreValue = 1 | 2 | 3;
 type DraftSaveState = "idle" | "saving" | "saved" | "error";
 type WorkstationOption = InspectionFormSeed["workstations"][number];
-const TIME_SLOT_OPTIONS = ["??", "??", "??", "??", "??", "??"] as const;
+const TIME_SLOT_OPTIONS = ["開店", "早餐", "午班", "下午", "晚班", "打烊"] as const;
 const CUSTOM_TIME_SLOT_VALUE = "__custom__";
 const SCORE_OPTIONS = [
-  { score: 3 as const, grade: "A", label: "??" },
-  { score: 2 as const, grade: "B", label: "???" },
-  { score: 1 as const, grade: "C", label: "??" },
+  { score: 3 as const, grade: "A", label: "良好" },
+  { score: 2 as const, grade: "B", label: "待加強" },
+  { score: 1 as const, grade: "C", label: "異常" },
 ];
 
 type PhotoDraft = {
@@ -617,7 +617,7 @@ export function InspectionForm({
           </div>
 
           <div>
-            <label className="mb-2 block text-sm text-ink/70">????</label>
+            <label className="mb-2 block text-sm text-ink/70">巡店時段</label>
             <div className="grid gap-2">
               <select
                 data-testid="inspection-time-slot-select"
@@ -630,13 +630,13 @@ export function InspectionForm({
                 }
                 className="w-full rounded-2xl border border-ink/10 bg-white px-4 py-3"
               >
-                <option value="">???????</option>
+                <option value="">請選擇巡店時段</option>
                 {TIME_SLOT_OPTIONS.map((option) => (
                   <option key={option} value={option}>
                     {option}
                   </option>
                 ))}
-                <option value={CUSTOM_TIME_SLOT_VALUE}>??????</option>
+                <option value={CUSTOM_TIME_SLOT_VALUE}>其他（自訂）</option>
               </select>
 
               {selectedTimeSlotValue === CUSTOM_TIME_SLOT_VALUE ? (
@@ -644,7 +644,7 @@ export function InspectionForm({
                   data-testid="inspection-time-slot-input"
                   value={form.timeSlot}
                   onChange={(event) => setForm((current) => ({ ...current, timeSlot: event.target.value }))}
-                  placeholder="?????????????14:30-15:15"
+                  placeholder="請輸入自訂巡店時段，例如：14:30-15:15"
                   className="w-full rounded-2xl border border-ink/10 bg-white px-4 py-3"
                 />
               ) : null}
@@ -794,7 +794,7 @@ export function InspectionForm({
               onClick={() => applyBulkScore(3)}
               className="rounded-full bg-warm px-4 py-2 text-sm text-white"
             >
-              ???? A
+              全部設為 A
             </button>
             <button
               type="button"
@@ -802,7 +802,7 @@ export function InspectionForm({
               onClick={resetScoresToDefault}
               className="rounded-full bg-soft px-4 py-2 text-sm text-ink/75"
             >
-              ??????
+              重設為預設值
             </button>
           </div>
         </div>
@@ -903,7 +903,7 @@ export function InspectionForm({
                             ) : null}
                           </div>
                           <p className="mt-2 text-sm text-ink/65">
-                            ?? A / B / C ???A ?????B ??????C ?????
+                            請以 A / B / C 評分：A 代表良好、B 代表待加強、C 代表異常。
                           </p>
                         </div>
 
