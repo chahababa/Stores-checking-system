@@ -11,12 +11,19 @@ import { getInspectionTagLabel, type InspectionTagType } from "@/lib/ui-labels";
 type ScoreValue = 1 | 2 | 3;
 type DraftSaveState = "idle" | "saving" | "saved" | "error";
 type WorkstationOption = InspectionFormSeed["workstations"][number];
-const TIME_SLOT_OPTIONS = ["開店", "早餐", "午班", "下午", "晚班", "打烊"] as const;
+const TIME_SLOT_OPTIONS = [
+  "\u958b\u5e97",
+  "\u65e9\u9910",
+  "\u5348\u73ed",
+  "\u4e0b\u5348",
+  "\u665a\u73ed",
+  "\u6253\u70ca",
+] as const;
 const CUSTOM_TIME_SLOT_VALUE = "__custom__";
 const SCORE_OPTIONS = [
-  { score: 3 as const, grade: "A", label: "良好" },
-  { score: 2 as const, grade: "B", label: "待加強" },
-  { score: 1 as const, grade: "C", label: "異常" },
+  { score: 3 as const, grade: "A", label: "\u826f\u597d" },
+  { score: 2 as const, grade: "B", label: "\u5f85\u52a0\u5f37" },
+  { score: 1 as const, grade: "C", label: "\u7570\u5e38" },
 ];
 
 type PhotoDraft = {
@@ -617,7 +624,7 @@ export function InspectionForm({
           </div>
 
           <div>
-            <label className="mb-2 block text-sm text-ink/70">巡店時段</label>
+            <label className="mb-2 block text-sm text-ink/70">{"\u5de1\u5e97\u6642\u6bb5"}</label>
             <div className="grid gap-2">
               <select
                 data-testid="inspection-time-slot-select"
@@ -630,13 +637,13 @@ export function InspectionForm({
                 }
                 className="w-full rounded-2xl border border-ink/10 bg-white px-4 py-3"
               >
-                <option value="">請選擇巡店時段</option>
+                <option value="">{"\u8acb\u9078\u64c7\u5de1\u5e97\u6642\u6bb5"}</option>
                 {TIME_SLOT_OPTIONS.map((option) => (
                   <option key={option} value={option}>
                     {option}
                   </option>
                 ))}
-                <option value={CUSTOM_TIME_SLOT_VALUE}>其他（自訂）</option>
+                <option value={CUSTOM_TIME_SLOT_VALUE}>{"\u5176\u4ed6\uff08\u81ea\u8a02\uff09"}</option>
               </select>
 
               {selectedTimeSlotValue === CUSTOM_TIME_SLOT_VALUE ? (
@@ -644,7 +651,7 @@ export function InspectionForm({
                   data-testid="inspection-time-slot-input"
                   value={form.timeSlot}
                   onChange={(event) => setForm((current) => ({ ...current, timeSlot: event.target.value }))}
-                  placeholder="請輸入自訂巡店時段，例如：14:30-15:15"
+                  placeholder={"\u8acb\u8f38\u5165\u81ea\u8a02\u5de1\u5e97\u6642\u6bb5\uff0c\u4f8b\u5982\uff1a14:30-15:15"}
                   className="w-full rounded-2xl border border-ink/10 bg-white px-4 py-3"
                 />
               ) : null}
