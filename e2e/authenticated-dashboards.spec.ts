@@ -10,7 +10,7 @@ test.describe("owner experience", () => {
   test("owner sees the cross-store operations dashboard", async ({ page }) => {
     await page.goto("/");
 
-    await expect(page.getByRole("heading", { name: "營運總覽首頁" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "跨店營運總覽" })).toBeVisible();
     await expect(page.getByText("本月總評")).toBeVisible();
     await expect(page.getByText("各分類健康度")).toBeVisible();
     await expect(page.getByText("必查異常")).toBeVisible();
@@ -27,6 +27,16 @@ test.describe("owner experience", () => {
     await expect(page.getByText("必查異常")).toBeVisible();
     await expect(page.getByText("本月加強異常")).toBeVisible();
     await expect(page.locator('select[name="store"]')).toBeVisible();
+  });
+
+  test("owner can open notification center", async ({ page }) => {
+    await page.goto("/notifications");
+
+    await expect(page.getByTestId("notifications-page")).toBeVisible();
+    await expect(page.getByTestId("notifications-summary")).toBeVisible();
+    await expect(page.getByTestId("notifications-section-high")).toBeVisible();
+    await expect(page.getByTestId("notifications-section-medium")).toBeVisible();
+    await expect(page.getByTestId("notifications-section-low")).toBeVisible();
   });
 });
 
@@ -62,6 +72,16 @@ test.describe("leader experience", () => {
     await expect(page.getByText("目前店別")).toBeVisible();
     await expect(page.locator('select[name="store"]')).toHaveCount(0);
     await expect(page.getByText("本月加強異常")).toBeVisible();
+  });
+
+  test("leader can open notification center", async ({ page }) => {
+    await page.goto("/notifications");
+
+    await expect(page.getByTestId("notifications-page")).toBeVisible();
+    await expect(page.getByTestId("notifications-summary")).toBeVisible();
+    await expect(page.getByTestId("notifications-section-high")).toBeVisible();
+    await expect(page.getByTestId("notifications-section-medium")).toBeVisible();
+    await expect(page.getByTestId("notifications-section-low")).toBeVisible();
   });
 
   test("leader is blocked from owner and manager only routes", async ({ page }) => {

@@ -10,6 +10,7 @@ test.describe("owner settings workspaces", () => {
     await page.goto("/settings/focus-items");
 
     await expect(page.getByTestId("tag-management-page")).toBeVisible();
+    await expect(page.getByTestId("tag-management-overview")).toBeVisible();
     await expect(page.getByTestId("tag-section-critical")).toBeVisible();
     await expect(page.getByTestId("tag-section-monthly-attention")).toBeVisible();
     await expect(page.getByTestId("tag-section-complaint-watch")).toBeVisible();
@@ -54,9 +55,12 @@ test.describe("owner settings workspaces", () => {
 
     await page.goto("/settings/items");
     await expect(page.getByTestId("items-settings-page")).toBeVisible();
+    await expect(page.getByTestId("items-category-create-form")).toBeVisible();
+    await expect(page.getByTestId("items-category-list")).toBeVisible();
     await expect(page.getByTestId("items-base-list")).toBeVisible();
     await expect(page.getByTestId("items-store-filter-form")).toBeVisible();
     await expect(page.getByTestId("items-store-select")).toBeVisible();
     await expect(page.getByTestId("items-extra-form")).toBeVisible();
+    await expect(page.getByTestId("items-item-editing")).toBeVisible();
   });
 });

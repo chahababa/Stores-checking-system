@@ -168,7 +168,7 @@ export default async function FocusItemsPage({ searchParams }: { searchParams: S
         title="題目標籤總覽"
         description="這裡管理巡店表單中的題目標籤。只要題目被標記，就不會預設為 3 分，必須由巡店人員手動確認。"
       >
-        <div className="grid gap-3 md:grid-cols-3">
+        <div data-testid="tag-management-overview" className="grid gap-3 md:grid-cols-3">
           {(["critical", "monthly_attention", "complaint_watch"] as const).map((type) => (
             <div key={type} className="rounded-2xl border border-ink/10 bg-soft/40 p-4">
               <p className="font-medium text-ink">{getInspectionTagLabel(type)}</p>

@@ -66,14 +66,17 @@ The authenticated coverage now focuses on:
 
 - owner dashboard visibility
 - owner reports visibility
+- owner notifications visibility
 - leader dashboard visibility
 - leader reports visibility
+- leader notifications visibility
 - leader navigation restrictions
 - owner inspection create / detail / edit / improvement flow
 - owner tag management workspace visibility
 - owner staff management workspace visibility
 - owner QA cleanup preview visibility
 - owner users / stores / items workspace visibility
+- owner category management visibility inside item settings
 
 Example:
 

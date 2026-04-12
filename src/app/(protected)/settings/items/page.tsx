@@ -137,7 +137,7 @@ export default async function ItemsSettingsPage({ searchParams }: { searchParams
         description="先把類別整理好，新增題目時才不會越來越混亂。類別區域只用來幫助題目分群與後續報表判讀，不等於工作站。"
       >
         <div className="grid gap-6 xl:grid-cols-[0.9fr_1.1fr]">
-          <form action={createCategoryAction} className="grid gap-4 rounded-[28px] border border-ink/10 bg-soft/30 p-5">
+          <form data-testid="items-category-create-form" action={createCategoryAction} className="grid gap-4 rounded-[28px] border border-ink/10 bg-soft/30 p-5">
             <div>
               <p className="font-medium text-ink">新增類別</p>
               <p className="mt-1 text-sm text-ink/65">例如人員管理、內場作業環境、服務品質。若不特別填排序，系統會自動排在最後。</p>
@@ -174,7 +174,7 @@ export default async function ItemsSettingsPage({ searchParams }: { searchParams
             </button>
           </form>
 
-          <div className="grid gap-4">
+          <div data-testid="items-category-list" className="grid gap-4">
             {(categories ?? []).map((category) => (
               <form key={category.id} action={updateCategoryAction} className="grid gap-4 rounded-[28px] border border-ink/10 bg-white/85 p-5 shadow-card">
                 <input type="hidden" name="id" value={category.id} />
@@ -422,7 +422,7 @@ export default async function ItemsSettingsPage({ searchParams }: { searchParams
         title="編輯既有題目"
         description="若你要改題目名稱、換類別，或把基礎題目改成店別加題，可以直接在下面操作。這裡會保留同樣的分類邏輯，避免未來題目越來越多時找不到。"
       >
-        <div className="grid gap-5">
+        <div data-testid="items-item-editing" className="grid gap-5">
           {(categories ?? []).map((category) => {
             const categoryItems = (items ?? []).filter((item) => item.category_id === category.id);
             if (categoryItems.length === 0) return null;
