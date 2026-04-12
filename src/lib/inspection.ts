@@ -1515,6 +1515,9 @@ export async function createInspection(input: InspectionMutationInput) {
   revalidatePath("/inspection/history");
   revalidatePath(`/inspection/history/${inspection.id}`);
   revalidatePath("/inspection/improvements");
+  revalidatePath("/");
+  revalidatePath("/notifications");
+  revalidatePath("/inspection/reports");
 
   await createAuditLog({
     actorId: profile.id,
@@ -1727,6 +1730,9 @@ export async function updateInspection(inspectionId: string, input: InspectionMu
   revalidatePath(`/inspection/history/${inspectionId}`);
   revalidatePath(`/inspection/history/${inspectionId}/edit`);
   revalidatePath("/inspection/improvements");
+  revalidatePath("/");
+  revalidatePath("/notifications");
+  revalidatePath("/inspection/reports");
 
   await createAuditLog({
     actorId: profile.id,

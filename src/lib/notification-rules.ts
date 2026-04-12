@@ -55,6 +55,7 @@ export function buildNotificationFeed(input: {
   pendingTasks: number;
 }) {
   const notifications: NotificationItem[] = [];
+  const announcedStores = new Set<string>();
 
   for (const inspection of input.inspections) {
     const overallGrade = buildOverallInspectionGrade(
@@ -101,6 +102,19 @@ export function buildNotificationFeed(input: {
         level: "high",
         title: "整體總評為 C",
         description: `${inspection.storeName} 在 ${inspection.date} 的巡店總評為 C，建議立即檢查低分原因與改善任務。`,
+        href: `/inspection/history/${inspection.id}`,
+        date: inspection.date,
+        storeName: inspection.storeName,
+      });
+    }
+
+    if (!announcedStores.has(inspection.storeName)) {
+      announcedStores.add(inspection.storeName);
+      notifications.push({
+        id: `${inspection.id}-report`,
+        level: overallGrade.finalGrade === "A" ? "low" : "medium",
+        title: `${inspection.storeName} 的巡店報告已更新`,
+        description: `${inspection.date} ${inspection.timeSlot} 的巡店結果已整理完成，目前總評為 ${overallGrade.finalGrade}，可以直接打開報告查看分類表現與待改善項目。`,
         href: `/inspection/history/${inspection.id}`,
         date: inspection.date,
         storeName: inspection.storeName,

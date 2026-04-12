@@ -42,5 +42,6 @@ describe("buildNotificationFeed", () => {
     expect(feed.counts.high).toBeGreaterThanOrEqual(2);
     expect(feed.counts.medium).toBeGreaterThanOrEqual(2);
     expect(feed.items[0]?.level).toBe("high");
+    expect(feed.items.some((item) => item.id === "inspection-1-report")).toBe(true);
   });
 });

@@ -564,7 +564,7 @@ export function InspectionForm({
       }
 
       if (result.success) {
-        router.push("/inspection/history");
+        router.push(`/inspection/history/${result.inspectionId}`);
       }
       router.refresh();
     } catch (submissionError) {
