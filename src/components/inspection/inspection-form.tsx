@@ -697,14 +697,6 @@ export function InspectionForm({
             : "尚未開始儲存草稿。";
   return (
     <div className="grid gap-6" data-testid={isEditMode ? "inspection-edit-form" : "inspection-create-form"}>
-      {requiresStoreSelection ? (
-        <section className="rounded-[28px] border border-dashed border-ink/15 bg-white p-6 shadow-card">
-          <h2 className="font-serifTc text-2xl font-semibold text-ink">先選擇店別，再開始巡店</h2>
-          <p className="mt-3 max-w-2xl text-sm leading-6 text-ink/70">
-            這一頁不再預設帶入任何店別，避免一進來就讀到舊草稿。請先從上方選好要巡的店別，系統才會載入該店的組員、題目與草稿。
-          </p>
-        </section>
-      ) : null}
       <section className="rounded-[28px] border border-ink/10 bg-white p-5 shadow-card">
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
           <div>

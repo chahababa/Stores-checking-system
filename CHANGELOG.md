@@ -2,12 +2,18 @@
 
 ## 2026-04-13 Latest
 
+- `ux(new-inspection):` removed the extra pre-store-selection notice card
+  - the page no longer shows a large standalone prompt card above the form
+  - store selection still behaves the same, but the fill area is cleaner
+  - restored clean Chinese copy for the new inspection page header
+
 - `ux(workstations):` simplified workstation setup
   - workstation code is no longer a primary input on the settings page
   - users now fill only workstation name and area
   - the page explains that system code is auto-generated
   - existing workstations keep code as read-only internal metadata
   - workstation page copy was rewritten into clean Chinese
+  - backend workstation input now accepts empty code and generates one automatically
 
 - `ux(mobile-nav):` reduced the sticky category navigation footprint on the new inspection page
   - smaller title size on mobile

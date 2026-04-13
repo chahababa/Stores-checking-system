@@ -27,7 +27,7 @@ export type StoreInput = {
 export type WorkstationArea = "kitchen" | "floor" | "counter";
 
 export type WorkstationInput = {
-  code: string;
+  code?: string;
   name: string;
   area: WorkstationArea;
   storeId?: string | null;
@@ -76,8 +76,8 @@ function normalizeIdentifier(value: string) {
     .replace(/^_+|_+$/g, "");
 }
 
-function buildWorkstationCode(input: { code: string; name: string; area: WorkstationArea }) {
-  const explicitCode = normalizeIdentifier(input.code);
+function buildWorkstationCode(input: { code?: string; name: string; area: WorkstationArea }) {
+  const explicitCode = normalizeIdentifier(input.code ?? "");
   if (explicitCode) {
     return explicitCode;
   }
