@@ -28,6 +28,8 @@ const SCORE_OPTIONS = [
   { score: 2 as const, grade: "B", label: "\u5f85\u52a0\u5f37" },
   { score: 1 as const, grade: "C", label: "\u7570\u5e38" },
 ];
+const LOAD_DRAFT_CONFIRM_MESSAGE =
+  "\u767c\u73fe\u9019\u500b\u5e97\u5225\u8207\u65e5\u671f\u5df2\u6709\u8349\u7a3f\uff0c\u662f\u5426\u8981\u63a5\u8457\u8f09\u5165\u4e26\u7e7c\u7e8c\u586b\u5beb\uff1f";
 
 type PhotoDraft = {
   itemId: string;
@@ -235,6 +237,23 @@ function formatDraftTimestamp(value: Date | null) {
   }).format(value);
 }
 
+function getInitialCollapsedCategoryIds(
+  seed: InspectionFormSeed,
+  state: InspectionFormDraftState,
+): Record<string, boolean> {
+  if (seed.groupedItems.length === 0) {
+    return {};
+  }
+
+  const firstIncompleteGroup =
+    seed.groupedItems.find((group) => group.items.some((item) => state.scores[item.id]?.score === null)) ??
+    seed.groupedItems[0];
+
+  return Object.fromEntries(
+    seed.groupedItems.map((group) => [group.categoryId, group.categoryId !== firstIncompleteGroup.categoryId]),
+  );
+}
+
 export function InspectionForm({
   seed,
   saveAction,
@@ -290,8 +309,8 @@ export function InspectionForm({
   const [isSaving, setIsSaving] = useState(false);
   const [draftSaveState, setDraftSaveState] = useState<DraftSaveState>("idle");
   const [lastDraftSavedAt, setLastDraftSavedAt] = useState<Date | null>(null);
-  const [collapsedCategoryIds, setCollapsedCategoryIds] = useState<Record<string, boolean>>(
-    Object.fromEntries(seed.groupedItems.map((group) => [group.categoryId, false])),
+  const [collapsedCategoryIds, setCollapsedCategoryIds] = useState<Record<string, boolean>>(() =>
+    getInitialCollapsedCategoryIds(seed, initialState ?? createInitialState(seed)),
   );
   const fileInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
   const menuPhotoInputRefs = useRef<Partial<Record<"dine_in" | "takeout", HTMLInputElement | null>>>({});
@@ -315,7 +334,7 @@ export function InspectionForm({
     setMenuPhotos({});
     setDraftSaveState("idle");
     setLastDraftSavedAt(null);
-    setCollapsedCategoryIds(Object.fromEntries(seed.groupedItems.map((group) => [group.categoryId, false])));
+    setCollapsedCategoryIds(getInitialCollapsedCategoryIds(seed, freshState));
 
     if (isEditMode) {
       return;
@@ -327,10 +346,12 @@ export function InspectionForm({
 
     const existingDraft = localStorage.getItem(`draft_${seed.selectedStoreId}_${seed.selectedDate}`);
     if (existingDraft && !seed.duplicateInspectionWarning) {
-      const shouldLoad = window.confirm("?潛???亥??交?撌脫??阮嚗?蝜潛??亥?憛怠神??");
+      const shouldLoad = window.confirm(LOAD_DRAFT_CONFIRM_MESSAGE);
       if (shouldLoad) {
         try {
-          setForm(normalizeDraftState(JSON.parse(existingDraft), seed));
+          const normalizedDraft = normalizeDraftState(JSON.parse(existingDraft), seed);
+          setForm(normalizedDraft);
+          setCollapsedCategoryIds(getInitialCollapsedCategoryIds(seed, normalizedDraft));
           setDraftSaveState("saved");
           setLastDraftSavedAt(new Date());
         } catch {
@@ -879,13 +900,13 @@ export function InspectionForm({
         </div>
       </section>
 
-      <section className="sticky top-4 z-10 rounded-[28px] border border-ink/10 bg-cream/95 p-5 shadow-card backdrop-blur">
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+      <section className="sticky top-3 z-10 rounded-[24px] border border-ink/10 bg-cream/95 p-4 shadow-card backdrop-blur sm:top-4 sm:rounded-[28px] sm:p-5">
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
           <div>
             <h2 className="font-serifTc text-2xl font-semibold">分類導航</h2>
             <p className="mt-2 text-sm text-ink/70">先快速把整體評分完成，再回頭調整個別題目的 B / C 與備註會更快。</p>
           </div>
-          <div className="flex flex-wrap gap-2">
+          <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">
             <button
               type="button"
               data-testid="inspection-bulk-score-3"
@@ -905,7 +926,8 @@ export function InspectionForm({
           </div>
         </div>
 
-        <div className="mt-4 flex flex-wrap gap-2" data-testid="inspection-category-nav">
+        <div className="-mx-1 mt-4 overflow-x-auto px-1 pb-1 [scrollbar-width:none]" data-testid="inspection-category-nav">
+          <div className="flex min-w-max gap-2">
           {seed.groupedItems.map((group, index) => {
             const answeredCount = group.items.filter((item) => form.scores[item.id]?.score !== null).length;
             const isCompleted = answeredCount === group.items.length;
@@ -913,6 +935,12 @@ export function InspectionForm({
               <a
                 key={group.categoryId}
                 href={`#category-${group.categoryId}`}
+                onClick={() =>
+                  setCollapsedCategoryIds((current) => ({
+                    ...current,
+                    [group.categoryId]: false,
+                  }))
+                }
                 className={`rounded-full px-4 py-2 text-sm transition ${
                   isCompleted ? "bg-white text-ink shadow-sm" : "bg-soft text-ink/75 hover:bg-white"
                 }`}
@@ -921,6 +949,7 @@ export function InspectionForm({
               </a>
             );
           })}
+          </div>
         </div>
       </section>
 
@@ -932,15 +961,15 @@ export function InspectionForm({
           <section
             key={group.categoryId}
             id={`category-${group.categoryId}`}
-            className="scroll-mt-36 rounded-[28px] border border-ink/10 bg-white p-5 shadow-card"
+            className="scroll-mt-32 rounded-[24px] border border-ink/10 bg-white p-4 shadow-card sm:scroll-mt-36 sm:rounded-[28px] sm:p-5"
           >
             <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
               <div>
                 <p className="font-lora text-sm uppercase tracking-[0.25em] text-warm">分類 {index + 1}</p>
-                <h2 className="mt-2 font-serifTc text-2xl font-semibold">{group.categoryName}</h2>
+                <h2 className="mt-2 font-serifTc text-xl font-semibold sm:text-2xl">{group.categoryName}</h2>
                 <p className="mt-2 text-sm text-ink/70">已填 {answeredCount} / {group.items.length} 題</p>
               </div>
-              <div className="flex flex-wrap gap-2">
+              <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">
                 <span className="rounded-full bg-soft px-4 py-2 text-sm text-ink/70">
                   {answeredCount === group.items.length ? "已完成" : "填寫中"}
                 </span>
@@ -955,7 +984,7 @@ export function InspectionForm({
             </div>
 
             {!collapsed ? (
-              <div className="mt-5 grid gap-4">
+              <div className="mt-4 grid gap-3 sm:mt-5 sm:gap-4">
                 {group.items.map((item) => {
                   const value = form.scores[item.id] ?? {
                     score: item.defaultScore,
@@ -966,18 +995,21 @@ export function InspectionForm({
                     consecutiveWeeks: item.consecutiveWeeks,
                   };
                   const itemPhotos = photos[item.id] ?? [];
+                  const hasFollowupContent = value.note.trim().length > 0 || itemPhotos.length > 0;
+                  const needsFollowup = value.score !== null && value.score <= 2;
+                  const showFollowup = needsFollowup || hasFollowupContent;
 
                   return (
                     <article
                       key={item.id}
                       data-testid={`inspection-item-${item.id}`}
                       data-item-id={item.id}
-                      className="rounded-[24px] border border-ink/10 bg-soft/25 p-4"
+                      className="rounded-[20px] border border-ink/10 bg-soft/25 p-3 sm:rounded-[24px] sm:p-4"
                     >
-                      <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                      <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
                         <div className="max-w-2xl">
                           <div className="flex flex-wrap items-center gap-2">
-                            <h3 className="text-lg font-medium text-ink">{item.name}</h3>
+                            <h3 className="text-base font-medium text-ink sm:text-lg">{item.name}</h3>
                             {value.tagTypes.map((tagType) => (
                               <span
                                 key={tagType}
@@ -998,12 +1030,12 @@ export function InspectionForm({
                               </span>
                             ) : null}
                           </div>
-                          <p className="mt-2 text-sm text-ink/65">
+                          <p className="mt-2 text-xs leading-5 text-ink/65 sm:text-sm">
                             這題請以 A / B / C 評分：A 代表良好、B 代表待加強、C 代表異常。
                           </p>
                         </div>
 
-                        <div className="flex gap-2">
+                        <div className="grid grid-cols-3 gap-2 sm:flex">
                           {SCORE_OPTIONS.map((option) => (
                             <button
                               key={option.score}
@@ -1011,7 +1043,7 @@ export function InspectionForm({
                               data-testid={`inspection-score-${item.id}-${option.score}`}
                               data-score={option.score}
                               onClick={() => setScore(item.id, option.score)}
-                              className={`flex min-w-[72px] flex-col items-center rounded-2xl px-4 py-2 text-sm font-medium transition ${
+                              className={`flex min-w-0 flex-col items-center rounded-2xl px-3 py-2 text-sm font-medium transition sm:min-w-[72px] sm:px-4 ${
                                 value.score === option.score
                                   ? "bg-warm text-white"
                                   : "border border-ink/10 bg-white text-ink/70 hover:bg-cream"
@@ -1026,76 +1058,84 @@ export function InspectionForm({
                         </div>
                       </div>
 
-                      <div className="mt-4 grid gap-4 lg:grid-cols-[minmax(0,1fr)_280px]">
-                        <div>
-                          <label className="mb-2 block text-sm text-ink/70">備註</label>
-                          <textarea
-                            data-testid={`inspection-note-${item.id}`}
-                            value={value.note}
-                            onChange={(event) => setNote(item.id, event.target.value)}
-                            placeholder="若為 B 或 C，請補充異常原因、現場觀察或後續處理方式。"
-                            className="min-h-28 w-full rounded-2xl border border-ink/10 bg-white px-4 py-3"
-                          />
-                        </div>
+                      {showFollowup ? (
+                        <div className="mt-4 grid gap-4 lg:grid-cols-[minmax(0,1fr)_280px]">
+                          <div>
+                            <label className="mb-2 block text-sm text-ink/70">備註</label>
+                            <textarea
+                              data-testid={`inspection-note-${item.id}`}
+                              value={value.note}
+                              onChange={(event) => setNote(item.id, event.target.value)}
+                              placeholder="若為 B 或 C，請補充異常原因、現場觀察或後續處理方式。"
+                              className="min-h-28 w-full rounded-2xl border border-ink/10 bg-white px-4 py-3"
+                            />
+                          </div>
 
-                        <div className="rounded-2xl border border-ink/10 bg-white p-4">
-                          <div className="flex items-center justify-between gap-3">
-                            <div>
-                              <p className="text-sm font-medium text-ink">巡店照片</p>
-                              <p className="mt-1 text-xs leading-5 text-ink/60">
-                                每題最多可附 3 張照片。上傳前會自動壓縮，避免檔案過大。
-                              </p>
+                          <div className="rounded-2xl border border-ink/10 bg-white p-4">
+                            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                              <div>
+                                <p className="text-sm font-medium text-ink">巡店照片</p>
+                                <p className="mt-1 text-xs leading-5 text-ink/60">
+                                  每題最多可附 3 張照片。上傳前會自動壓縮，避免檔案過大。
+                                </p>
+                              </div>
+                              <label className="inline-flex w-full items-center justify-center rounded-full bg-soft px-4 py-2 text-sm text-ink sm:w-auto">
+                                選擇照片
+                                <input
+                                  ref={(node) => {
+                                    fileInputRefs.current[item.id] = node;
+                                  }}
+                                  type="file"
+                                  accept="image/*"
+                                  multiple
+                                  className="hidden"
+                                  onChange={(event) => handlePhotoChange(item.id, event.target.files)}
+                                />
+                              </label>
                             </div>
-                            <label className="rounded-full bg-soft px-4 py-2 text-sm text-ink">
-                              銝
-                              <input
-                                ref={(node) => {
-                                  fileInputRefs.current[item.id] = node;
-                                }}
-                                type="file"
-                                accept="image/*"
-                                multiple
-                                className="hidden"
-                                onChange={(event) => handlePhotoChange(item.id, event.target.files)}
-                              />
-                            </label>
-                          </div>
 
-                          <div className="mt-4 grid grid-cols-2 gap-3">
-                            {itemPhotos.map((photo) => (
-                              <div key={`${photo.fileName}_${photo.previewUrl}`} className="overflow-hidden rounded-2xl border border-ink/10 bg-soft/20">
-                                <div className="relative aspect-square w-full">
-                                  <Image src={photo.previewUrl} alt={photo.fileName} fill unoptimized className="object-cover" />
+                            <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
+                              {itemPhotos.map((photo) => (
+                                <div key={`${photo.fileName}_${photo.previewUrl}`} className="overflow-hidden rounded-2xl border border-ink/10 bg-soft/20">
+                                  <div className="relative aspect-square w-full">
+                                    <Image src={photo.previewUrl} alt={photo.fileName} fill unoptimized className="object-cover" />
+                                  </div>
+                                  <div className="grid gap-2 p-3">
+                                    <button
+                                      type="button"
+                                      onClick={() => toggleStandardPhoto(item.id, photo.fileName)}
+                                      className={`rounded-full px-3 py-2 text-xs ${
+                                        photo.isStandard ? "bg-warm text-white" : "bg-soft text-ink/70"
+                                      }`}
+                                    >
+                                      {photo.isStandard ? "標準照片" : "設成標準照"}
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => removePhoto(item.id, photo.fileName)}
+                                      className="rounded-full bg-danger/10 px-3 py-2 text-xs text-danger"
+                                    >
+                                      刪除
+                                    </button>
+                                  </div>
                                 </div>
-                                <div className="grid gap-2 p-3">
-                                  <button
-                                    type="button"
-                                    onClick={() => toggleStandardPhoto(item.id, photo.fileName)}
-                                    className={`rounded-full px-3 py-2 text-xs ${
-                                      photo.isStandard ? "bg-warm text-white" : "bg-soft text-ink/70"
-                                    }`}
-                                  >
-                                    {photo.isStandard ? "標準照片" : "設成標準照"}
-                                  </button>
-                                  <button
-                                    type="button"
-                                    onClick={() => removePhoto(item.id, photo.fileName)}
-                                    className="rounded-full bg-danger/10 px-3 py-2 text-xs text-danger"
-                                  >
-                                    刪除
-                                  </button>
-                                </div>
-                              </div>
-                            ))}
+                              ))}
 
-                            {itemPhotos.length === 0 ? (
-                              <div className="col-span-2 rounded-2xl border border-dashed border-ink/15 px-4 py-6 text-sm text-ink/55">
-                                目前尚未上傳照片。
-                              </div>
-                            ) : null}
+                              {itemPhotos.length === 0 ? (
+                                <div className="col-span-2 rounded-2xl border border-dashed border-ink/15 px-4 py-6 text-sm text-ink/55">
+                                  目前尚未上傳照片。
+                                </div>
+                              ) : null}
+                            </div>
                           </div>
                         </div>
-                      </div>
+                      ) : (
+                        <div className="mt-4 rounded-2xl border border-dashed border-ink/10 bg-white/70 px-4 py-3 text-sm text-ink/55">
+                          {value.score === 3
+                            ? "這題目前評為 A，暫時不需要補充備註與照片。"
+                            : "若選 B 或 C，系統會自動展開備註與照片欄位。"}
+                        </div>
+                      )}
                     </article>
                   );
                 })}
