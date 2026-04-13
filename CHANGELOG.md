@@ -2,6 +2,13 @@
 
 ## 2026-04-13 Latest
 
+- `ux(workstations):` simplified workstation setup
+  - workstation code is no longer a primary input on the settings page
+  - users now fill only workstation name and area
+  - the page explains that system code is auto-generated
+  - existing workstations keep code as read-only internal metadata
+  - workstation page copy was rewritten into clean Chinese
+
 - `ux(mobile-nav):` reduced the sticky category navigation footprint on the new inspection page
   - smaller title size on mobile
   - compact action buttons on small screens

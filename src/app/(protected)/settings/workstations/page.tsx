@@ -46,7 +46,7 @@ export default async function WorkstationsSettingsPage({
     const { createWorkstation } = await import("@/lib/settings");
     const rawStoreId = String(formData.get("store_id") || "");
     await createWorkstation({
-      code: String(formData.get("code") || ""),
+      code: "",
       name: String(formData.get("name") || ""),
       area: String(formData.get("area") || "floor") as "kitchen" | "floor" | "counter",
       storeId: rawStoreId || null,
@@ -75,23 +75,15 @@ export default async function WorkstationsSettingsPage({
 
       <SectionCard
         title="新增工作站"
-        description="工作站是巡店當下要指派給組員的站位。區域先維持分成內場、外場、櫃台；如果你只是要新增炸台、飲料台、點餐台這種細部站位，直接在這裡新增就可以。"
+        description="工作站代碼會由系統自動產生，你只需要決定工作站名稱與所屬區域。之後巡店時，就可以把同一位組員依當班狀況派到不同工作站。"
       >
         <form action={createWorkstationAction} className="grid gap-4">
-          <label className="grid gap-2 text-sm">
-            <span className="text-ink/70">工作站代碼（可不填）</span>
-            <input
-              name="code"
-              placeholder="留白時系統會自動產生"
-              className="rounded-2xl border border-ink/10 bg-white px-4 py-3"
-            />
-          </label>
           <label className="grid gap-2 text-sm">
             <span className="text-ink/70">工作站名稱</span>
             <input
               name="name"
               required
-              placeholder="炸台"
+              placeholder="例如：炸台、飲料台、外帶交付"
               className="rounded-2xl border border-ink/10 bg-white px-4 py-3"
             />
           </label>
@@ -104,7 +96,7 @@ export default async function WorkstationsSettingsPage({
             </select>
           </label>
           <div className="rounded-2xl border border-ink/10 bg-soft/40 px-4 py-3 text-sm text-ink/70">
-            <p className="font-medium text-ink">區域怎麼選比較好？</p>
+            <p className="font-medium text-ink">命名參考</p>
             <ul className="mt-2 grid gap-1">
               <li>內場：炸台、備料台、飲料台、洗滌區</li>
               <li>外場：帶位、送餐、桌面整理、出餐口</li>
@@ -112,7 +104,7 @@ export default async function WorkstationsSettingsPage({
             </ul>
           </div>
           <label className="grid gap-2 text-sm">
-            <span className="text-ink/70">適用範圍</span>
+            <span className="text-ink/70">適用店別</span>
             <select name="store_id" className="rounded-2xl border border-ink/10 bg-white px-4 py-3">
               <option value="">全部店通用</option>
               {(stores ?? []).map((store) => (
@@ -122,6 +114,9 @@ export default async function WorkstationsSettingsPage({
               ))}
             </select>
           </label>
+          <p className="text-xs leading-5 text-ink/55">
+            工作站代碼屬於系統內部識別用，現在會自動產生，不需要手動填寫。
+          </p>
           <button className="rounded-full bg-warm px-5 py-3 text-sm text-white" type="submit">
             新增工作站
           </button>
@@ -129,8 +124,8 @@ export default async function WorkstationsSettingsPage({
       </SectionCard>
 
       <SectionCard
-        title="工作站清單"
-        description="之後如果要增加新的工作站，就在這裡操作。代碼主要是系統內部識別用途，若留白系統會自動產生。若未來不是新增工作站，而是要新增全新的區域分類，那就需要再調整系統規則。"
+        title="既有工作站"
+        description="這裡可以調整工作站名稱、所屬區域、適用店別與啟用狀態。代碼會保留給系統內部使用，不需要日常維護。"
       >
         <div data-testid="workstations-list" className="grid gap-3">
           {(workstations ?? []).map((workstation) => {
@@ -144,12 +139,8 @@ export default async function WorkstationsSettingsPage({
                 className="grid gap-3 rounded-2xl border border-ink/10 bg-soft/50 p-4"
               >
                 <input type="hidden" name="id" value={workstation.id} />
-                <div className="grid gap-3 md:grid-cols-[140px_1fr_160px_180px_130px] md:items-center">
-                  <input
-                    name="code"
-                    defaultValue={workstation.code}
-                    className="rounded-2xl border border-ink/10 bg-white px-4 py-3"
-                  />
+                <input type="hidden" name="code" value={workstation.code} />
+                <div className="grid gap-3 md:grid-cols-[1.15fr_160px_180px_130px] md:items-center">
                   <input
                     name="name"
                     defaultValue={workstation.name}
@@ -185,12 +176,15 @@ export default async function WorkstationsSettingsPage({
                     <option value="false">停用</option>
                   </select>
                 </div>
-                <p className="text-xs text-ink/60">
-                  {getShiftRoleLabel(workstation.area)} / {getWorkstationScopeLabel(scope)} / {store?.name ?? "全部店通用"}
-                </p>
+                <div className="flex flex-wrap items-center justify-between gap-3 text-xs text-ink/60">
+                  <span>
+                    {getShiftRoleLabel(workstation.area)} / {getWorkstationScopeLabel(scope)} / {store?.name ?? "全部店通用"}
+                  </span>
+                  <span>系統代碼：{workstation.code}</span>
+                </div>
                 <div className="flex justify-end">
                   <button className="rounded-full bg-white px-4 py-2 text-sm" type="submit">
-                    儲存工作站
+                    儲存變更
                   </button>
                 </div>
               </form>
