@@ -2,6 +2,13 @@
 
 ## 2026-04-13 Latest
 
+- `ux(mobile-nav):` reduced the sticky category navigation footprint on the new inspection page
+  - smaller title size on mobile
+  - compact action buttons on small screens
+  - category chips use smaller padding and text
+  - helper copy hidden on mobile to preserve fill area
+  - sticky block padding tightened for better phone usability
+
 - `fix(detail-report-copy):` cleaned remaining mojibake on the inspection detail page
   - fixed summary labels
   - fixed "back to history" action text

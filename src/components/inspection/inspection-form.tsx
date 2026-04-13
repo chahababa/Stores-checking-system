@@ -900,18 +900,18 @@ export function InspectionForm({
         </div>
       </section>
 
-      <section className="sticky top-3 z-10 rounded-[24px] border border-ink/10 bg-cream/95 p-4 shadow-card backdrop-blur sm:top-4 sm:rounded-[28px] sm:p-5">
-        <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+      <section className="sticky top-2 z-10 rounded-[20px] border border-ink/10 bg-cream/95 px-3 py-3 shadow-card backdrop-blur sm:top-4 sm:rounded-[28px] sm:px-5 sm:py-5">
+        <div className="flex flex-col gap-2 lg:flex-row lg:items-center lg:justify-between">
           <div>
-            <h2 className="font-serifTc text-2xl font-semibold">分類導航</h2>
-            <p className="mt-2 text-sm text-ink/70">先快速把整體評分完成，再回頭調整個別題目的 B / C 與備註會更快。</p>
+            <h2 className="font-serifTc text-lg font-semibold sm:text-2xl">分類導航</h2>
+            <p className="mt-2 hidden text-sm text-ink/70 sm:block">先快速把整體評分完成，再回頭調整個別題目的 B / C 與備註會更快。</p>
           </div>
           <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">
             <button
               type="button"
               data-testid="inspection-bulk-score-3"
               onClick={() => applyBulkScore(3)}
-              className="rounded-full bg-warm px-4 py-2 text-sm text-white"
+              className="rounded-full bg-warm px-3 py-2 text-xs text-white sm:px-4 sm:text-sm"
             >
               全部設為 A
             </button>
@@ -919,14 +919,14 @@ export function InspectionForm({
               type="button"
               data-testid="inspection-reset-scores"
               onClick={resetScoresToDefault}
-              className="rounded-full bg-soft px-4 py-2 text-sm text-ink/75"
+              className="rounded-full bg-soft px-3 py-2 text-xs text-ink/75 sm:px-4 sm:text-sm"
             >
               重設為預設值
             </button>
           </div>
         </div>
 
-        <div className="-mx-1 mt-4 overflow-x-auto px-1 pb-1 [scrollbar-width:none]" data-testid="inspection-category-nav">
+        <div className="-mx-1 mt-3 overflow-x-auto px-1 pb-1 [scrollbar-width:none]" data-testid="inspection-category-nav">
           <div className="flex min-w-max gap-2">
           {seed.groupedItems.map((group, index) => {
             const answeredCount = group.items.filter((item) => form.scores[item.id]?.score !== null).length;
@@ -941,7 +941,7 @@ export function InspectionForm({
                     [group.categoryId]: false,
                   }))
                 }
-                className={`rounded-full px-4 py-2 text-sm transition ${
+                className={`whitespace-nowrap rounded-full px-3 py-1.5 text-xs transition sm:px-4 sm:py-2 sm:text-sm ${
                   isCompleted ? "bg-white text-ink shadow-sm" : "bg-soft text-ink/75 hover:bg-white"
                 }`}
               >
