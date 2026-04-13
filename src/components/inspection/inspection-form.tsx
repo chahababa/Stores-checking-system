@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import Image from "next/image";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -38,6 +38,13 @@ type PhotoDraft = {
   previewUrl: string;
 };
 
+type MenuPhotoDraft = {
+  base64: string;
+  contentType: string;
+  fileName: string;
+  previewUrl: string;
+};
+
 export type InspectionFormDraftState = {
   storeId: string;
   date: string;
@@ -58,8 +65,10 @@ export type InspectionFormDraftState = {
   menuItems: {
     dineInDishName: string;
     dineInPortionWeight: string;
+    dineInPhotoUrl: string;
     takeoutDishName: string;
     takeoutPortionWeight: string;
+    takeoutPhotoUrl: string;
   };
   legacyNote: string;
 };
@@ -89,8 +98,10 @@ function createInitialState(seed: InspectionFormSeed): InspectionFormDraftState 
     menuItems: {
       dineInDishName: "",
       dineInPortionWeight: "",
+      dineInPhotoUrl: "",
       takeoutDishName: "",
       takeoutPortionWeight: "",
+      takeoutPhotoUrl: "",
     },
     legacyNote: "",
   };
@@ -180,6 +191,10 @@ function normalizeDraftState(raw: unknown, seed: InspectionFormSeed): Inspection
         typeof draft.menuItems?.dineInPortionWeight === "string"
           ? draft.menuItems.dineInPortionWeight
           : fallback.menuItems.dineInPortionWeight,
+      dineInPhotoUrl:
+        typeof draft.menuItems?.dineInPhotoUrl === "string"
+          ? draft.menuItems.dineInPhotoUrl
+          : fallback.menuItems.dineInPhotoUrl,
       takeoutDishName:
         typeof draft.menuItems?.takeoutDishName === "string"
           ? draft.menuItems.takeoutDishName
@@ -188,6 +203,10 @@ function normalizeDraftState(raw: unknown, seed: InspectionFormSeed): Inspection
         typeof draft.menuItems?.takeoutPortionWeight === "string"
           ? draft.menuItems.takeoutPortionWeight
           : fallback.menuItems.takeoutPortionWeight,
+      takeoutPhotoUrl:
+        typeof draft.menuItems?.takeoutPhotoUrl === "string"
+          ? draft.menuItems.takeoutPhotoUrl
+          : fallback.menuItems.takeoutPhotoUrl,
     },
     legacyNote: typeof draft.legacyNote === "string" ? draft.legacyNote : fallback.legacyNote,
   };
@@ -198,7 +217,9 @@ function getWorkstationLabel(workstation: WorkstationOption | undefined) {
     return "未指定工作站";
   }
 
-  return `${workstation.name}（${workstation.area === "kitchen" ? "內場" : workstation.area === "floor" ? "外場" : "櫃台"}）`;
+  const areaLabel =
+    workstation.area === "kitchen" ? "內場" : workstation.area === "floor" ? "外場" : "櫃台";
+  return `${workstation.name} / ${areaLabel}`;
 }
 
 function formatDraftTimestamp(value: Date | null) {
@@ -218,7 +239,7 @@ export function InspectionForm({
   seed,
   saveAction,
   initialState,
-  submitLabel = "建立巡店紀錄",
+  submitLabel = "送出巡店",
   isEditMode = false,
 }: {
   seed: InspectionFormSeed;
@@ -241,6 +262,12 @@ export function InspectionForm({
       type: "dine_in" | "takeout";
       dishName?: string;
       portionWeight?: string;
+      photoUrl?: string;
+      photo?: {
+        base64: string;
+        contentType: string;
+        fileName: string;
+      };
     }>;
     legacyNote?: string;
     photos?: Array<{
@@ -258,6 +285,7 @@ export function InspectionForm({
   const router = useRouter();
   const [form, setForm] = useState<InspectionFormDraftState>(() => initialState ?? createInitialState(seed));
   const [photos, setPhotos] = useState<Record<string, PhotoDraft[]>>({});
+  const [menuPhotos, setMenuPhotos] = useState<Partial<Record<"dine_in" | "takeout", MenuPhotoDraft>>>({});
   const [error, setError] = useState("");
   const [isSaving, setIsSaving] = useState(false);
   const [draftSaveState, setDraftSaveState] = useState<DraftSaveState>("idle");
@@ -266,6 +294,7 @@ export function InspectionForm({
     Object.fromEntries(seed.groupedItems.map((group) => [group.categoryId, false])),
   );
   const fileInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
+  const menuPhotoInputRefs = useRef<Partial<Record<"dine_in" | "takeout", HTMLInputElement | null>>>({});
   const workstationsById = useMemo(
     () => Object.fromEntries(seed.workstations.map((workstation) => [workstation.id, workstation])),
     [seed.workstations],
@@ -283,6 +312,7 @@ export function InspectionForm({
     const freshState = initialState ?? createInitialState(seed);
     setForm(freshState);
     setPhotos({});
+    setMenuPhotos({});
     setDraftSaveState("idle");
     setLastDraftSavedAt(null);
     setCollapsedCategoryIds(Object.fromEntries(seed.groupedItems.map((group) => [group.categoryId, false])));
@@ -297,7 +327,7 @@ export function InspectionForm({
 
     const existingDraft = localStorage.getItem(`draft_${seed.selectedStoreId}_${seed.selectedDate}`);
     if (existingDraft && !seed.duplicateInspectionWarning) {
-      const shouldLoad = window.confirm("發現這個店別與日期已有草稿，要繼續接著填寫嗎？");
+      const shouldLoad = window.confirm("?潛???亥??交?撌脫??阮嚗?蝜潛??亥?憛怠神??");
       if (shouldLoad) {
         try {
           setForm(normalizeDraftState(JSON.parse(existingDraft), seed));
@@ -336,6 +366,8 @@ export function InspectionForm({
   const completedCategoryCount = seed.groupedItems.filter((group) =>
     group.items.every((item) => form.scores[item.id]?.score !== null),
   ).length;
+  const dineInPhotoPreview = menuPhotos.dine_in?.previewUrl ?? form.menuItems.dineInPhotoUrl;
+  const takeoutPhotoPreview = menuPhotos.takeout?.previewUrl ?? form.menuItems.takeoutPhotoUrl;
 
   function applyBulkScore(score: ScoreValue) {
     setForm((current) => ({
@@ -412,6 +444,48 @@ export function InspectionForm({
     }));
   }
 
+  async function handleMenuPhotoChange(menuType: "dine_in" | "takeout", fileList: FileList | null) {
+    if (!fileList?.length) {
+      return;
+    }
+
+    setError("");
+
+    try {
+      const result = await compressImage(fileList[0]);
+      setMenuPhotos((current) => ({
+        ...current,
+        [menuType]: {
+          ...result,
+          previewUrl: `data:${result.contentType};base64,${result.base64}`,
+        },
+      }));
+    } catch (uploadError) {
+      setError(uploadError instanceof Error ? uploadError.message : "餐點照片壓縮失敗，請換一張再試。");
+    } finally {
+      const input = menuPhotoInputRefs.current[menuType];
+      if (input) {
+        input.value = "";
+      }
+    }
+  }
+
+  function removeMenuPhoto(menuType: "dine_in" | "takeout") {
+    setMenuPhotos((current) => {
+      const next = { ...current };
+      delete next[menuType];
+      return next;
+    });
+
+    setForm((current) => ({
+      ...current,
+      menuItems: {
+        ...current.menuItems,
+        ...(menuType === "dine_in" ? { dineInPhotoUrl: "" } : { takeoutPhotoUrl: "" }),
+      },
+    }));
+  }
+
   function setStaffWorkstation(staffId: string, workstationId: string) {
     setForm((current) => ({
       ...current,
@@ -463,7 +537,7 @@ export function InspectionForm({
         [itemId]: [...(current[itemId] ?? []), ...compressed],
       }));
     } catch (uploadError) {
-      setError(uploadError instanceof Error ? uploadError.message : "照片處理失敗，請再試一次。");
+      setError(uploadError instanceof Error ? uploadError.message : "巡店照片壓縮失敗，請換一張再試。");
     } finally {
       const input = fileInputRefs.current[itemId];
       if (input) {
@@ -492,17 +566,17 @@ export function InspectionForm({
     setError("");
 
     if (!form.storeId) {
-      setError("請先選擇要巡店的店別。");
+      setError("請先選擇要開始巡店的店別。");
       return;
     }
 
     if (!form.timeSlot.trim()) {
-      setError("請先填寫巡店時段。");
+      setError("請先選擇巡店時段。");
       return;
     }
 
     if (missingFocusCount > 0) {
-      setError(`還有 ${missingFocusCount} 個標籤項目尚未評分。`);
+      setError(`還有 ${missingFocusCount} 個標籤題目尚未評分，請先完成。`);
       return;
     }
 
@@ -510,7 +584,7 @@ export function InspectionForm({
       (value) => value.score !== null && value.score <= 2 && !value.note.trim(),
     );
     if (invalidNotes) {
-      setError("分數為 1 分或 2 分的項目，請補上改善備註。");
+      setError("評為 B 或 C 的題目請補上備註說明。");
       return;
     }
 
@@ -542,11 +616,27 @@ export function InspectionForm({
             type: "dine_in",
             dishName: form.menuItems.dineInDishName,
             portionWeight: form.menuItems.dineInPortionWeight,
+            photoUrl: form.menuItems.dineInPhotoUrl || undefined,
+            photo: menuPhotos.dine_in
+              ? {
+                  base64: menuPhotos.dine_in.base64,
+                  contentType: menuPhotos.dine_in.contentType,
+                  fileName: menuPhotos.dine_in.fileName,
+                }
+              : undefined,
           },
           {
             type: "takeout",
             dishName: form.menuItems.takeoutDishName,
             portionWeight: form.menuItems.takeoutPortionWeight,
+            photoUrl: form.menuItems.takeoutPhotoUrl || undefined,
+            photo: menuPhotos.takeout
+              ? {
+                  base64: menuPhotos.takeout.base64,
+                  contentType: menuPhotos.takeout.contentType,
+                  fileName: menuPhotos.takeout.fileName,
+                }
+              : undefined,
           },
         ],
         legacyNote: form.legacyNote,
@@ -568,29 +658,29 @@ export function InspectionForm({
       }
       router.refresh();
     } catch (submissionError) {
-      setError(submissionError instanceof Error ? submissionError.message : "建立巡店紀錄失敗，請稍後再試。");
+      setError(submissionError instanceof Error ? submissionError.message : "送出巡店時發生錯誤，請稍後再試。");
     } finally {
       setIsSaving(false);
     }
   }
-
-  const draftStatusLabel = requiresStoreSelection ? "選定店別後才會開始讀取與儲存草稿。" : isEditMode
-    ? "編輯模式不會另外保存瀏覽器草稿。"
-    : draftSaveState === "saving"
-      ? "正在儲存草稿..."
-      : draftSaveState === "saved"
-        ? `草稿已儲存（${formatDraftTimestamp(lastDraftSavedAt)}）`
-        : draftSaveState === "error"
-          ? "草稿儲存失敗，請檢查瀏覽器儲存空間或網路狀態。"
-          : "尚未開始儲存草稿。";
-
+  const draftStatusLabel = requiresStoreSelection
+    ? "先選擇店別後，系統才會讀取或儲存草稿。"
+    : isEditMode
+      ? "編輯模式不會自動覆蓋既有巡店草稿。"
+      : draftSaveState === "saving"
+        ? "正在儲存草稿..."
+        : draftSaveState === "saved"
+          ? `草稿已儲存於 ${formatDraftTimestamp(lastDraftSavedAt)}`
+          : draftSaveState === "error"
+            ? "草稿儲存失敗，請檢查網路後再試一次。"
+            : "尚未開始儲存草稿。";
   return (
     <div className="grid gap-6" data-testid={isEditMode ? "inspection-edit-form" : "inspection-create-form"}>
       {requiresStoreSelection ? (
         <section className="rounded-[28px] border border-dashed border-ink/15 bg-white p-6 shadow-card">
           <h2 className="font-serifTc text-2xl font-semibold text-ink">先選擇店別，再開始巡店</h2>
           <p className="mt-3 max-w-2xl text-sm leading-6 text-ink/70">
-            這一頁不再預設帶入一店，避免一進來就跳出舊草稿提示。請先從上方選擇要巡的店別，系統才會載入該店的當班人員、題目與草稿。
+            這一頁不再預設帶入任何店別，避免一進來就讀到舊草稿。請先從上方選好要巡的店別，系統才會載入該店的組員、題目與草稿。
           </p>
         </section>
       ) : null}
@@ -627,7 +717,7 @@ export function InspectionForm({
           </div>
 
           <div>
-            <label className="mb-2 block text-sm text-ink/70">{"\u5de1\u5e97\u6642\u6bb5"}</label>
+            <label className="mb-2 block text-sm text-ink/70">巡店時段</label>
             <div className="grid gap-2">
               <select
                 data-testid="inspection-time-slot-select"
@@ -640,13 +730,13 @@ export function InspectionForm({
                 }
                 className="w-full rounded-2xl border border-ink/10 bg-white px-4 py-3"
               >
-                <option value="">{"\u8acb\u9078\u64c7\u5de1\u5e97\u6642\u6bb5"}</option>
+                <option value="">請選擇巡店時段</option>
                 {TIME_SLOT_OPTIONS.map((option) => (
                   <option key={option} value={option}>
                     {option}
                   </option>
                 ))}
-                <option value={CUSTOM_TIME_SLOT_VALUE}>{"\u5176\u4ed6\uff08\u81ea\u8a02\uff09"}</option>
+                <option value={CUSTOM_TIME_SLOT_VALUE}>其他（自訂）</option>
               </select>
 
               {selectedTimeSlotValue === CUSTOM_TIME_SLOT_VALUE ? (
@@ -654,7 +744,7 @@ export function InspectionForm({
                   data-testid="inspection-time-slot-input"
                   value={form.timeSlot}
                   onChange={(event) => setForm((current) => ({ ...current, timeSlot: event.target.value }))}
-                  placeholder={"\u8acb\u8f38\u5165\u81ea\u8a02\u5de1\u5e97\u6642\u6bb5\uff0c\u4f8b\u5982\uff1a14:30-15:15"}
+                  placeholder="請輸入自訂巡店時段，例如：14:30-15:15"
                   className="w-full rounded-2xl border border-ink/10 bg-white px-4 py-3"
                 />
               ) : null}
@@ -683,13 +773,13 @@ export function InspectionForm({
 
         {isEditMode ? (
           <div className="mt-4 rounded-2xl border border-ink/10 bg-soft/50 px-4 py-3 text-sm text-ink/65">
-            編輯模式先固定店別與日期，避免切換後載入到另一份巡店表單。
+            目前為編輯模式，店別與日期會維持原本紀錄，避免誤把既有巡店改到其他店或其他日期。
           </div>
         ) : null}
 
         {!isEditMode && seed.duplicateInspectionWarning ? (
           <div className="mt-4 rounded-2xl border border-danger/20 bg-danger/5 px-4 py-3 text-sm text-danger">
-            這個店別與日期已存在巡店紀錄，若只是補寫請先確認是否會重複建立。
+            這個店別在同一天已經有巡店紀錄，送出前請再次確認是否需要重複建立。
           </div>
         ) : null}
 
@@ -699,7 +789,7 @@ export function InspectionForm({
             <div className="mt-2 flex flex-wrap gap-3 text-sm text-ink/70">
               <span>已完成 {completedCategoryCount} / {seed.groupedItems.length} 個分類</span>
               <span>已填 {scoredItemCount} / {totalItemCount} 題</span>
-              <span>未填標籤項目 {missingFocusCount} 題</span>
+              <span>未填標籤題目 {missingFocusCount} 題</span>
             </div>
             <div className="mt-3 h-2 rounded-full bg-cream">
               <div
@@ -715,8 +805,8 @@ export function InspectionForm({
             </p>
             <p className="mt-2 text-xs leading-5 text-ink/55">
               {isEditMode
-                ? "編輯送出後會直接更新原本巡店紀錄。"
-                : "新增模式會自動保存目前表單內容；照片不會保存在瀏覽器草稿中。"}
+                ? "編輯既有巡店時不會覆蓋瀏覽器裡的草稿。"
+                : "草稿只會保存在目前這台裝置；照片不會保存在瀏覽器草稿中。"}
             </p>
           </div>
         </div>
@@ -726,7 +816,7 @@ export function InspectionForm({
         <div className="flex items-center justify-between gap-3">
           <div>
             <h2 className="font-serifTc text-2xl font-semibold">當班人員</h2>
-            <p className="mt-2 text-sm text-ink/70">勾選這次巡店時段實際在場的組員。</p>
+            <p className="mt-2 text-sm text-ink/70">勾選這次巡店時段實際在場的組員，並指定本次工作站。</p>
           </div>
           <div className="rounded-full bg-soft px-4 py-2 text-sm text-ink/70">已選 {Object.keys(form.selectedStaff).length} 人</div>
         </div>
@@ -741,15 +831,13 @@ export function InspectionForm({
             const selectedWorkstation = selectedWorkstationId ? workstationsById[selectedWorkstationId] : undefined;
 
             return (
-              <div
-                key={staff.id}
-                className="rounded-2xl border border-ink/10 bg-soft/30 px-4 py-3"
-              >
+              <div key={staff.id} className="rounded-2xl border border-ink/10 bg-soft/30 px-4 py-3">
                 <div className="flex items-start justify-between gap-4">
                   <div>
                     <p className="font-medium text-ink">{staff.name}</p>
                     <p className="text-sm text-ink/60">
-                      常用工作站：{staff.defaultWorkstationId ? getWorkstationLabel(workstationsById[staff.defaultWorkstationId]) : "未指定"}
+                      常用工作站：
+                      {staff.defaultWorkstationId ? getWorkstationLabel(workstationsById[staff.defaultWorkstationId]) : "尚未指定"}
                     </p>
                   </div>
                   <input
@@ -762,7 +850,7 @@ export function InspectionForm({
                 </div>
                 {checked ? (
                   <label className="mt-3 grid gap-2 text-sm">
-                    <span className="text-ink/65">本次當班工作站</span>
+                    <span className="text-ink/65">本次巡店工作站</span>
                     <select
                       value={selectedWorkstationId}
                       onChange={(event) => setStaffWorkstation(staff.id, event.target.value)}
@@ -775,7 +863,7 @@ export function InspectionForm({
                       ))}
                     </select>
                     <span className="text-xs text-ink/55">
-                      這次巡店會以「{selectedWorkstation ? getWorkstationLabel(selectedWorkstation) : "未指定工作站"}」記錄。
+                      目前記錄為：{selectedWorkstation ? getWorkstationLabel(selectedWorkstation) : "尚未選擇工作站"}
                     </span>
                   </label>
                 ) : null}
@@ -795,7 +883,7 @@ export function InspectionForm({
         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <div>
             <h2 className="font-serifTc text-2xl font-semibold">分類導航</h2>
-            <p className="mt-2 text-sm text-ink/70">先快速把整體評分設好，再只調整例外項目會更快。</p>
+            <p className="mt-2 text-sm text-ink/70">先快速把整體評分完成，再回頭調整個別題目的 B / C 與備註會更快。</p>
           </div>
           <div className="flex flex-wrap gap-2">
             <button
@@ -850,13 +938,11 @@ export function InspectionForm({
               <div>
                 <p className="font-lora text-sm uppercase tracking-[0.25em] text-warm">分類 {index + 1}</p>
                 <h2 className="mt-2 font-serifTc text-2xl font-semibold">{group.categoryName}</h2>
-                <p className="mt-2 text-sm text-ink/70">
-                  已填 {answeredCount} / {group.items.length} 題
-                </p>
+                <p className="mt-2 text-sm text-ink/70">已填 {answeredCount} / {group.items.length} 題</p>
               </div>
               <div className="flex flex-wrap gap-2">
                 <span className="rounded-full bg-soft px-4 py-2 text-sm text-ink/70">
-                  {answeredCount === group.items.length ? "已完成" : "尚未完成"}
+                  {answeredCount === group.items.length ? "已完成" : "填寫中"}
                 </span>
                 <button
                   type="button"
@@ -913,7 +999,7 @@ export function InspectionForm({
                             ) : null}
                           </div>
                           <p className="mt-2 text-sm text-ink/65">
-                            請以 A / B / C 評分：A 代表良好、B 代表待加強、C 代表異常。
+                            這題請以 A / B / C 評分：A 代表良好、B 代表待加強、C 代表異常。
                           </p>
                         </div>
 
@@ -947,7 +1033,7 @@ export function InspectionForm({
                             data-testid={`inspection-note-${item.id}`}
                             value={value.note}
                             onChange={(event) => setNote(item.id, event.target.value)}
-                            placeholder="若為低分，請補充原因、現場觀察或改善方向。"
+                            placeholder="若為 B 或 C，請補充異常原因、現場觀察或後續處理方式。"
                             className="min-h-28 w-full rounded-2xl border border-ink/10 bg-white px-4 py-3"
                           />
                         </div>
@@ -955,13 +1041,13 @@ export function InspectionForm({
                         <div className="rounded-2xl border border-ink/10 bg-white p-4">
                           <div className="flex items-center justify-between gap-3">
                             <div>
-                              <p className="text-sm font-medium text-ink">照片</p>
+                              <p className="text-sm font-medium text-ink">巡店照片</p>
                               <p className="mt-1 text-xs leading-5 text-ink/60">
-                                可上傳巡店照片；3 分項目可標記為標準照片。
+                                每題最多可附 3 張照片。上傳前會自動壓縮，避免檔案過大。
                               </p>
                             </div>
                             <label className="rounded-full bg-soft px-4 py-2 text-sm text-ink">
-                              上傳
+                              銝
                               <input
                                 ref={(node) => {
                                   fileInputRefs.current[item.id] = node;
@@ -989,7 +1075,7 @@ export function InspectionForm({
                                       photo.isStandard ? "bg-warm text-white" : "bg-soft text-ink/70"
                                     }`}
                                   >
-                                    {photo.isStandard ? "標準照片" : "設為標準"}
+                                    {photo.isStandard ? "標準照片" : "設成標準照"}
                                   </button>
                                   <button
                                     type="button"
@@ -1004,7 +1090,7 @@ export function InspectionForm({
 
                             {itemPhotos.length === 0 ? (
                               <div className="col-span-2 rounded-2xl border border-dashed border-ink/15 px-4 py-6 text-sm text-ink/55">
-                                尚未上傳照片。
+                                目前尚未上傳照片。
                               </div>
                             ) : null}
                           </div>
@@ -1023,70 +1109,167 @@ export function InspectionForm({
         <div className="grid gap-5 lg:grid-cols-2">
           <div className="rounded-[24px] border border-ink/10 bg-soft/25 p-4">
             <h2 className="font-serifTc text-2xl font-semibold">餐點品質抽查記錄</h2>
-            <p className="mt-2 text-sm text-ink/70">填寫內用與外帶的抽查品項與重量。</p>
+            <p className="mt-2 text-sm text-ink/70">巡店時可同步記錄內用與外帶餐點，並各自附上一張壓縮後的照片。</p>
 
             <div className="mt-5 grid gap-4">
-              <div className="grid gap-3 sm:grid-cols-2">
-                <div>
-                  <label className="mb-2 block text-sm text-ink/70">內用餐點名稱</label>
-                  <input
-                    value={form.menuItems.dineInDishName}
-                    onChange={(event) => setMenuField("dineInDishName", event.target.value)}
-                    className="w-full rounded-2xl border border-ink/10 bg-white px-4 py-3"
-                  />
+              <div className="rounded-[20px] border border-ink/10 bg-white p-4">
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <div>
+                    <label className="mb-2 block text-sm text-ink/70">內用餐點名稱</label>
+                    <input
+                      value={form.menuItems.dineInDishName}
+                      onChange={(event) => setMenuField("dineInDishName", event.target.value)}
+                      className="w-full rounded-2xl border border-ink/10 bg-white px-4 py-3"
+                    />
+                  </div>
+                  <div>
+                    <label className="mb-2 block text-sm text-ink/70">內用重量 / 克數</label>
+                    <input
+                      value={form.menuItems.dineInPortionWeight}
+                      onChange={(event) => setMenuField("dineInPortionWeight", event.target.value)}
+                      placeholder="例如 285g"
+                      className="w-full rounded-2xl border border-ink/10 bg-white px-4 py-3"
+                    />
+                  </div>
                 </div>
-                <div>
-                  <label className="mb-2 block text-sm text-ink/70">內用重量 / 克數</label>
-                  <input
-                    value={form.menuItems.dineInPortionWeight}
-                    onChange={(event) => setMenuField("dineInPortionWeight", event.target.value)}
-                    placeholder="例如 285g"
-                    className="w-full rounded-2xl border border-ink/10 bg-white px-4 py-3"
-                  />
+
+                <div className="mt-4 rounded-2xl border border-dashed border-ink/15 bg-soft/20 p-4">
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <div>
+                      <p className="font-medium text-ink">內用餐點照片</p>
+                      <p className="text-xs text-ink/60">上傳前會自動壓縮，只保留一張目前照片。</p>
+                    </div>
+                    <div className="flex gap-2">
+                      <input
+                        ref={(element) => {
+                          menuPhotoInputRefs.current.dine_in = element;
+                        }}
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={(event) => handleMenuPhotoChange("dine_in", event.target.files)}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => menuPhotoInputRefs.current.dine_in?.click()}
+                        className="rounded-full border border-ink/10 px-4 py-2 text-sm text-ink transition hover:bg-white"
+                      >
+                        上傳照片
+                      </button>
+                      {dineInPhotoPreview ? (
+                        <button
+                          type="button"
+                          onClick={() => removeMenuPhoto("dine_in")}
+                          className="rounded-full border border-danger/20 px-4 py-2 text-sm text-danger transition hover:bg-danger/5"
+                        >
+                          移除照片
+                        </button>
+                      ) : null}
+                    </div>
+                  </div>
+
+                  {dineInPhotoPreview ? (
+                    <div className="mt-4 flex items-start gap-4">
+                      <div className="relative h-24 w-24 overflow-hidden rounded-2xl border border-ink/10 bg-white">
+                        <Image src={dineInPhotoPreview} alt="內用餐點照片預覽" fill unoptimized className="object-cover" />
+                      </div>
+                      <div className="text-sm text-ink/65">
+                        <p>{menuPhotos.dine_in ? "新照片已壓縮完成，送出後會一併上傳。" : "目前已附上餐點抽查照片。"}</p>
+                      </div>
+                    </div>
+                  ) : null}
                 </div>
               </div>
 
-              <div className="grid gap-3 sm:grid-cols-2">
-                <div>
-                  <label className="mb-2 block text-sm text-ink/70">外帶餐點名稱</label>
-                  <input
-                    value={form.menuItems.takeoutDishName}
-                    onChange={(event) => setMenuField("takeoutDishName", event.target.value)}
-                    className="w-full rounded-2xl border border-ink/10 bg-white px-4 py-3"
-                  />
+              <div className="rounded-[20px] border border-ink/10 bg-white p-4">
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <div>
+                    <label className="mb-2 block text-sm text-ink/70">外帶餐點名稱</label>
+                    <input
+                      value={form.menuItems.takeoutDishName}
+                      onChange={(event) => setMenuField("takeoutDishName", event.target.value)}
+                      className="w-full rounded-2xl border border-ink/10 bg-white px-4 py-3"
+                    />
+                  </div>
+                  <div>
+                    <label className="mb-2 block text-sm text-ink/70">外帶重量 / 克數</label>
+                    <input
+                      value={form.menuItems.takeoutPortionWeight}
+                      onChange={(event) => setMenuField("takeoutPortionWeight", event.target.value)}
+                      placeholder="例如 260g"
+                      className="w-full rounded-2xl border border-ink/10 bg-white px-4 py-3"
+                    />
+                  </div>
                 </div>
-                <div>
-                  <label className="mb-2 block text-sm text-ink/70">外帶重量 / 克數</label>
-                  <input
-                    value={form.menuItems.takeoutPortionWeight}
-                    onChange={(event) => setMenuField("takeoutPortionWeight", event.target.value)}
-                    placeholder="例如 260g"
-                    className="w-full rounded-2xl border border-ink/10 bg-white px-4 py-3"
-                  />
+
+                <div className="mt-4 rounded-2xl border border-dashed border-ink/15 bg-soft/20 p-4">
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <div>
+                      <p className="font-medium text-ink">外帶餐點照片</p>
+                      <p className="text-xs text-ink/60">上傳前會自動壓縮，只保留一張目前照片。</p>
+                    </div>
+                    <div className="flex gap-2">
+                      <input
+                        ref={(element) => {
+                          menuPhotoInputRefs.current.takeout = element;
+                        }}
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={(event) => handleMenuPhotoChange("takeout", event.target.files)}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => menuPhotoInputRefs.current.takeout?.click()}
+                        className="rounded-full border border-ink/10 px-4 py-2 text-sm text-ink transition hover:bg-white"
+                      >
+                        上傳照片
+                      </button>
+                      {takeoutPhotoPreview ? (
+                        <button
+                          type="button"
+                          onClick={() => removeMenuPhoto("takeout")}
+                          className="rounded-full border border-danger/20 px-4 py-2 text-sm text-danger transition hover:bg-danger/5"
+                        >
+                          移除照片
+                        </button>
+                      ) : null}
+                    </div>
+                  </div>
+
+                  {takeoutPhotoPreview ? (
+                    <div className="mt-4 flex items-start gap-4">
+                      <div className="relative h-24 w-24 overflow-hidden rounded-2xl border border-ink/10 bg-white">
+                        <Image src={takeoutPhotoPreview} alt="外帶餐點照片預覽" fill unoptimized className="object-cover" />
+                      </div>
+                      <div className="text-sm text-ink/65">
+                        <p>{menuPhotos.takeout ? "新照片已壓縮完成，送出後會一併上傳。" : "目前已附上餐點抽查照片。"}</p>
+                      </div>
+                    </div>
+                  ) : null}
                 </div>
               </div>
             </div>
           </div>
 
           <div className="rounded-[24px] border border-ink/10 bg-soft/25 p-4">
-            <h2 className="font-serifTc text-2xl font-semibold">補充說明</h2>
-            <p className="mt-2 text-sm text-ink/70">紀錄現場觀察、前次追蹤情況或其他補充資訊。</p>
+            <h2 className="font-serifTc text-2xl font-semibold">巡店補充記錄</h2>
+            <p className="mt-2 text-sm text-ink/70">補充這次巡店需要追蹤的背景資訊、異常脈絡或後續提醒。</p>
 
             <textarea
               value={form.legacyNote}
               onChange={(event) => setForm((current) => ({ ...current, legacyNote: event.target.value }))}
-              placeholder="例如：上次低分項已改善、現場人力不足、尖峰時段出餐延遲等。"
+              placeholder="例如：內用出餐速度偏慢、外帶包裝封口需再確認，或記錄現場特殊情況。"
               className="mt-4 min-h-48 w-full rounded-2xl border border-ink/10 bg-white px-4 py-3"
             />
           </div>
         </div>
       </section>
-
       {error ? <div className="rounded-2xl border border-danger/20 bg-danger/5 px-4 py-3 text-sm text-danger">{error}</div> : null}
 
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <p className="text-sm text-ink/65">
-          尚未完成評分的標籤項目：<span className="font-medium text-danger">{missingFocusCount}</span>
+          目前還有 <span className="font-medium text-danger">{missingFocusCount}</span> 題標籤項目尚未評分。
         </p>
         <button
           type="button"
@@ -1095,7 +1278,7 @@ export function InspectionForm({
           disabled={isSaving || requiresStoreSelection}
           className="rounded-full bg-warm px-6 py-3 text-sm font-medium text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
         >
-          {isSaving ? "儲存中..." : submitLabel}
+          {isSaving ? "送出中..." : submitLabel}
         </button>
       </div>
     </div>

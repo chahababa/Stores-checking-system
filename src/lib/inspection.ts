@@ -85,6 +85,12 @@ export type InspectionMutationInput = {
     type: "dine_in" | "takeout";
     dishName?: string;
     portionWeight?: string;
+    photoUrl?: string;
+    photo?: {
+      base64: string;
+      contentType: string;
+      fileName: string;
+    };
   }>;
   legacyNote?: string;
   photos?: InspectionPhotoInput[];
@@ -135,6 +141,7 @@ export type InspectionDetail = {
     type: "dine_in" | "takeout";
     dishName: string | null;
     portionWeight: string | null;
+    photoUrl: string | null;
   }>;
   legacyNotes: Array<{
     id: string;
@@ -184,8 +191,10 @@ export type InspectionEditSeed = {
     menuItems: {
       dineInDishName: string;
       dineInPortionWeight: string;
+      dineInPhotoUrl: string;
       takeoutDishName: string;
       takeoutPortionWeight: string;
+      takeoutPhotoUrl: string;
     };
     legacyNote: string;
   };
@@ -254,6 +263,7 @@ export type AuditLogListItem = {
 };
 
 const ONE_WEEK_MS = 1000 * 60 * 60 * 24 * 7;
+let menuItemPhotoSupportCache: boolean | null = null;
 const LEGACY_WORKSTATIONS: WorkstationSummary[] = [
   { id: "legacy-kitchen", code: "kitchen", name: "內場", area: "kitchen", storeId: null },
   { id: "legacy-floor", code: "floor", name: "外場", area: "floor", storeId: null },
@@ -323,6 +333,33 @@ function isWorkstationSchemaError(message?: string | null) {
     message.includes("default_workstation_id") ||
     message.includes("workstation_id")
   );
+}
+
+function isMenuItemPhotoSchemaError(message?: string | null) {
+  if (!message) {
+    return false;
+  }
+
+  return message.includes("photo_url");
+}
+
+async function supportsMenuItemPhotos(admin: ReturnType<typeof createAdminClient>) {
+  if (menuItemPhotoSupportCache !== null) {
+    return menuItemPhotoSupportCache;
+  }
+
+  const { error } = await admin.from("inspection_menu_items").select("photo_url").limit(1);
+  if (error) {
+    if (isMenuItemPhotoSchemaError(error.message)) {
+      menuItemPhotoSupportCache = false;
+      return false;
+    }
+
+    throw new Error(error.message);
+  }
+
+  menuItemPhotoSupportCache = true;
+  return true;
 }
 
 function getLegacyWorkstationById(id: string) {
@@ -703,6 +740,70 @@ async function uploadInspectionPhotos(params: {
   }
 }
 
+async function uploadInspectionMenuItemPhotos(params: {
+  admin: ReturnType<typeof createAdminClient>;
+  storeCode: string;
+  date: string;
+  menuItems: InspectionMutationInput["menuItems"];
+  menuRowByType: Map<"dine_in" | "takeout", { id: string }>;
+}) {
+  const { admin, storeCode, date, menuItems, menuRowByType } = params;
+  const validUploads = menuItems.filter((item) => item.photo && menuRowByType.has(item.type));
+
+  if (validUploads.length === 0) {
+    return;
+  }
+
+  for (const item of validUploads) {
+    const row = menuRowByType.get(item.type);
+    const photo = item.photo;
+    if (!row || !photo) {
+      continue;
+    }
+
+    const safeFileName = `${crypto.randomUUID()}-${photo.fileName}`;
+    const objectPath = `${storeCode}/${date}/menu-items/${item.type}/${safeFileName}`;
+    const buffer = Buffer.from(photo.base64, "base64");
+
+    const { error: uploadError } = await admin.storage.from("inspection-photos").upload(objectPath, buffer, {
+      contentType: photo.contentType,
+      upsert: false,
+    });
+
+    if (uploadError) {
+      throw new Error(uploadError.message);
+    }
+
+    const { data: publicUrlData } = admin.storage.from("inspection-photos").getPublicUrl(objectPath);
+    const { error: updateError } = await admin
+      .from("inspection_menu_items")
+      .update({ photo_url: publicUrlData.publicUrl })
+      .eq("id", row.id);
+
+    if (updateError) {
+      throw new Error(updateError.message);
+    }
+  }
+}
+
+async function removeInspectionPhotoObjects(params: {
+  admin: ReturnType<typeof createAdminClient>;
+  photoUrls: Array<string | null | undefined>;
+}) {
+  const objectPaths = params.photoUrls
+    .map((photoUrl) => (photoUrl ? getPublicObjectPath(photoUrl) : null))
+    .filter(Boolean) as string[];
+
+  if (objectPaths.length === 0) {
+    return;
+  }
+
+  const { error } = await params.admin.storage.from("inspection-photos").remove(objectPaths);
+  if (error) {
+    throw new Error(error.message);
+  }
+}
+
 function getPublicObjectPath(photoUrl: string) {
   const marker = "/object/public/inspection-photos/";
   const markerIndex = photoUrl.indexOf(marker);
@@ -856,6 +957,7 @@ export async function getInspectionFormSeed(params?: { storeId?: string; date?: 
 export async function getInspectionDetail(inspectionId: string): Promise<InspectionDetail> {
   const profile = await requireRole("owner", "manager", "leader");
   const admin = createAdminClient();
+  const hasMenuItemPhotos = await supportsMenuItemPhotos(admin);
 
   const { data: inspectionRow, error: inspectionError } = await admin
     .from("inspections")
@@ -873,12 +975,7 @@ export async function getInspectionDetail(inspectionId: string): Promise<Inspect
     throw new Error("You do not have access to this inspection.");
   }
 
-  const [
-    staffRows,
-    { data: scoreRows, error: scoreError },
-    { data: menuRows, error: menuError },
-    { data: legacyRows, error: legacyError },
-  ] = await Promise.all([
+  const [staffRows, { data: scoreRows, error: scoreError }, { data: legacyRows, error: legacyError }] = await Promise.all([
     getInspectionShiftAssignments(admin, inspectionId),
     admin
       .from("inspection_scores")
@@ -887,16 +984,26 @@ export async function getInspectionDetail(inspectionId: string): Promise<Inspect
       )
       .eq("inspection_id", inspectionId),
     admin
-      .from("inspection_menu_items")
-      .select("id, type, dish_name, portion_weight")
-      .eq("inspection_id", inspectionId)
-      .order("type"),
-    admin
       .from("legacy_notes")
       .select("id, content, created_at")
       .eq("inspection_id", inspectionId)
       .order("created_at", { ascending: true }),
   ]);
+
+  const menuResult = hasMenuItemPhotos
+    ? await admin
+        .from("inspection_menu_items")
+        .select("id, type, dish_name, portion_weight, photo_url")
+        .eq("inspection_id", inspectionId)
+        .order("type")
+    : await admin
+        .from("inspection_menu_items")
+        .select("id, type, dish_name, portion_weight")
+        .eq("inspection_id", inspectionId)
+        .order("type");
+
+  const menuRows = menuResult.data ?? [];
+  const menuError = menuResult.error;
 
   if (scoreError || menuError || legacyError) {
     throw new Error(
@@ -971,6 +1078,7 @@ export async function getInspectionDetail(inspectionId: string): Promise<Inspect
       type: row.type,
       dishName: row.dish_name,
       portionWeight: row.portion_weight,
+      photoUrl: "photo_url" in row && typeof row.photo_url === "string" ? row.photo_url : null,
     })),
     legacyNotes: (legacyRows ?? []).map((row) => ({
       id: row.id,
@@ -1029,8 +1137,10 @@ export async function getInspectionEditSeed(inspectionId: string): Promise<Inspe
       menuItems: {
         dineInDishName: dineIn?.dishName ?? "",
         dineInPortionWeight: dineIn?.portionWeight ?? "",
+        dineInPhotoUrl: dineIn?.photoUrl ?? "",
         takeoutDishName: takeout?.dishName ?? "",
         takeoutPortionWeight: takeout?.portionWeight ?? "",
+        takeoutPhotoUrl: takeout?.photoUrl ?? "",
       },
       legacyNote: detail.legacyNotes.map((note) => note.content).join("\n\n"),
     },
@@ -1177,6 +1287,7 @@ export async function setInspectionEditable(inspectionId: string, isEditable: bo
 export async function deleteInspection(inspectionId: string) {
   const profile = await requireRole("owner");
   const admin = createAdminClient();
+  const hasMenuItemPhotos = await supportsMenuItemPhotos(admin);
 
   const { data: scores, error: scoresError } = await admin.from("inspection_scores").select("id").eq("inspection_id", inspectionId);
   if (scoresError) {
@@ -1201,6 +1312,22 @@ export async function deleteInspection(inspectionId: string) {
         throw new Error(storageError.message);
       }
     }
+  }
+
+  if (hasMenuItemPhotos) {
+    const { data: menuItems, error: menuItemsError } = await admin
+      .from("inspection_menu_items")
+      .select("photo_url")
+      .eq("inspection_id", inspectionId);
+
+    if (menuItemsError) {
+      throw new Error(menuItemsError.message);
+    }
+
+    await removeInspectionPhotoObjects({
+      admin,
+      photoUrls: (menuItems ?? []).map((item) => item.photo_url),
+    });
   }
 
   const { error } = await admin.from("inspections").delete().eq("id", inspectionId);
@@ -1403,6 +1530,10 @@ export async function getInspectionMonthlyReport(params?: {
 export async function createInspection(input: InspectionMutationInput) {
   const profile = await requireRole("owner", "manager");
   const admin = createAdminClient();
+  const hasMenuItemPhotos = await supportsMenuItemPhotos(admin);
+  if (!hasMenuItemPhotos && input.menuItems.some((item) => item.photo)) {
+    throw new Error("餐點抽查照片功能需要先套用最新的資料庫 migration。");
+  }
 
   validateInspectionInput(input);
   const storeCode = await getStoreCode(admin, input.storeId);
@@ -1477,19 +1608,36 @@ export async function createInspection(input: InspectionMutationInput) {
     }
   }
 
-  const validMenuItems = input.menuItems.filter((item) => item.dishName?.trim() || item.portionWeight?.trim());
+  const validMenuItems = input.menuItems.filter(
+    (item) => item.dishName?.trim() || item.portionWeight?.trim() || item.photo || item.photoUrl,
+  );
   if (validMenuItems.length > 0) {
-    const { error } = await admin.from("inspection_menu_items").insert(
-      validMenuItems.map((item) => ({
-        inspection_id: inspection.id,
-        type: item.type,
-        dish_name: item.dishName?.trim() || null,
-        portion_weight: item.portionWeight?.trim() || null,
-      })),
-    );
+    const insertPayload = validMenuItems.map((item) => ({
+      inspection_id: inspection.id,
+      type: item.type,
+      dish_name: item.dishName?.trim() || null,
+      portion_weight: item.portionWeight?.trim() || null,
+      ...(hasMenuItemPhotos ? { photo_url: item.photoUrl?.trim() || null } : {}),
+    }));
+    const insertResult = hasMenuItemPhotos
+      ? await admin.from("inspection_menu_items").insert(insertPayload).select("id, type, photo_url")
+      : await admin.from("inspection_menu_items").insert(insertPayload).select("id, type");
 
-    if (error) {
-      throw new Error(error.message);
+    if (insertResult.error) {
+      throw new Error(insertResult.error.message);
+    }
+
+    if (hasMenuItemPhotos) {
+      const menuRowByType = new Map(
+        (insertResult.data ?? []).map((row) => [row.type as "dine_in" | "takeout", { id: row.id as string }]),
+      );
+      await uploadInspectionMenuItemPhotos({
+        admin,
+        storeCode,
+        date: input.date,
+        menuItems: validMenuItems,
+        menuRowByType,
+      });
     }
   }
 
@@ -1538,6 +1686,10 @@ export async function createInspection(input: InspectionMutationInput) {
 export async function updateInspection(inspectionId: string, input: InspectionMutationInput) {
   const profile = await requireRole("owner", "manager");
   const admin = createAdminClient();
+  const hasMenuItemPhotos = await supportsMenuItemPhotos(admin);
+  if (!hasMenuItemPhotos && input.menuItems.some((item) => item.photo)) {
+    throw new Error("餐點抽查照片功能需要先套用最新的資料庫 migration。");
+  }
 
   validateInspectionInput(input);
 
@@ -1658,24 +1810,69 @@ export async function updateInspection(inspectionId: string, input: InspectionMu
     });
   }
 
+  const existingMenuResult = hasMenuItemPhotos
+    ? await admin.from("inspection_menu_items").select("id, type, photo_url").eq("inspection_id", inspectionId)
+    : await admin.from("inspection_menu_items").select("id, type").eq("inspection_id", inspectionId);
+
+  if (existingMenuResult.error) {
+    throw new Error(existingMenuResult.error.message);
+  }
+
+  const existingMenuRows = (existingMenuResult.data ?? []).map((row) => ({
+    id: row.id as string,
+    type: row.type as "dine_in" | "takeout",
+    photoUrl: "photo_url" in row && typeof row.photo_url === "string" ? row.photo_url : null,
+  }));
+
   const { error: menuDeleteError } = await admin.from("inspection_menu_items").delete().eq("inspection_id", inspectionId);
   if (menuDeleteError) {
     throw new Error(menuDeleteError.message);
   }
 
-  const validMenuItems = input.menuItems.filter((item) => item.dishName?.trim() || item.portionWeight?.trim());
+  const validMenuItems = input.menuItems.filter(
+    (item) => item.dishName?.trim() || item.portionWeight?.trim() || item.photo || item.photoUrl,
+  );
   if (validMenuItems.length > 0) {
-    const { error } = await admin.from("inspection_menu_items").insert(
-      validMenuItems.map((item) => ({
-        inspection_id: inspectionId,
-        type: item.type,
-        dish_name: item.dishName?.trim() || null,
-        portion_weight: item.portionWeight?.trim() || null,
-      })),
-    );
-    if (error) {
-      throw new Error(error.message);
+    const insertPayload = validMenuItems.map((item) => ({
+      inspection_id: inspectionId,
+      type: item.type,
+      dish_name: item.dishName?.trim() || null,
+      portion_weight: item.portionWeight?.trim() || null,
+      ...(hasMenuItemPhotos ? { photo_url: item.photoUrl?.trim() || null } : {}),
+    }));
+    const insertResult = hasMenuItemPhotos
+      ? await admin.from("inspection_menu_items").insert(insertPayload).select("id, type, photo_url")
+      : await admin.from("inspection_menu_items").insert(insertPayload).select("id, type");
+    if (insertResult.error) {
+      throw new Error(insertResult.error.message);
     }
+
+    if (hasMenuItemPhotos) {
+      const menuRowByType = new Map(
+        (insertResult.data ?? []).map((row) => [row.type as "dine_in" | "takeout", { id: row.id as string }]),
+      );
+      await uploadInspectionMenuItemPhotos({
+        admin,
+        storeCode,
+        date: input.date,
+        menuItems: validMenuItems,
+        menuRowByType,
+      });
+    }
+  }
+
+  if (hasMenuItemPhotos) {
+    const retainedPhotoUrls = new Set(
+      validMenuItems.filter((item) => !item.photo && item.photoUrl).map((item) => item.photoUrl as string),
+    );
+    const stalePhotoUrls = existingMenuRows
+      .map((row) => row.photoUrl)
+      .filter((photoUrl): photoUrl is string => typeof photoUrl === "string" && !retainedPhotoUrls.has(photoUrl));
+
+    await removeInspectionPhotoObjects({
+      admin,
+      photoUrls: stalePhotoUrls,
+    });
   }
 
   const { error: notesDeleteError } = await admin.from("legacy_notes").delete().eq("inspection_id", inspectionId);

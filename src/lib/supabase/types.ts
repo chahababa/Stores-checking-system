@@ -317,6 +317,7 @@ export type Database = {
           type: "dine_in" | "takeout";
           dish_name: string | null;
           portion_weight: string | null;
+          photo_url: string | null;
         };
         Insert: {
           id?: string;
@@ -324,6 +325,7 @@ export type Database = {
           type: "dine_in" | "takeout";
           dish_name?: string | null;
           portion_weight?: string | null;
+          photo_url?: string | null;
         };
         Update: {
           id?: string;
@@ -331,6 +333,7 @@ export type Database = {
           type?: "dine_in" | "takeout";
           dish_name?: string | null;
           portion_weight?: string | null;
+          photo_url?: string | null;
         };
       };
       legacy_notes: {
