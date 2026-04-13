@@ -185,12 +185,12 @@ export default async function InspectionDetailPage({
             <span>/</span>
             <span>{getBusynessLabel(detail.busynessLevel)}</span>
             <span>/</span>
-            <span>撟喳?? {detail.totalScore}</span>
+            <span>平均分數 {detail.totalScore}</span>
             <span
               data-testid="inspection-detail-header-grade"
               className={`rounded-full px-3 py-1 text-xs font-medium ${getGradeTone(overallGrade.finalGrade)}`}
             >
-              蝮質? {overallGrade.finalGrade}
+              總評 {overallGrade.finalGrade}
             </span>
             <span
               className={`rounded-full px-3 py-1 text-xs ${
@@ -203,9 +203,10 @@ export default async function InspectionDetailPage({
         </div>
         <div className="flex flex-wrap gap-3">
           <Link href="/inspection/history" className="rounded-full bg-soft px-5 py-3 text-sm text-ink/75">
-            餈?撌∪?蝝??          </Link>
+            返回巡店列表
+          </Link>
           <Link href={`/api/reports/inspection/${id}`} className="rounded-full bg-soft px-5 py-3 text-sm text-ink/75">
-            ?臬?敦 CSV
+            匯出報告 CSV
           </Link>
           {canManageInspection && detail.isEditable ? (
             <Link
@@ -213,7 +214,7 @@ export default async function InspectionDetailPage({
               data-testid="inspection-edit-link"
               className="rounded-full bg-warm px-5 py-3 text-sm text-white"
             >
-              蝺刻摩?遢撌∪?
+              編輯這份報告
             </Link>
           ) : null}
         </div>

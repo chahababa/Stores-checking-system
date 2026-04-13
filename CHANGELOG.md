@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026-04-13 Latest
+
+- `fix(detail-report-copy):` cleaned remaining mojibake on the inspection detail page
+  - fixed summary labels
+  - fixed "back to history" action text
+  - fixed "export CSV" action text
+  - fixed "edit report" action text
+
 ## 維護規則
 
 - 每次有實際功能修改、行為調整、修 bug、資料流程更新或部署相關變更，都要同步追加到這份 `CHANGELOG.md`。
