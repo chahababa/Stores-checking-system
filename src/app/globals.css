@@ -4,13 +4,15 @@
 
 :root {
   color-scheme: light;
+  --nb-grid: rgba(15, 15, 15, 0.06);
 }
 
 body {
-  @apply bg-cream text-ink;
+  @apply bg-nb-bg text-nb-ink;
   background-image:
-    radial-gradient(circle at top left, rgba(201, 123, 58, 0.14), transparent 30%),
-    radial-gradient(circle at bottom right, rgba(74, 55, 40, 0.08), transparent 25%);
+    linear-gradient(var(--nb-grid) 1px, transparent 1px),
+    linear-gradient(90deg, var(--nb-grid) 1px, transparent 1px);
+  background-size: 32px 32px;
   min-height: 100vh;
 }
 
@@ -20,4 +22,50 @@ a {
 
 button:disabled {
   @apply cursor-not-allowed opacity-60;
+}
+
+/* ========================================
+   Neo Brutalism 元件 utility classes
+   這些只套在新設計的頁面；舊頁面不受影響
+   ======================================== */
+@layer components {
+  .nb-card {
+    @apply bg-nb-paper border-[3px] border-nb-ink shadow-nb;
+  }
+  .nb-card-sm {
+    @apply bg-nb-paper border-[2.5px] border-nb-ink shadow-nb-sm;
+  }
+  .nb-btn {
+    @apply inline-flex items-center gap-2 px-4 py-2.5 bg-nb-paper border-[2.5px] border-nb-ink
+           shadow-nb-sm font-bold text-sm
+           transition-all duration-100
+           hover:-translate-y-0.5 hover:shadow-nb active:translate-x-1 active:translate-y-1 active:shadow-none;
+  }
+  .nb-btn-primary {
+    @apply nb-btn bg-nb-ink text-white;
+  }
+  .nb-btn-yellow {
+    @apply nb-btn bg-nb-yellow text-nb-ink;
+  }
+  .nb-chip {
+    @apply inline-flex items-center px-2.5 py-1 bg-nb-paper border-[2px] border-nb-ink
+           text-xs font-bold;
+  }
+  .nb-chip-yellow {
+    @apply nb-chip bg-nb-yellow;
+  }
+  .nb-chip-red {
+    @apply nb-chip bg-nb-red text-white;
+  }
+  .nb-chip-green {
+    @apply nb-chip bg-nb-green text-nb-ink;
+  }
+  .nb-eyebrow {
+    @apply font-nbMono text-[11px] font-bold uppercase tracking-[0.25em] text-nb-ink/60;
+  }
+  .nb-stamp {
+    @apply inline-flex items-center gap-2 px-3 py-1 bg-nb-yellow border-[2.5px] border-nb-ink
+           font-nbMono text-[11px] font-bold uppercase tracking-[0.2em];
+    transform: rotate(-2deg);
+  }
 }

@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Lora, Noto_Serif_TC } from "next/font/google";
+import { Fraunces, Lora, Noto_Serif_TC } from "next/font/google";
 import { ReactNode } from "react";
 
 import "@/app/globals.css";
@@ -16,6 +16,13 @@ const lora = Lora({
   weight: ["400", "500", "600", "700"],
 });
 
+// Neo Brutalism 用的粗體襯線（新加）
+const fraunces = Fraunces({
+  variable: "--font-fraunces",
+  subsets: ["latin"],
+  weight: ["700", "800", "900"],
+});
+
 export const metadata: Metadata = {
   title: "門市巡檢系統",
   description: "早餐門市巡檢與管理系統",
@@ -24,7 +31,7 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="zh-Hant">
-      <body className={`${notoSerifTc.variable} ${lora.variable} font-serifTc antialiased`}>
+      <body className={`${notoSerifTc.variable} ${lora.variable} ${fraunces.variable} font-serifTc antialiased`}>
         {children}
       </body>
     </html>
