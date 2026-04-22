@@ -29,12 +29,18 @@ button:disabled {
    這些只套在新設計的頁面；舊頁面不受影響
    ======================================== */
 @layer components {
+  /* ---- Cards ---- */
   .nb-card {
     @apply bg-nb-paper border-[3px] border-nb-ink shadow-nb;
   }
   .nb-card-sm {
     @apply bg-nb-paper border-[2.5px] border-nb-ink shadow-nb-sm;
   }
+  .nb-card-flat {
+    @apply bg-nb-paper border-[2.5px] border-nb-ink;
+  }
+
+  /* ---- Buttons ---- */
   .nb-btn {
     @apply inline-flex items-center gap-2 px-4 py-2.5 bg-nb-paper border-[2.5px] border-nb-ink
            shadow-nb-sm font-bold text-sm
@@ -47,6 +53,25 @@ button:disabled {
   .nb-btn-yellow {
     @apply nb-btn bg-nb-yellow text-nb-ink;
   }
+  .nb-btn-red {
+    @apply nb-btn bg-nb-red text-white;
+  }
+  .nb-btn-green {
+    @apply nb-btn bg-nb-green text-nb-ink;
+  }
+  .nb-btn-ghost {
+    @apply inline-flex items-center gap-2 px-3 py-2 bg-transparent border-[2.5px] border-transparent
+           font-bold text-sm text-nb-ink/75
+           hover:border-nb-ink hover:bg-nb-paper transition-all;
+  }
+  .nb-btn-xs {
+    @apply inline-flex items-center px-2.5 py-1 bg-nb-paper border-[2px] border-nb-ink
+           text-[11px] font-bold
+           transition-all duration-100
+           hover:-translate-y-0.5 hover:shadow-nb-sm active:translate-x-0.5 active:translate-y-0.5 active:shadow-none;
+  }
+
+  /* ---- Chips / Badges ---- */
   .nb-chip {
     @apply inline-flex items-center px-2.5 py-1 bg-nb-paper border-[2px] border-nb-ink
            text-xs font-bold;
@@ -60,12 +85,141 @@ button:disabled {
   .nb-chip-green {
     @apply nb-chip bg-nb-green text-nb-ink;
   }
+  .nb-chip-ink {
+    @apply nb-chip bg-nb-ink text-white;
+  }
+
+  /* ---- Type ---- */
   .nb-eyebrow {
     @apply font-nbMono text-[11px] font-bold uppercase tracking-[0.25em] text-nb-ink/60;
   }
+  .nb-h1 {
+    @apply font-nbSerif text-3xl md:text-4xl font-black leading-[1.1];
+  }
+  .nb-h2 {
+    @apply font-nbSerif text-2xl font-black;
+  }
+
+  /* ---- Stamp ---- */
   .nb-stamp {
     @apply inline-flex items-center gap-2 px-3 py-1 bg-nb-yellow border-[2.5px] border-nb-ink
            font-nbMono text-[11px] font-bold uppercase tracking-[0.2em];
     transform: rotate(-2deg);
+  }
+
+  /* ---- Form primitives ---- */
+  .nb-label {
+    @apply block font-nbMono text-[11px] font-bold uppercase tracking-[0.2em] text-nb-ink/70 mb-2;
+  }
+  .nb-input {
+    @apply w-full bg-nb-paper border-[2.5px] border-nb-ink px-3 py-2.5 text-sm font-medium text-nb-ink
+           placeholder:text-nb-ink/40 focus:outline-none focus:shadow-nb-sm focus:-translate-y-0.5
+           transition-all duration-100;
+  }
+  .nb-select {
+    @apply nb-input appearance-none pr-9 bg-[url('data:image/svg+xml;charset=UTF-8,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20width%3D%2212%22%20height%3D%2212%22%20viewBox%3D%220%200%2012%2012%22%3E%3Cpath%20fill%3D%22%230F0F0F%22%20d%3D%22M2%204h8L6%209z%22/%3E%3C/svg%3E')] bg-no-repeat bg-[right_0.75rem_center];
+  }
+  .nb-textarea {
+    @apply nb-input min-h-[96px] leading-6;
+  }
+  .nb-fieldset {
+    @apply grid gap-4;
+  }
+
+  /* ---- Table ---- */
+  .nb-table-wrap {
+    @apply overflow-hidden border-[3px] border-nb-ink bg-nb-paper shadow-nb;
+  }
+  .nb-table {
+    @apply min-w-full text-left text-sm;
+  }
+  .nb-table thead {
+    @apply bg-nb-yellow;
+  }
+  .nb-table thead th {
+    @apply px-4 py-3 font-nbMono text-[11px] font-bold uppercase tracking-[0.2em] text-nb-ink
+           border-b-[3px] border-nb-ink;
+  }
+  .nb-table tbody td {
+    @apply px-4 py-3 align-top border-b-[2px] border-nb-ink/15;
+  }
+  .nb-table tbody tr:last-child td {
+    @apply border-b-0;
+  }
+  .nb-table tbody tr:hover {
+    @apply bg-nb-bg2;
+  }
+
+  /* ---- Row card (alt to table for responsive) ---- */
+  .nb-row {
+    @apply bg-nb-paper border-[2.5px] border-nb-ink px-4 py-4;
+  }
+
+  /* ---- Empty state ---- */
+  .nb-empty {
+    @apply border-[2.5px] border-dashed border-nb-ink/40 px-4 py-8 text-sm text-nb-ink/60 font-bold text-center;
+  }
+
+  /* ---- KPI tile ---- */
+  .nb-kpi {
+    @apply nb-card-sm px-5 py-4;
+  }
+
+  /* ---- Divider under section heads ---- */
+  .nb-divider {
+    @apply border-b-[3px] border-nb-ink pb-4;
+  }
+
+  /* ---- Section header block (eyebrow + title + optional action) ---- */
+  .nb-section-head {
+    @apply flex flex-col gap-2 md:flex-row md:items-end md:justify-between nb-divider;
+  }
+
+  /* ---- Tabs (Link-based) ---- */
+  .nb-tab {
+    @apply inline-flex items-center px-4 py-2 bg-nb-paper border-[2.5px] border-nb-ink
+           font-nbMono text-[11px] font-bold uppercase tracking-[0.2em] text-nb-ink/75
+           transition-all duration-100 hover:-translate-y-0.5 hover:shadow-nb-sm;
+  }
+  .nb-tab-active {
+    @apply nb-tab bg-nb-ink text-white shadow-nb-sm;
+  }
+
+  /* ---- Details (collapsible item cards) ---- */
+  .nb-details {
+    @apply bg-nb-paper border-[2.5px] border-nb-ink;
+  }
+  .nb-details-summary {
+    @apply flex cursor-pointer list-none flex-wrap items-center justify-between gap-3 px-5 py-4;
+  }
+  .nb-details[open] > .nb-details-summary {
+    @apply bg-nb-bg2;
+  }
+
+  /* ---- Stat tile ---- */
+  .nb-stat {
+    @apply nb-card-sm p-4;
+  }
+  .nb-stat-eyebrow {
+    @apply font-nbMono text-[11px] font-bold uppercase tracking-[0.2em];
+  }
+  .nb-stat-value {
+    @apply mt-2 font-nbSerif text-4xl font-black leading-none text-center;
+  }
+
+  /* ---- Check / Radio cards ---- */
+  .nb-check-card {
+    @apply flex items-start gap-3 bg-white border-[2px] border-nb-ink px-3 py-3 text-sm;
+  }
+  .nb-check {
+    @apply h-4 w-4 accent-nb-ink;
+  }
+  .nb-radio {
+    @apply h-4 w-4 accent-nb-ink;
+  }
+
+  /* ---- Inline help text under an input ---- */
+  .nb-help {
+    @apply mt-1 text-[11px] leading-5 font-bold font-nbMono text-nb-ink/55 uppercase tracking-[0.18em];
   }
 }

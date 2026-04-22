@@ -17,12 +17,18 @@ export default async function NewInspectionPage({
 
   return (
     <div className="grid gap-6">
-      <div className="rounded-[28px] border border-ink/10 bg-white/85 p-6 shadow-card">
-        <p className="font-lora text-sm uppercase tracking-[0.25em] text-warm">巡店表單</p>
-        <h1 className="mt-2 font-serifTc text-3xl font-semibold">新增巡店</h1>
-        <p className="mt-3 text-sm leading-6 text-ink/70">
-          請勾選當班人員、完成逐題評分、必要時補上照片，並在送出前確認所有標籤項目的評分都已完成。
-        </p>
+      {/* Page header */}
+      <div className="nb-card p-6 flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+        <div>
+          <p className="nb-eyebrow">Inspection / New</p>
+          <h1 className="nb-h1 mt-2">新增巡店</h1>
+          <p className="mt-3 text-sm text-nb-ink/70 leading-6 max-w-2xl">
+            請勾選當班人員、完成逐題評分、必要時補上照片，送出前再確認所有標籤題目（必查 / 本月加強 / 客訴）都已手動評分。
+          </p>
+        </div>
+        <div className="nb-stamp">
+          Inspection Form
+        </div>
       </div>
 
       <InspectionForm

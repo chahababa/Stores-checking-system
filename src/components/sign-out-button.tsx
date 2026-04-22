@@ -24,7 +24,7 @@ export function SignOutButton() {
       type="button"
       onClick={handleSignOut}
       disabled={loading}
-      className="rounded-full bg-white/80 px-4 py-2 text-xs text-ink/75 transition hover:bg-white disabled:cursor-not-allowed disabled:opacity-60"
+      className="inline-flex items-center px-3 py-1.5 bg-nb-paper border-[2.5px] border-nb-ink shadow-nb-sm text-[12px] font-bold text-nb-ink transition-all duration-100 hover:-translate-y-0.5 hover:shadow-nb active:translate-x-1 active:translate-y-1 active:shadow-none disabled:cursor-not-allowed disabled:opacity-60"
     >
       {loading ? "登出中..." : "登出"}
     </button>

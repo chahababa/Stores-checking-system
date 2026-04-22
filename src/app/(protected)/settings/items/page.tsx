@@ -15,19 +15,8 @@ type SearchParams = Promise<{
   scope?: string;
 }>;
 
-type StoreRecord = {
-  id: string;
-  name: string;
-  code: string;
-};
-
-type CategoryRecord = {
-  id: string;
-  name: string;
-  sort_order: number;
-  field_type: FieldType;
-};
-
+type StoreRecord = { id: string; name: string; code: string };
+type CategoryRecord = { id: string; name: string; sort_order: number; field_type: FieldType };
 type ItemRecord = {
   id: string;
   name: string;
@@ -61,10 +50,7 @@ function getScopeLabel(isBase: boolean) {
 }
 
 function getScopeSummary(item: ItemRecord, storeNames: string[]) {
-  if (item.is_base) {
-    return "所有門市都會看到這一題。";
-  }
-
+  if (item.is_base) return "所有門市都會看到這一題。";
   return storeNames.length > 0 ? `目前套用門市：${storeNames.join("、")}` : "尚未指定套用門市。";
 }
 
@@ -90,7 +76,10 @@ export default async function ItemsSettingsPage({ searchParams }: { searchParams
   const [{ data: stores }, { data: categories }, { data: items }, { data: extraRows }] = await Promise.all([
     admin.from("stores").select("id, name, code").order("name"),
     admin.from("categories").select("id, name, sort_order, field_type").order("sort_order"),
-    admin.from("inspection_items").select("id, name, is_base, is_active, category_id, sort_order").order("sort_order"),
+    admin
+      .from("inspection_items")
+      .select("id, name, is_base, is_active, category_id, sort_order")
+      .order("sort_order"),
     admin.from("store_extra_items").select("store_id, item_id"),
   ]);
 
@@ -113,7 +102,6 @@ export default async function ItemsSettingsPage({ searchParams }: { searchParams
       selectedScope === "all" ||
       (selectedScope === "base" && item.is_base) ||
       (selectedScope === "scoped" && !item.is_base);
-
     return matchesQuery && matchesCategory && matchesScope;
   });
 
@@ -190,12 +178,12 @@ export default async function ItemsSettingsPage({ searchParams }: { searchParams
     <div className="grid gap-6" data-testid="items-settings-page">
       {successMessage ? <PageToast message={successMessage} /> : null}
 
-      <section className="rounded-[28px] border border-ink/10 bg-white/85 p-5 shadow-card">
+      <section className="nb-card p-6">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
           <div className="space-y-2">
-            <p className="text-sm uppercase tracking-[0.24em] text-warm">Inspection Items</p>
-            <h1 className="font-serifTc text-3xl font-semibold text-ink">題目管理</h1>
-            <p className="max-w-3xl text-sm leading-7 text-ink/70">
+            <p className="nb-eyebrow">Inspection Items</p>
+            <h1 className="font-nbSerif text-4xl font-black text-nb-ink">題目管理</h1>
+            <p className="max-w-3xl text-sm leading-7 text-nb-ink/75 font-bold">
               先整理類別，再新增或調整題目會比較順。這一頁把題目與類別拆成兩個工作區，避免所有功能都堆在同一個超長畫面裡。
             </p>
           </div>
@@ -207,9 +195,7 @@ export default async function ItemsSettingsPage({ searchParams }: { searchParams
                 <Link
                   key={tab.key}
                   href={buildTabHref(tab.key, { q: query, category: selectedCategory, scope: selectedScope })}
-                  className={`rounded-full px-4 py-2 text-sm transition ${
-                    isActive ? "bg-ink text-white" : "bg-soft text-ink/75 hover:bg-soft/80"
-                  }`}
+                  className={isActive ? "nb-tab-active" : "nb-tab"}
                 >
                   {tab.label}
                 </Link>
@@ -224,45 +210,28 @@ export default async function ItemsSettingsPage({ searchParams }: { searchParams
           <div className="xl:sticky xl:top-24 xl:self-start">
             <SectionCard
               title="新增題目類別"
+              eyebrow="Create Category"
               description="類別主要用來整理題目、控制報表分組，以及幫管理者快速找到要看的區塊。排序數字越小會排越前面。"
             >
               <form action={createCategoryAction} className="grid gap-4" data-testid="items-category-create-form">
-                <label className="grid gap-2 text-sm">
-                  <span className="text-ink/70">類別名稱</span>
-                  <input
-                    className="rounded-2xl border border-ink/10 bg-white px-4 py-3"
-                    name="name"
-                    placeholder="例如：餐點品質"
-                    required
-                  />
-                </label>
-
-                <label className="grid gap-2 text-sm">
-                  <span className="text-ink/70">排序</span>
-                  <input
-                    className="rounded-2xl border border-ink/10 bg-white px-4 py-3"
-                    name="sort_order"
-                    type="number"
-                    min={1}
-                    placeholder="數字越小排越前面"
-                  />
-                </label>
-
-                <label className="grid gap-2 text-sm">
-                  <span className="text-ink/70">巡檢區域（報表用）</span>
-                  <select
-                    className="rounded-2xl border border-ink/10 bg-white px-4 py-3"
-                    defaultValue="none"
-                    name="field_type"
-                  >
+                <div>
+                  <label className="nb-label">類別名稱</label>
+                  <input className="nb-input" name="name" placeholder="例如：餐點品質" required />
+                </div>
+                <div>
+                  <label className="nb-label">排序</label>
+                  <input className="nb-input" name="sort_order" type="number" min={1} placeholder="數字越小排越前面" />
+                </div>
+                <div>
+                  <label className="nb-label">巡檢區域（報表用）</label>
+                  <select className="nb-select" defaultValue="none" name="field_type">
                     <option value="none">共用</option>
                     <option value="kitchen">內場</option>
                     <option value="floor">外場</option>
                   </select>
-                  <span className="text-xs text-ink/55">只影響分組與報表判讀，不會限制巡店流程。</span>
-                </label>
-
-                <button className="rounded-full bg-warm px-5 py-3 text-sm text-white" type="submit">
+                  <p className="nb-help">只影響分組與報表判讀，不會限制巡店流程。</p>
+                </div>
+                <button className="nb-btn-primary" type="submit">
                   儲存變更
                 </button>
               </form>
@@ -271,66 +240,46 @@ export default async function ItemsSettingsPage({ searchParams }: { searchParams
 
           <SectionCard
             title="既有類別"
+            eyebrow="Categories"
             description="這裡會顯示目前的題目類別、排序與題數。若要調整名稱或順序，直接在對應卡片上修改即可。"
           >
             <div className="grid gap-4" data-testid="items-category-list">
               {typedCategories.map((category) => (
-                <form
-                  key={category.id}
-                  action={updateCategoryAction}
-                  className="grid gap-4 rounded-[24px] border border-ink/10 bg-soft/30 p-4"
-                >
+                <form key={category.id} action={updateCategoryAction} className="nb-row grid gap-4">
                   <input name="id" type="hidden" value={category.id} />
                   <div className="flex flex-wrap items-center justify-between gap-3">
                     <div>
-                      <p className="text-lg font-semibold text-ink">{category.name}</p>
-                      <p className="text-sm text-ink/65">
+                      <p className="font-nbSerif text-xl font-black">{category.name}</p>
+                      <p className="nb-eyebrow mt-1">
                         排序 {category.sort_order} ・ {getFieldTypeLabel(category.field_type)}
                       </p>
                     </div>
-                    <span className="rounded-full bg-white px-3 py-1 text-xs text-ink/70">
+                    <span className="nb-chip">
                       {typedItems.filter((item) => item.category_id === category.id).length} 題
                     </span>
                   </div>
 
                   <div className="grid gap-3 md:grid-cols-3">
-                    <label className="grid gap-2 text-sm">
-                      <span className="text-ink/70">類別名稱</span>
-                      <input
-                        className="rounded-2xl border border-ink/10 bg-white px-4 py-3"
-                        defaultValue={category.name}
-                        name="name"
-                        required
-                      />
-                    </label>
-
-                    <label className="grid gap-2 text-sm">
-                      <span className="text-ink/70">排序</span>
-                      <input
-                        className="rounded-2xl border border-ink/10 bg-white px-4 py-3"
-                        defaultValue={category.sort_order}
-                        min={1}
-                        name="sort_order"
-                        type="number"
-                      />
-                    </label>
-
-                    <label className="grid gap-2 text-sm">
-                      <span className="text-ink/70">巡檢區域（報表用）</span>
-                      <select
-                        className="rounded-2xl border border-ink/10 bg-white px-4 py-3"
-                        defaultValue={category.field_type}
-                        name="field_type"
-                      >
+                    <div>
+                      <label className="nb-label">類別名稱</label>
+                      <input className="nb-input" defaultValue={category.name} name="name" required />
+                    </div>
+                    <div>
+                      <label className="nb-label">排序</label>
+                      <input className="nb-input" defaultValue={category.sort_order} min={1} name="sort_order" type="number" />
+                    </div>
+                    <div>
+                      <label className="nb-label">巡檢區域（報表用）</label>
+                      <select className="nb-select" defaultValue={category.field_type} name="field_type">
                         <option value="none">共用</option>
                         <option value="kitchen">內場</option>
                         <option value="floor">外場</option>
                       </select>
-                    </label>
+                    </div>
                   </div>
 
                   <div className="flex justify-end">
-                    <button className="rounded-full bg-white px-4 py-2 text-sm text-ink" type="submit">
+                    <button className="nb-btn-xs" type="submit">
                       儲存變更
                     </button>
                   </div>
@@ -343,23 +292,18 @@ export default async function ItemsSettingsPage({ searchParams }: { searchParams
         <div className="grid gap-6">
           <SectionCard
             title="新增題目"
+            eyebrow="Create Item"
             description="先選類別，再決定這題是全門市共用題目，還是只給特定門市使用的專屬題目。建立後就會出現在下方清單。"
           >
             <form action={createItemAction} className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px]" data-testid="items-create-form">
               <div className="grid gap-4">
-                <label className="grid gap-2 text-sm">
-                  <span className="text-ink/70">題目名稱</span>
-                  <input
-                    className="rounded-2xl border border-ink/10 bg-white px-4 py-3"
-                    name="name"
-                    placeholder="例如：冷藏庫溫度是否正常"
-                    required
-                  />
-                </label>
-
-                <label className="grid gap-2 text-sm">
-                  <span className="text-ink/70">題目類別</span>
-                  <select className="rounded-2xl border border-ink/10 bg-white px-4 py-3" name="category_id" required>
+                <div>
+                  <label className="nb-label">題目名稱</label>
+                  <input className="nb-input" name="name" placeholder="例如：冷藏庫溫度是否正常" required />
+                </div>
+                <div>
+                  <label className="nb-label">題目類別</label>
+                  <select className="nb-select" name="category_id" required>
                     <option value="">請選擇類別</option>
                     {typedCategories.map((category) => (
                       <option key={category.id} value={category.id}>
@@ -367,72 +311,70 @@ export default async function ItemsSettingsPage({ searchParams }: { searchParams
                       </option>
                     ))}
                   </select>
-                </label>
+                </div>
 
-                <fieldset className="grid gap-3 rounded-[24px] border border-ink/10 bg-soft/30 p-4">
-                  <legend className="px-2 text-sm font-medium text-ink">題目類型</legend>
-                  <label className="flex gap-3 rounded-2xl bg-white/80 px-4 py-3 text-sm">
-                    <input className="mt-1" defaultChecked name="item_type" type="radio" value="base" />
+                <fieldset className="nb-card-flat bg-nb-bg2 grid gap-3 p-4">
+                  <legend className="px-2 font-nbSerif text-base font-black">題目類型</legend>
+                  <label className="nb-check-card">
+                    <input className="nb-radio mt-1" defaultChecked name="item_type" type="radio" value="base" />
                     <span className="grid gap-1">
-                      <span className="font-medium text-ink">全門市共用題目</span>
-                      <span className="text-ink/60">所有門市都會看到，適合共通規範或固定檢查項目。</span>
+                      <span className="font-bold">全門市共用題目</span>
+                      <span className="nb-eyebrow">所有門市都會看到，適合共通規範或固定檢查項目。</span>
                     </span>
                   </label>
-                  <label className="flex gap-3 rounded-2xl bg-white/80 px-4 py-3 text-sm">
-                    <input className="mt-1" name="item_type" type="radio" value="scoped" />
+                  <label className="nb-check-card">
+                    <input className="nb-radio mt-1" name="item_type" type="radio" value="scoped" />
                     <span className="grid gap-1">
-                      <span className="font-medium text-ink">門市專屬題目</span>
-                      <span className="text-ink/60">只會出現在指定門市，適合特定設備或門市流程。</span>
+                      <span className="font-bold">門市專屬題目</span>
+                      <span className="nb-eyebrow">只會出現在指定門市，適合特定設備或門市流程。</span>
                     </span>
                   </label>
                 </fieldset>
 
-                <fieldset className="grid gap-3 rounded-[24px] border border-ink/10 bg-white/80 p-4">
-                  <legend className="px-2 text-sm font-medium text-ink">適用門市（只對門市專屬題目生效）</legend>
+                <fieldset className="nb-card-flat bg-white grid gap-3 p-4">
+                  <legend className="px-2 font-nbSerif text-base font-black">適用門市（只對門市專屬題目生效）</legend>
                   <div className="grid gap-3 md:grid-cols-2">
                     {typedStores.map((store) => (
-                      <label key={store.id} className="flex items-center gap-3 rounded-2xl bg-soft/35 px-4 py-3 text-sm">
-                        <input name="store_ids" type="checkbox" value={store.id} />
-                        <span>{store.name}</span>
+                      <label key={store.id} className="nb-check-card">
+                        <input className="nb-check" name="store_ids" type="checkbox" value={store.id} />
+                        <span className="font-bold">{store.name}</span>
                       </label>
                     ))}
                   </div>
                 </fieldset>
               </div>
 
-              <div className="rounded-[28px] border border-ink/10 bg-cream/85 p-5 shadow-card">
-                <p className="text-sm font-medium text-ink">建立前小提醒</p>
-                <ol className="mt-3 grid gap-2 text-sm leading-7 text-ink/70">
+              <aside className="nb-card-flat bg-nb-amber/40 p-5">
+                <p className="font-nbSerif text-lg font-black">建立前小提醒</p>
+                <ol className="mt-3 grid gap-2 text-sm leading-7 text-nb-ink/80 font-bold">
                   <li>1. 類別先整理好，報表才會好判讀。</li>
                   <li>2. 全門市共用題目適合共同規範，門市專屬題目適合在地差異。</li>
                   <li>3. 若是門市專屬題目，請至少勾選一間門市。</li>
                 </ol>
-                <button className="mt-6 w-full rounded-full bg-warm px-5 py-3 text-sm text-white" type="submit">
+                <button className="nb-btn-primary mt-6 w-full" type="submit">
                   新增題目
                 </button>
-              </div>
+              </aside>
             </form>
           </SectionCard>
 
           <SectionCard
             title="題目清單"
+            eyebrow="Items"
             description="用搜尋與篩選快速找到要改的題目。平常先掃描摘要列，真的需要調整時再展開單一題目即可。"
           >
-            <form className="grid gap-3 rounded-[24px] border border-ink/10 bg-soft/30 p-4 md:grid-cols-[minmax(0,1fr)_220px_220px_auto]" method="get">
+            <form
+              className="nb-card-flat bg-nb-bg2 grid gap-3 p-4 md:grid-cols-[minmax(0,1fr)_220px_220px_auto]"
+              method="get"
+            >
               <input name="tab" type="hidden" value="items" />
-              <label className="grid gap-2 text-sm">
-                <span className="text-ink/70">搜尋題目</span>
-                <input
-                  className="rounded-2xl border border-ink/10 bg-white px-4 py-3"
-                  defaultValue={query}
-                  name="q"
-                  placeholder="輸入題目名稱關鍵字"
-                />
-              </label>
-
-              <label className="grid gap-2 text-sm">
-                <span className="text-ink/70">類別篩選</span>
-                <select className="rounded-2xl border border-ink/10 bg-white px-4 py-3" defaultValue={selectedCategory} name="category">
+              <div>
+                <label className="nb-label">搜尋題目</label>
+                <input className="nb-input" defaultValue={query} name="q" placeholder="輸入題目名稱關鍵字" />
+              </div>
+              <div>
+                <label className="nb-label">類別篩選</label>
+                <select className="nb-select" defaultValue={selectedCategory} name="category">
                   <option value="">全部類別</option>
                   {typedCategories.map((category) => (
                     <option key={category.id} value={category.id}>
@@ -440,56 +382,48 @@ export default async function ItemsSettingsPage({ searchParams }: { searchParams
                     </option>
                   ))}
                 </select>
-              </label>
-
-              <label className="grid gap-2 text-sm">
-                <span className="text-ink/70">題目類型</span>
-                <select className="rounded-2xl border border-ink/10 bg-white px-4 py-3" defaultValue={selectedScope} name="scope">
+              </div>
+              <div>
+                <label className="nb-label">題目類型</label>
+                <select className="nb-select" defaultValue={selectedScope} name="scope">
                   <option value="all">全部題目</option>
                   <option value="base">全門市共用題目</option>
                   <option value="scoped">門市專屬題目</option>
                 </select>
-              </label>
-
+              </div>
               <div className="flex items-end gap-3">
-                <button className="rounded-full bg-soft px-5 py-3 text-sm text-ink" type="submit">
+                <button className="nb-btn-xs" type="submit">
                   套用篩選
                 </button>
-                <Link className="rounded-full border border-ink/10 px-5 py-3 text-sm text-ink/70" href="/settings/items?tab=items">
+                <Link className="nb-btn-xs bg-nb-bg2" href="/settings/items?tab=items">
                   清除
                 </Link>
               </div>
             </form>
 
-            <div className="mt-4 flex flex-wrap items-center gap-3 text-sm text-ink/65">
-              <span className="rounded-full bg-soft px-3 py-1">目前共 {filteredItems.length} 題</span>
-              {query ? <span className="rounded-full bg-soft px-3 py-1">關鍵字：{query}</span> : null}
-              {selectedCategory
-                ? (
-                    <span className="rounded-full bg-soft px-3 py-1">
-                      類別：{typedCategories.find((category) => category.id === selectedCategory)?.name ?? "未指定"}
-                    </span>
-                  )
-                : null}
-              {selectedScope !== "all" ? (
-                <span className="rounded-full bg-soft px-3 py-1">
-                  類型：{selectedScope === "base" ? "全門市共用題目" : "門市專屬題目"}
+            <div className="mt-4 flex flex-wrap items-center gap-2">
+              <span className="nb-chip">目前共 {filteredItems.length} 題</span>
+              {query ? <span className="nb-chip">關鍵字：{query}</span> : null}
+              {selectedCategory ? (
+                <span className="nb-chip">
+                  類別：{typedCategories.find((category) => category.id === selectedCategory)?.name ?? "未指定"}
                 </span>
+              ) : null}
+              {selectedScope !== "all" ? (
+                <span className="nb-chip">類型：{selectedScope === "base" ? "全門市共用題目" : "門市專屬題目"}</span>
               ) : null}
             </div>
 
             <div className="mt-5 grid gap-5" data-testid="items-item-editing">
               {groupedItems.length === 0 ? (
-                <div className="rounded-[24px] border border-dashed border-ink/15 bg-white/75 px-5 py-8 text-sm text-ink/65">
-                  目前沒有符合條件的題目。可以先清除篩選，或直接新增一題。
-                </div>
+                <div className="nb-empty">目前沒有符合條件的題目。可以先清除篩選，或直接新增一題。</div>
               ) : (
                 groupedItems.map(({ category, items: categoryItems }) => (
-                  <div key={category.id} className="rounded-[24px] border border-ink/10 bg-soft/25 p-4">
+                  <div key={category.id} className="nb-card-flat bg-nb-bg2 p-4">
                     <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
                       <div>
-                        <p className="font-serifTc text-xl font-semibold text-ink">{category.name}</p>
-                        <p className="text-sm text-ink/65">
+                        <p className="font-nbSerif text-xl font-black">{category.name}</p>
+                        <p className="nb-eyebrow mt-1">
                           {categoryItems.length} 題 ・ {getFieldTypeLabel(category.field_type)}
                         </p>
                       </div>
@@ -504,31 +438,26 @@ export default async function ItemsSettingsPage({ searchParams }: { searchParams
                         return (
                           <details
                             key={item.id}
-                            className="rounded-[24px] border border-ink/10 bg-white/90"
+                            className="nb-details"
                             open={Boolean(query || selectedCategory || selectedScope !== "all")}
                           >
-                            <summary className="flex cursor-pointer list-none flex-wrap items-center justify-between gap-3 px-5 py-4">
+                            <summary className="nb-details-summary">
                               <div className="space-y-2">
-                                <p className="text-lg font-semibold text-ink">{item.name}</p>
-                                <div className="flex flex-wrap gap-2 text-xs">
-                                  <span className="rounded-full bg-soft px-3 py-1 text-ink/75">{category.name}</span>
-                                  <span className="rounded-full bg-soft px-3 py-1 text-ink/75">
-                                    {getScopeLabel(item.is_base)}
-                                  </span>
-                                  <span
-                                    className={`rounded-full px-3 py-1 ${
-                                      item.is_active ? "bg-emerald-100 text-emerald-700" : "bg-stone-200 text-stone-600"
-                                    }`}
-                                  >
+                                <p className="font-nbSerif text-lg font-black">{item.name}</p>
+                                <div className="flex flex-wrap gap-2">
+                                  <span className="nb-chip">{category.name}</span>
+                                  <span className="nb-chip">{getScopeLabel(item.is_base)}</span>
+                                  <span className={item.is_active ? "nb-chip-green" : "nb-chip bg-nb-ink/10 text-nb-ink/70"}>
                                     {item.is_active ? "啟用中" : "停用"}
                                   </span>
                                 </div>
                               </div>
-
-                              <div className="max-w-xl text-right text-sm text-ink/60">{getScopeSummary(item, scopedStoreNames)}</div>
+                              <div className="max-w-xl text-right text-sm text-nb-ink/65 font-bold">
+                                {getScopeSummary(item, scopedStoreNames)}
+                              </div>
                             </summary>
 
-                            <form action={updateItemAction} className="grid gap-5 border-t border-ink/10 px-5 py-5">
+                            <form action={updateItemAction} className="grid gap-5 border-t-2 border-nb-ink px-5 py-5">
                               <input name="id" type="hidden" value={item.id} />
                               <input name="return_q" type="hidden" value={query} />
                               <input name="return_category" type="hidden" value={selectedCategory} />
@@ -536,103 +465,97 @@ export default async function ItemsSettingsPage({ searchParams }: { searchParams
 
                               <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_320px]">
                                 <div className="grid gap-4">
-                                  <div className="rounded-[20px] border border-ink/10 bg-soft/20 px-4 py-3">
-                                    <p className="text-sm text-ink/60">正在編輯</p>
-                                    <p className="mt-1 text-lg font-semibold text-ink">{item.name}</p>
+                                  <div className="nb-card-flat bg-nb-bg2 p-4">
+                                    <p className="nb-eyebrow">正在編輯</p>
+                                    <p className="mt-1 font-nbSerif text-lg font-black">{item.name}</p>
                                   </div>
 
-                                  <label className="grid gap-2 text-sm">
-                                    <span className="text-ink/70">題目名稱</span>
-                                    <input
-                                      className="rounded-2xl border border-ink/10 bg-white px-4 py-3"
-                                      defaultValue={item.name}
-                                      name="name"
-                                      required
-                                    />
-                                  </label>
+                                  <div>
+                                    <label className="nb-label">題目名稱</label>
+                                    <input className="nb-input" defaultValue={item.name} name="name" required />
+                                  </div>
 
                                   <div className="grid gap-4 md:grid-cols-2">
-                                    <label className="grid gap-2 text-sm">
-                                      <span className="text-ink/70">題目類別</span>
-                                      <select
-                                        className="rounded-2xl border border-ink/10 bg-white px-4 py-3"
-                                        defaultValue={item.category_id}
-                                        name="category_id"
-                                        required
-                                      >
+                                    <div>
+                                      <label className="nb-label">題目類別</label>
+                                      <select className="nb-select" defaultValue={item.category_id} name="category_id" required>
                                         {typedCategories.map((option) => (
                                           <option key={option.id} value={option.id}>
                                             {option.name}
                                           </option>
                                         ))}
                                       </select>
-                                    </label>
-
-                                    <label className="grid gap-2 text-sm">
-                                      <span className="text-ink/70">啟用狀態</span>
-                                      <select
-                                        className="rounded-2xl border border-ink/10 bg-white px-4 py-3"
-                                        defaultValue={String(item.is_active)}
-                                        name="is_active"
-                                      >
+                                    </div>
+                                    <div>
+                                      <label className="nb-label">啟用狀態</label>
+                                      <select className="nb-select" defaultValue={String(item.is_active)} name="is_active">
                                         <option value="true">啟用中</option>
                                         <option value="false">停用</option>
                                       </select>
-                                    </label>
+                                    </div>
                                   </div>
 
-                                  <fieldset className="grid gap-3 rounded-[24px] border border-ink/10 bg-soft/30 p-4">
-                                    <legend className="px-2 text-sm font-medium text-ink">題目類型</legend>
-                                    <label className="flex gap-3 rounded-2xl bg-white/80 px-4 py-3 text-sm">
-                                      <input className="mt-1" defaultChecked={item.is_base} name="item_type" type="radio" value="base" />
+                                  <fieldset className="nb-card-flat bg-nb-bg2 grid gap-3 p-4">
+                                    <legend className="px-2 font-nbSerif text-base font-black">題目類型</legend>
+                                    <label className="nb-check-card">
+                                      <input
+                                        className="nb-radio mt-1"
+                                        defaultChecked={item.is_base}
+                                        name="item_type"
+                                        type="radio"
+                                        value="base"
+                                      />
                                       <span className="grid gap-1">
-                                        <span className="font-medium text-ink">全門市共用題目</span>
-                                        <span className="text-ink/60">適合所有門市都要執行的固定題目。</span>
+                                        <span className="font-bold">全門市共用題目</span>
+                                        <span className="nb-eyebrow">適合所有門市都要執行的固定題目。</span>
                                       </span>
                                     </label>
-                                    <label className="flex gap-3 rounded-2xl bg-white/80 px-4 py-3 text-sm">
-                                      <input className="mt-1" defaultChecked={!item.is_base} name="item_type" type="radio" value="scoped" />
+                                    <label className="nb-check-card">
+                                      <input
+                                        className="nb-radio mt-1"
+                                        defaultChecked={!item.is_base}
+                                        name="item_type"
+                                        type="radio"
+                                        value="scoped"
+                                      />
                                       <span className="grid gap-1">
-                                        <span className="font-medium text-ink">門市專屬題目</span>
-                                        <span className="text-ink/60">只在指定門市出現，適合設備或流程差異。</span>
+                                        <span className="font-bold">門市專屬題目</span>
+                                        <span className="nb-eyebrow">只在指定門市出現，適合設備或流程差異。</span>
                                       </span>
                                     </label>
                                   </fieldset>
 
-                                  <fieldset className="grid gap-3 rounded-[24px] border border-ink/10 bg-white/80 p-4">
-                                    <legend className="px-2 text-sm font-medium text-ink">適用門市（只對門市專屬題目生效）</legend>
+                                  <fieldset className="nb-card-flat bg-white grid gap-3 p-4">
+                                    <legend className="px-2 font-nbSerif text-base font-black">適用門市（只對門市專屬題目生效）</legend>
                                     <div className="grid gap-3 md:grid-cols-2">
                                       {typedStores.map((store) => (
-                                        <label
-                                          key={store.id}
-                                          className="flex items-center gap-3 rounded-2xl bg-soft/35 px-4 py-3 text-sm"
-                                        >
+                                        <label key={store.id} className="nb-check-card">
                                           <input
+                                            className="nb-check"
                                             defaultChecked={(storeIdsByItemId[item.id] ?? []).includes(store.id)}
                                             name="store_ids"
                                             type="checkbox"
                                             value={store.id}
                                           />
-                                          <span>{store.name}</span>
+                                          <span className="font-bold">{store.name}</span>
                                         </label>
                                       ))}
                                     </div>
                                   </fieldset>
                                 </div>
 
-                                <div className="rounded-[24px] border border-ink/10 bg-cream/85 p-4">
-                                  <p className="text-sm font-medium text-ink">目前狀態</p>
-                                  <ul className="mt-3 grid gap-2 text-sm leading-7 text-ink/70">
+                                <aside className="nb-card-flat bg-nb-amber/40 p-4">
+                                  <p className="font-nbSerif text-lg font-black">目前狀態</p>
+                                  <ul className="mt-3 grid gap-2 text-sm leading-7 text-nb-ink/80 font-bold">
                                     <li>題目類型：{getScopeLabel(item.is_base)}</li>
                                     <li>啟用狀態：{item.is_active ? "啟用中" : "停用"}</li>
                                     <li>巡檢區域：{getFieldTypeLabel(category.field_type)}</li>
                                     <li>{getScopeSummary(item, scopedStoreNames)}</li>
                                   </ul>
-
-                                  <button className="mt-6 w-full rounded-full bg-white px-5 py-3 text-sm text-ink" type="submit">
+                                  <button className="nb-btn-primary mt-6 w-full" type="submit">
                                     儲存變更
                                   </button>
-                                </div>
+                                </aside>
                               </div>
                             </form>
                           </details>

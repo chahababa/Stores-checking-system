@@ -12,10 +12,7 @@ function getSuggestedNextStore(stores: Array<{ code: string; name: string }>) {
     .filter((value) => Number.isFinite(value) && value > 0);
 
   const next = numericSuffixes.length ? Math.max(...numericSuffixes) + 1 : 1;
-  return {
-    code: `store_${next}`,
-    name: `${next}店`,
-  };
+  return { code: `store_${next}`, name: `${next}店` };
 }
 
 export default async function StoresSettingsPage() {
@@ -50,57 +47,35 @@ export default async function StoresSettingsPage() {
     <div data-testid="stores-settings-page" className="grid gap-6 lg:grid-cols-[0.95fr_1.45fr]">
       <SectionCard
         title="新增店別"
-        description="之後要開第 5 店、第 6 店時，直接在這裡新增即可。建議代碼延續使用 store_數字，顯示名稱使用數字店。"
+        eyebrow="Create"
+        description="開新店時直接在這新增即可。建議代碼延用 store_數字，顯示名稱用「數字店」。"
       >
         <form data-testid="stores-create-form" action={createStoreAction} className="grid gap-4">
-          <label className="grid gap-2 text-sm">
-            <span className="text-ink/70">店別代碼</span>
-            <input
-              name="code"
-              required
-              defaultValue={suggested.code}
-              placeholder="store_5"
-              className="rounded-2xl border border-ink/10 bg-white px-4 py-3"
-            />
-          </label>
-          <label className="grid gap-2 text-sm">
-            <span className="text-ink/70">店別名稱</span>
-            <input
-              name="name"
-              required
-              defaultValue={suggested.name}
-              placeholder="5店"
-              className="rounded-2xl border border-ink/10 bg-white px-4 py-3"
-            />
-          </label>
-          <button className="rounded-full bg-warm px-5 py-3 text-sm text-white" type="submit">
+          <div>
+            <label className="nb-label">店別代碼</label>
+            <input name="code" required defaultValue={suggested.code} placeholder="store_5" className="nb-input" />
+          </div>
+          <div>
+            <label className="nb-label">店別名稱</label>
+            <input name="name" required defaultValue={suggested.name} placeholder="5店" className="nb-input" />
+          </div>
+          <button className="nb-btn-primary" type="submit">
             建立店別
           </button>
         </form>
       </SectionCard>
 
-      <SectionCard
-        title="現有店別"
-        description="這裡可以直接修正顯示名稱。既有資料會沿用同一個店別 ID，所以不會影響帳號、組員或巡店紀錄的關聯。"
-      >
+      <SectionCard title="現有店別" eyebrow="Stores" description="可直接修正顯示名稱；既有 ID 不變，不影響關聯資料。">
         <div data-testid="stores-list" className="grid gap-3">
           {(stores ?? []).map((store) => (
-            <form
-              key={store.id}
-              action={renameStoreAction}
-              className="grid gap-3 rounded-2xl border border-ink/10 bg-soft/50 p-4 md:grid-cols-[140px_1fr_auto] md:items-center"
-            >
+            <form key={store.id} action={renameStoreAction} className="nb-row grid gap-3 md:grid-cols-[140px_1fr_auto] md:items-center">
               <input type="hidden" name="id" value={store.id} />
               <div>
-                <p className="text-xs uppercase tracking-[0.2em] text-ink/50">Code</p>
-                <p className="font-medium">{store.code}</p>
+                <p className="nb-eyebrow">Code</p>
+                <p className="font-nbSerif text-lg font-black">{store.code}</p>
               </div>
-              <input
-                name="name"
-                defaultValue={store.name}
-                className="rounded-2xl border border-ink/10 bg-white px-4 py-3"
-              />
-              <button className="rounded-full bg-white px-4 py-2 text-sm" type="submit">
+              <input name="name" defaultValue={store.name} className="nb-input" />
+              <button className="nb-btn-xs" type="submit">
                 儲存名稱
               </button>
             </form>
