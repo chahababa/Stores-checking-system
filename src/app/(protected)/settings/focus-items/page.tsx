@@ -11,10 +11,7 @@ import { getInspectionItemTags } from "@/lib/settings";
 type SearchParams = Promise<{ month?: string; monthlyStore?: string; complaintStore?: string; success?: string }>;
 
 function getRelation<T>(value: T | T[] | null | undefined) {
-  if (Array.isArray(value)) {
-    return value[0] ?? null;
-  }
-
+  if (Array.isArray(value)) return value[0] ?? null;
   return value ?? null;
 }
 
@@ -76,10 +73,7 @@ export default async function FocusItemsPage({ searchParams }: { searchParams: S
     (items ?? []).reduce<Record<string, { categoryName: string; items: NonNullable<typeof items> }>>((carry, item) => {
       const category = getRelation(item.categories) as { name?: string } | null;
       const key = category?.name ?? "未分類";
-      const group = carry[key] ?? {
-        categoryName: key,
-        items: [],
-      };
+      const group = carry[key] ?? { categoryName: key, items: [] };
       group.items.push(item);
       carry[key] = group;
       return carry;
@@ -137,20 +131,28 @@ export default async function FocusItemsPage({ searchParams }: { searchParams: S
     return (
       <div className="grid gap-4">
         {groupedItems.map((group) => (
-          <div key={group.categoryName} className="rounded-[24px] border border-ink/10 bg-soft/30 p-4">
+          <div key={group.categoryName} className="nb-card-flat bg-nb-bg2 p-4">
             <div className="mb-4 flex items-center justify-between gap-3">
               <div>
-                <p className="font-medium text-ink">{group.categoryName}</p>
-                <p className="text-xs text-ink/60">{group.items.length} 題 / 已選 {group.items.filter((item) => selectedIds.has(item.id)).length} 題</p>
+                <p className="font-nbSerif text-lg font-black">{group.categoryName}</p>
+                <p className="nb-eyebrow mt-1">
+                  {group.items.length} 題 / 已選 {group.items.filter((item) => selectedIds.has(item.id)).length} 題
+                </p>
               </div>
             </div>
             <div className="grid gap-3 md:grid-cols-2">
               {group.items.map((item) => (
-                <label key={item.id} className="flex items-start gap-3 rounded-2xl border border-ink/10 bg-white/80 p-3">
-                  <input type="checkbox" name="item_ids" value={item.id} defaultChecked={selectedIds.has(item.id)} className="mt-1" />
+                <label key={item.id} className="nb-check-card">
+                  <input
+                    type="checkbox"
+                    name="item_ids"
+                    value={item.id}
+                    defaultChecked={selectedIds.has(item.id)}
+                    className="nb-check mt-1"
+                  />
                   <span>
-                    <span className="block font-medium">{item.name}</span>
-                    <span className="text-xs text-ink/60">{group.categoryName}</span>
+                    <span className="block font-bold">{item.name}</span>
+                    <span className="nb-eyebrow">{group.categoryName}</span>
                   </span>
                 </label>
               ))}
@@ -164,31 +166,33 @@ export default async function FocusItemsPage({ searchParams }: { searchParams: S
   return (
     <div data-testid="tag-management-page" className="grid gap-6">
       {successMessage ? <PageToast message={successMessage} /> : null}
+
       <SectionCard
         title="題目標籤總覽"
+        eyebrow="Tags"
         description="這裡管理巡店表單中的題目標籤。只要題目被標記，就不會預設為 3 分，必須由巡店人員手動確認。"
       >
         <div data-testid="tag-management-overview" className="grid gap-3 md:grid-cols-3">
           {(["critical", "monthly_attention", "complaint_watch"] as const).map((type) => (
-            <div key={type} className="rounded-2xl border border-ink/10 bg-soft/40 p-4">
-              <p className="font-medium text-ink">{getInspectionTagLabel(type)}</p>
-              <p className="mt-2 text-sm leading-6 text-ink/70">{getInspectionTagDescription(type)}</p>
+            <div key={type} className="nb-card-flat bg-nb-bg2 p-4">
+              <p className="font-nbSerif text-lg font-black">{getInspectionTagLabel(type)}</p>
+              <p className="mt-2 text-sm leading-6 text-nb-ink/75 font-bold">{getInspectionTagDescription(type)}</p>
             </div>
           ))}
         </div>
-        <div className="mt-4 flex flex-wrap gap-2 text-xs text-ink/70">
-          <span className="rounded-full bg-soft px-3 py-2">必查：{criticalIds.size} 題</span>
-          <span className="rounded-full bg-soft px-3 py-2">本月加強：{monthlyIds.size} 題</span>
-          <span className="rounded-full bg-soft px-3 py-2">客訴項目：{complaintIds.size + complaintAutoTags.length} 題</span>
+        <div className="mt-4 flex flex-wrap gap-2">
+          <span className="nb-chip">必查：{criticalIds.size} 題</span>
+          <span className="nb-chip">本月加強：{monthlyIds.size} 題</span>
+          <span className="nb-chip">客訴項目：{complaintIds.size + complaintAutoTags.length} 題</span>
         </div>
       </SectionCard>
 
       {profile.role === "owner" ? (
-        <SectionCard title="必查項目" description="四間店都通用的高風險題目，適合食安、衛生與絕對不能出錯的檢查項目。">
+        <SectionCard title="必查項目" eyebrow="Critical" description="四間店都通用的高風險題目，適合食安、衛生與絕對不能出錯的檢查項目。">
           <form data-testid="tag-section-critical" action={updateCriticalAction} className="grid gap-4">
             {renderItemChecklist(criticalIds)}
             <div>
-              <button className="rounded-full bg-warm px-5 py-3 text-sm text-white" type="submit">
+              <button className="nb-btn-primary" type="submit">
                 更新必查項目
               </button>
             </div>
@@ -196,15 +200,15 @@ export default async function FocusItemsPage({ searchParams }: { searchParams: S
         </SectionCard>
       ) : null}
 
-      <SectionCard title="本月加強" description="這個月需要特別追蹤的題目，可選擇套用到全部店別或指定單店。">
-        <form method="get" className="grid gap-3 rounded-2xl border border-ink/10 bg-soft/30 p-4 md:grid-cols-[200px_220px_auto] md:items-end">
+      <SectionCard title="本月加強" eyebrow="This Month" description="這個月需要特別追蹤的題目，可選擇套用到全部店別或指定單店。">
+        <form method="get" className="nb-card-flat bg-nb-bg2 grid gap-3 p-4 md:grid-cols-[200px_220px_auto] md:items-end">
           <div>
-            <label className="mb-2 block text-sm text-ink/70">月份</label>
-            <input type="month" name="month" defaultValue={month} className="w-full rounded-2xl border border-ink/10 bg-white px-4 py-3" />
+            <label className="nb-label">月份</label>
+            <input type="month" name="month" defaultValue={month} className="nb-input" />
           </div>
           <div>
-            <label className="mb-2 block text-sm text-ink/70">店別</label>
-            <select data-testid="monthly-tag-store-filter" name="monthlyStore" defaultValue={monthlyStoreId} className="w-full rounded-2xl border border-ink/10 bg-white px-4 py-3">
+            <label className="nb-label">店別</label>
+            <select data-testid="monthly-tag-store-filter" name="monthlyStore" defaultValue={monthlyStoreId} className="nb-select">
               <option value="">全部店別</option>
               {stores?.map((store) => (
                 <option key={store.id} value={store.id}>
@@ -214,7 +218,7 @@ export default async function FocusItemsPage({ searchParams }: { searchParams: S
             </select>
           </div>
           <div>
-            <button className="rounded-full bg-soft px-4 py-3 text-sm text-ink/75" type="submit">
+            <button className="nb-btn-xs" type="submit">
               套用篩選
             </button>
           </div>
@@ -225,22 +229,26 @@ export default async function FocusItemsPage({ searchParams }: { searchParams: S
           <input type="hidden" name="store_id" value={monthlyStoreId} />
           {renderItemChecklist(monthlyIds)}
           <div>
-            <button className="rounded-full bg-warm px-5 py-3 text-sm text-white" type="submit">
+            <button className="nb-btn-primary" type="submit">
               更新本月加強標籤
             </button>
           </div>
         </form>
       </SectionCard>
 
-      <SectionCard title="客訴項目" description="先支援人工標記，未來客訴資料庫串進來後，系統也能自動補上最近一個月的客訴追蹤標籤。">
-        <form method="get" className="grid gap-3 rounded-2xl border border-ink/10 bg-soft/30 p-4 md:grid-cols-[200px_220px_auto] md:items-end">
+      <SectionCard
+        title="客訴項目"
+        eyebrow="Complaints"
+        description="先支援人工標記，未來客訴資料庫串進來後，系統也能自動補上最近一個月的客訴追蹤標籤。"
+      >
+        <form method="get" className="nb-card-flat bg-nb-bg2 grid gap-3 p-4 md:grid-cols-[200px_220px_auto] md:items-end">
           <div>
-            <label className="mb-2 block text-sm text-ink/70">月份</label>
-            <input type="month" name="month" defaultValue={month} className="w-full rounded-2xl border border-ink/10 bg-white px-4 py-3" />
+            <label className="nb-label">月份</label>
+            <input type="month" name="month" defaultValue={month} className="nb-input" />
           </div>
           <div>
-            <label className="mb-2 block text-sm text-ink/70">店別</label>
-            <select data-testid="complaint-tag-store-filter" name="complaintStore" defaultValue={complaintStoreId} className="w-full rounded-2xl border border-ink/10 bg-white px-4 py-3">
+            <label className="nb-label">店別</label>
+            <select data-testid="complaint-tag-store-filter" name="complaintStore" defaultValue={complaintStoreId} className="nb-select">
               <option value="">全部店別</option>
               {stores?.map((store) => (
                 <option key={store.id} value={store.id}>
@@ -250,20 +258,20 @@ export default async function FocusItemsPage({ searchParams }: { searchParams: S
             </select>
           </div>
           <div>
-            <button className="rounded-full bg-soft px-4 py-3 text-sm text-ink/75" type="submit">
+            <button className="nb-btn-xs" type="submit">
               套用篩選
             </button>
           </div>
         </form>
 
         {complaintAutoTags.length > 0 ? (
-          <div className="mt-4 rounded-2xl border border-warm/20 bg-warm/5 p-4 text-sm text-ink/75">
-            <p className="font-medium text-ink">已存在客訴自動標記</p>
+          <div className="nb-card-flat mt-4 bg-nb-amber/30 p-4 text-sm text-nb-ink/80 font-bold">
+            <p className="font-nbSerif text-lg font-black">已存在客訴自動標記</p>
             <div className="mt-2 flex flex-wrap gap-2">
               {complaintAutoTags.map((tag) => {
                 const item = getRelation(tag.inspection_items) as { name?: string } | null;
                 return (
-                  <span key={tag.id} className="rounded-full bg-white px-3 py-2 text-xs text-ink/70">
+                  <span key={tag.id} className="nb-chip bg-white">
                     {item?.name ?? tag.item_id} / {getInspectionTagSourceLabel(tag.source)}
                   </span>
                 );
@@ -277,7 +285,7 @@ export default async function FocusItemsPage({ searchParams }: { searchParams: S
           <input type="hidden" name="store_id" value={complaintStoreId} />
           {renderItemChecklist(complaintIds)}
           <div>
-            <button className="rounded-full bg-warm px-5 py-3 text-sm text-white" type="submit">
+            <button className="nb-btn-primary" type="submit">
               更新客訴項目標籤
             </button>
           </div>

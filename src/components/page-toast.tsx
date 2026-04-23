@@ -28,7 +28,8 @@ export function PageToast({ message }: { message: string }) {
   }
 
   return (
-    <div className="fixed right-4 top-4 z-50 rounded-2xl border border-emerald-200 bg-white px-4 py-3 text-sm text-emerald-700 shadow-lg">
+    <div className="fixed right-4 top-4 z-50 bg-nb-green border-[2.5px] border-nb-ink shadow-nb px-4 py-3 text-sm font-bold text-nb-ink">
+      <span className="nb-eyebrow mr-2 text-nb-ink/70">OK</span>
       {message}
     </div>
   );

@@ -9,10 +9,7 @@ import { getShiftRoleLabel } from "@/lib/ui-labels";
 type SearchParams = Promise<{ success?: string }>;
 
 function getSingleRelation<T>(value: T | T[] | null | undefined) {
-  if (Array.isArray(value)) {
-    return value[0] ?? null;
-  }
-
+  if (Array.isArray(value)) return value[0] ?? null;
   return value ?? null;
 }
 
@@ -82,36 +79,34 @@ export default async function StaffSettingsPage({ searchParams }: { searchParams
 
       <SectionCard
         title="新增組員"
-        description="組員本身只綁定店別，不再固定只能站一個工作站。若有常用工作站，可以先設定在這裡，巡店時仍可依當班狀況改派。"
+        eyebrow="Create"
+        description="組員只綁定店別，不再固定站點。常用工作站為預設值，巡店時可依當班狀況改派。"
       >
         <form data-testid="staff-create-form" action={createStaffAction} className="grid gap-4">
-          <select
-            data-testid="staff-store-select"
-            name="store_id"
-            defaultValue={profile.role === "leader" ? profile.store_id ?? "" : stores?.[0]?.id}
-            disabled={profile.role === "leader"}
-            className="rounded-2xl border border-ink/10 bg-white px-4 py-3"
-          >
-            {stores?.map((store) => (
-              <option key={store.id} value={store.id}>
-                {store.name}
-              </option>
-            ))}
-          </select>
-          {profile.role === "leader" ? <input type="hidden" name="store_id" value={profile.store_id ?? ""} /> : null}
-          <input
-            name="name"
-            required
-            placeholder="請輸入組員姓名"
-            className="rounded-2xl border border-ink/10 bg-white px-4 py-3"
-          />
-          <label className="grid gap-2 text-sm">
-            <span className="text-ink/70">常用工作站（可不選）</span>
+          <div>
+            <label className="nb-label">店別</label>
             <select
-              name="default_workstation_id"
-              className="rounded-2xl border border-ink/10 bg-white px-4 py-3"
-              defaultValue=""
+              data-testid="staff-store-select"
+              name="store_id"
+              defaultValue={profile.role === "leader" ? profile.store_id ?? "" : stores?.[0]?.id}
+              disabled={profile.role === "leader"}
+              className="nb-select"
             >
+              {stores?.map((store) => (
+                <option key={store.id} value={store.id}>
+                  {store.name}
+                </option>
+              ))}
+            </select>
+            {profile.role === "leader" ? <input type="hidden" name="store_id" value={profile.store_id ?? ""} /> : null}
+          </div>
+          <div>
+            <label className="nb-label">姓名</label>
+            <input name="name" required placeholder="請輸入組員姓名" className="nb-input" />
+          </div>
+          <div>
+            <label className="nb-label">常用工作站（可不選）</label>
+            <select name="default_workstation_id" className="nb-select" defaultValue="">
               <option value="">未指定</option>
               {(workstations ?? []).map((workstation) => (
                 <option key={workstation.id} value={workstation.id}>
@@ -119,8 +114,8 @@ export default async function StaffSettingsPage({ searchParams }: { searchParams
                 </option>
               ))}
             </select>
-          </label>
-          <button className="rounded-full bg-warm px-5 py-3 text-sm text-white" type="submit">
+          </div>
+          <button className="nb-btn-primary" type="submit">
             新增組員
           </button>
         </form>
@@ -128,7 +123,8 @@ export default async function StaffSettingsPage({ searchParams }: { searchParams
 
       <SectionCard
         title="組員清單"
-        description="這裡的常用工作站只是預設值，不代表當班工作站。真正的站位會在每次巡店時再指派。"
+        eyebrow="Staff List"
+        description="常用工作站只是預設值，不代表當班工作站；實際站位會在每次巡店時指派。"
       >
         <div data-testid="staff-list" className="grid gap-3">
           {staffMembers?.map((member) => {
@@ -138,16 +134,13 @@ export default async function StaffSettingsPage({ searchParams }: { searchParams
               | null;
 
             return (
-              <div
-                key={member.id}
-                className="flex flex-col gap-3 rounded-2xl border border-ink/10 bg-soft/60 p-4 md:flex-row md:items-center md:justify-between"
-              >
+              <div key={member.id} className="nb-row flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
                 <div>
-                  <p className="font-medium">{member.name}</p>
-                  <p className="text-sm text-ink/65">
-                    {store?.name ?? "未指定店別"} / {member.status === "active" ? "在職" : "已封存"}
+                  <p className="font-nbSerif text-lg font-black">{member.name}</p>
+                  <p className="mt-1 text-xs text-nb-ink/65 font-bold font-nbMono">
+                    {store?.name ?? "未指定店別"} · {member.status === "active" ? "在職" : "已封存"}
                   </p>
-                  <p className="text-xs text-ink/55">
+                  <p className="mt-1 text-xs text-nb-ink/55 font-nbMono">
                     常用工作站：
                     {defaultWorkstation
                       ? `${defaultWorkstation.name}（${getShiftRoleLabel(defaultWorkstation.area ?? "floor")}）`
@@ -157,16 +150,18 @@ export default async function StaffSettingsPage({ searchParams }: { searchParams
                 {member.status === "active" ? (
                   <form action={archiveAction}>
                     <input type="hidden" name="id" value={member.id} />
-                    <button className="rounded-full bg-white px-4 py-2 text-xs" type="submit">
+                    <button className="nb-btn-xs" type="submit">
                       封存
                     </button>
                   </form>
                 ) : (
                   <div className="flex items-center gap-3">
-                    <span className="text-xs text-ink/55">封存日期：{member.archived_at?.slice(0, 10) ?? "-"}</span>
+                    <span className="text-[10px] font-bold font-nbMono text-nb-ink/55 uppercase tracking-[0.18em]">
+                      封存日期：{member.archived_at?.slice(0, 10) ?? "-"}
+                    </span>
                     <form action={restoreAction}>
                       <input type="hidden" name="id" value={member.id} />
-                      <button className="rounded-full bg-white px-4 py-2 text-xs" type="submit">
+                      <button className="nb-btn-xs bg-nb-green" type="submit">
                         恢復在職
                       </button>
                     </form>
