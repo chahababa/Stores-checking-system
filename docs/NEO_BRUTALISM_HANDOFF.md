@@ -1,6 +1,6 @@
 # Neo Brutalism UI 改版 — 進度交接文件
 
-**最後更新**：2026-04-23
+**最後更新**：2026-04-23（下午；補了 edit page、表單 NB、OAuth 根因）
 **分支**：`ui/neo-brutalism`
 **PR**：[#1](https://github.com/chahababa/Stores-checking-system/pull/1)（開放中，尚未合併）
 
@@ -28,6 +28,9 @@
 | `6dda385` | 刪 `/preview`（Matt 已確認首頁喜歡） |
 | `83c2064` | patch2：全站其他頁面套 Neo Brutalism（21 個檔：5 個 components + 1 個 protected layout + 14 個 protected pages + globals.css v2） |
 | `c37401f` | 修 OAuth callback：用 `request.url.origin` 取代 `getSiteUrl()`（讓 preview / 正式 / localhost 全動態對應 redirect domain） |
+| `67306d2` | 補 patch2 漏掉的 `inspection/history/[id]/edit` 頁 header 套 Neo Brutalism |
+| `0546fdb` | `components/inspection/inspection-form.tsx` 全套 NB（input / select / textarea / 分數按鈕改等寬方塊 / 狀態 chip 等；logic、testid、payload 不變） |
+| `aaec384` | 修 OAuth `0.0.0.0:8080` flash：callback route 改讀 `x-forwarded-host`，因為 Zeabur Docker 裡 `request.url.origin` 會解成內部 bind 位址 `http://0.0.0.0:8080` |
 
 ### 已驗證（都過）
 
@@ -140,6 +143,26 @@
 2. 改 `callback/route.ts` 全部 redirect 改用 `new URL(request.url).origin` 動態決定（commit `c37401f`）✅
 
 **副作用**：`NEXT_PUBLIC_SITE_URL` 這個 env var 現在在程式碼裡沒任何地方讀（但 `env.ts` 的 validator 還會檢查它存在；保持現狀就好）。未來想徹底清掉可以另開 PR。
+
+### B'. 後續：`c37401f` 的 `url.origin` 在 Zeabur Docker 上壞掉（commit `aaec384` 修）
+
+**症狀**：在 preview 點 Google 登入 → Google 授權完成 → 瀏覽器瞬間變成 `https://0.0.0.0:8080/forbidden?reason=oauth`（連線被拒的 Chrome 錯誤頁）。看起來像 OAuth 爆了，但其實 Google 這端是成功的。
+
+**根因**：Zeabur 用 Docker 跑 Next.js，容器內部把 server bind 在 `0.0.0.0:8080`。當 proxy 把外部請求轉進容器，Next.js 的 `request.url` 是容器內部看到的 URL（`http://0.0.0.0:8080/api/auth/callback?code=...`）。`new URL(request.url).origin` 直接變成 `http://0.0.0.0:8080` — 也就是 `c37401f` 那個「動態 origin」抓到的根本不是對外 domain，而是內部 bind 位址。
+
+所以成功時 redirect 到 `http://0.0.0.0:8080/`、失敗時 redirect 到 `http://0.0.0.0:8080/forbidden?reason=oauth`、沒 code 時 redirect 到 `http://0.0.0.0:8080/login` — 全都會 404 / connection refused。
+
+**踩坑過程**（花了一兩小時才定位）：
+- 先懷疑 `NEXT_PUBLIC_SUPABASE_URL` env var 設錯 → 實際是對的
+- 再懷疑 Supabase Site URL 設成 `0.0.0.0` → 實際是對的
+- 再懷疑 Supabase Redirect URLs 白名單有 `0.0.0.0` → 沒有
+- 再懷疑 Google OAuth Console 有 `0.0.0.0` → 沒有
+- 再懷疑 IE Tab 這類擴充在 local proxy → 刪了還是一樣
+- 直接用 JS 構造 PKCE auth URL 觸發 → URL bar 停在 `https://0.0.0.0:8080/forbidden?reason=oauth`，path 明顯是**我們自己 app 的錯誤頁**，才確認是 app 這端 redirect 目標錯了
+
+**解法**：`callback/route.ts` 改成優先讀 `x-forwarded-proto` + `x-forwarded-host`（Zeabur proxy 會塞），退回 `Host` header，最後才 fallback 到 `url.origin`。這樣 Docker bind 位址就完全碰不到。本機 `localhost:3000` 因為 Host header 會是 `localhost:3000`，也能正常走。
+
+**How to apply**：未來任何在 Next.js App Router 寫 route handler、需要構造外部 redirect URL 的地方都要記得：Docker 後面的 `new URL(request.url).origin` 不可信，要讀 forwarded headers。不只這個 callback，`api/reports/` 或未來任何 redirect 場景都適用。
 
 ### C. 為什麼 patch1 的 `globals.css` 被 patch2 覆蓋是 byte-different
 
