@@ -1,6 +1,27 @@
 # Changelog
 
-## 2026-04-13 Latest
+## 2026-04-23 Latest
+
+### 修正新經理巡店送出卡在 Server Components render 錯誤
+- `5df0ced` `fix: add observation note column for menu item inspections`
+  - 主管 / 經理在餐點抽查區的「重量」欄位輸入中文觀察描述（例如外觀、製餐過程備註）時，會觸發 Postgres 無法把中文轉成 `numeric(8, 2)`，整筆巡店送出失敗。
+  - Production 下 Next.js 會把 server action 錯誤替換成通用訊息：`An error occurred in the Server Components render. The specific message is omitted in production builds...`，使用者完全看不到真正原因。
+  - 新增 migration `20260423_000010_add_menu_observation_note.sql`，在 `inspection_menu_items` 加上 `observation_note text`。
+  - 巡店表單新增「餐點觀察 / 製餐過程備註」textarea（內用、外帶各一個）。
+  - 重量欄位改為 `type="number" inputMode="decimal"`，瀏覽器層直接擋掉非數字輸入，避免同樣的狀況再發生。
+  - 巡店明細頁、單筆巡店 CSV 匯出都同步帶出新的觀察備註欄位。
+  - 重量欄位標籤統一為「重量（克）」，placeholder 提示「只填數字」。
+
+### 驗證
+- `npm run typecheck`
+- `npm run lint`
+- `npm run test`
+
+### 部署注意
+- 需要先在 Supabase SQL Editor 執行 `20260423_000010_add_menu_observation_note.sql`，**再**讓新版前端部署上線。順序反過來會讓巡店明細頁讀取 `observation_note` 欄位失敗。
+- 既有資料不受影響：`observation_note` 預設為 `null`，且 `portion_weight` 欄位型別維持不變。
+
+## 2026-04-13
 
 - `ux(new-inspection):` removed the extra pre-store-selection notice card
   - the page no longer shows a large standalone prompt card above the form
