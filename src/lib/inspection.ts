@@ -85,6 +85,7 @@ export type InspectionMutationInput = {
     type: "dine_in" | "takeout";
     dishName?: string;
     portionWeight?: string;
+    observationNote?: string;
     photoUrl?: string;
     photo?: {
       base64: string;
@@ -141,6 +142,7 @@ export type InspectionDetail = {
     type: "dine_in" | "takeout";
     dishName: string | null;
     portionWeight: string | null;
+    observationNote: string | null;
     photoUrl: string | null;
   }>;
   legacyNotes: Array<{
@@ -191,9 +193,11 @@ export type InspectionEditSeed = {
     menuItems: {
       dineInDishName: string;
       dineInPortionWeight: string;
+      dineInObservationNote: string;
       dineInPhotoUrl: string;
       takeoutDishName: string;
       takeoutPortionWeight: string;
+      takeoutObservationNote: string;
       takeoutPhotoUrl: string;
     };
     legacyNote: string;
@@ -993,12 +997,12 @@ export async function getInspectionDetail(inspectionId: string): Promise<Inspect
   const menuResult = hasMenuItemPhotos
     ? await admin
         .from("inspection_menu_items")
-        .select("id, type, dish_name, portion_weight, photo_url")
+        .select("id, type, dish_name, portion_weight, observation_note, photo_url")
         .eq("inspection_id", inspectionId)
         .order("type")
     : await admin
         .from("inspection_menu_items")
-        .select("id, type, dish_name, portion_weight")
+        .select("id, type, dish_name, portion_weight, observation_note")
         .eq("inspection_id", inspectionId)
         .order("type");
 
@@ -1078,6 +1082,8 @@ export async function getInspectionDetail(inspectionId: string): Promise<Inspect
       type: row.type,
       dishName: row.dish_name,
       portionWeight: row.portion_weight,
+      observationNote:
+        "observation_note" in row && typeof row.observation_note === "string" ? row.observation_note : null,
       photoUrl: "photo_url" in row && typeof row.photo_url === "string" ? row.photo_url : null,
     })),
     legacyNotes: (legacyRows ?? []).map((row) => ({
@@ -1137,9 +1143,11 @@ export async function getInspectionEditSeed(inspectionId: string): Promise<Inspe
       menuItems: {
         dineInDishName: dineIn?.dishName ?? "",
         dineInPortionWeight: dineIn?.portionWeight ?? "",
+        dineInObservationNote: dineIn?.observationNote ?? "",
         dineInPhotoUrl: dineIn?.photoUrl ?? "",
         takeoutDishName: takeout?.dishName ?? "",
         takeoutPortionWeight: takeout?.portionWeight ?? "",
+        takeoutObservationNote: takeout?.observationNote ?? "",
         takeoutPhotoUrl: takeout?.photoUrl ?? "",
       },
       legacyNote: detail.legacyNotes.map((note) => note.content).join("\n\n"),
@@ -1609,7 +1617,12 @@ export async function createInspection(input: InspectionMutationInput) {
   }
 
   const validMenuItems = input.menuItems.filter(
-    (item) => item.dishName?.trim() || item.portionWeight?.trim() || item.photo || item.photoUrl,
+    (item) =>
+      item.dishName?.trim() ||
+      item.portionWeight?.trim() ||
+      item.observationNote?.trim() ||
+      item.photo ||
+      item.photoUrl,
   );
   if (validMenuItems.length > 0) {
     const insertPayload = validMenuItems.map((item) => ({
@@ -1617,6 +1630,7 @@ export async function createInspection(input: InspectionMutationInput) {
       type: item.type,
       dish_name: item.dishName?.trim() || null,
       portion_weight: item.portionWeight?.trim() || null,
+      observation_note: item.observationNote?.trim() || null,
       ...(hasMenuItemPhotos ? { photo_url: item.photoUrl?.trim() || null } : {}),
     }));
     const insertResult = hasMenuItemPhotos
@@ -1830,7 +1844,12 @@ export async function updateInspection(inspectionId: string, input: InspectionMu
   }
 
   const validMenuItems = input.menuItems.filter(
-    (item) => item.dishName?.trim() || item.portionWeight?.trim() || item.photo || item.photoUrl,
+    (item) =>
+      item.dishName?.trim() ||
+      item.portionWeight?.trim() ||
+      item.observationNote?.trim() ||
+      item.photo ||
+      item.photoUrl,
   );
   if (validMenuItems.length > 0) {
     const insertPayload = validMenuItems.map((item) => ({
@@ -1838,6 +1857,7 @@ export async function updateInspection(inspectionId: string, input: InspectionMu
       type: item.type,
       dish_name: item.dishName?.trim() || null,
       portion_weight: item.portionWeight?.trim() || null,
+      observation_note: item.observationNote?.trim() || null,
       ...(hasMenuItemPhotos ? { photo_url: item.photoUrl?.trim() || null } : {}),
     }));
     const insertResult = hasMenuItemPhotos

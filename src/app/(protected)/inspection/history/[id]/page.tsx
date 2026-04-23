@@ -531,7 +531,12 @@ export default async function InspectionDetailPage({
                   <div className="space-y-1">
                     <p className="font-medium text-ink">{item.type === "dine_in" ? "內用" : "外帶"}</p>
                     <p>餐點名稱：{item.dishName ?? "-"}</p>
-                    <p>重量 / 克數：{item.portionWeight ?? "-"}</p>
+                    <p>重量（克）：{item.portionWeight ?? "-"}</p>
+                    {item.observationNote ? (
+                      <p className="whitespace-pre-wrap leading-6">
+                        觀察 / 製餐備註：{item.observationNote}
+                      </p>
+                    ) : null}
                   </div>
                   {item.photoUrl ? (
                     <a href={item.photoUrl} target="_blank" rel="noreferrer" className="group block">
