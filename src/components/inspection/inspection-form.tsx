@@ -697,16 +697,16 @@ export function InspectionForm({
             : "尚未開始儲存草稿。";
   return (
     <div className="grid gap-6" data-testid={isEditMode ? "inspection-edit-form" : "inspection-create-form"}>
-      <section className="rounded-[28px] border border-ink/10 bg-white p-5 shadow-card">
+      <section className="nb-card p-5">
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
           <div>
-            <label className="mb-2 block text-sm text-ink/70">店別</label>
+            <label className="nb-label">店別</label>
             <select
               data-testid="inspection-store-select"
               value={form.storeId}
               onChange={(event) => navigateToSeed(event.target.value, form.date)}
               disabled={isEditMode}
-              className="w-full rounded-2xl border border-ink/10 bg-white px-4 py-3 disabled:bg-soft/60 disabled:text-ink/45"
+              className="nb-select disabled:bg-nb-ink/10 disabled:text-nb-ink/45"
             >
               {!isEditMode ? <option value="">請先選擇店別</option> : null}
               {seed.stores.map((store) => (
@@ -718,19 +718,19 @@ export function InspectionForm({
           </div>
 
           <div>
-            <label className="mb-2 block text-sm text-ink/70">日期</label>
+            <label className="nb-label">日期</label>
             <input
               data-testid="inspection-date-input"
               type="date"
               value={form.date}
               onChange={(event) => navigateToSeed(form.storeId, event.target.value)}
               disabled={isEditMode}
-              className="w-full rounded-2xl border border-ink/10 bg-white px-4 py-3 disabled:bg-soft/60 disabled:text-ink/45"
+              className="nb-input disabled:bg-nb-ink/10 disabled:text-nb-ink/45"
             />
           </div>
 
           <div>
-            <label className="mb-2 block text-sm text-ink/70">巡店時段</label>
+            <label className="nb-label">巡店時段</label>
             <div className="grid gap-2">
               <select
                 data-testid="inspection-time-slot-select"
@@ -741,7 +741,7 @@ export function InspectionForm({
                     timeSlot: event.target.value === CUSTOM_TIME_SLOT_VALUE ? current.timeSlot : event.target.value,
                   }))
                 }
-                className="w-full rounded-2xl border border-ink/10 bg-white px-4 py-3"
+                className="nb-select"
               >
                 <option value="">請選擇巡店時段</option>
                 {TIME_SLOT_OPTIONS.map((option) => (
@@ -758,14 +758,14 @@ export function InspectionForm({
                   value={form.timeSlot}
                   onChange={(event) => setForm((current) => ({ ...current, timeSlot: event.target.value }))}
                   placeholder="請輸入自訂巡店時段，例如：14:30-15:15"
-                  className="w-full rounded-2xl border border-ink/10 bg-white px-4 py-3"
+                  className="nb-input"
                 />
               ) : null}
             </div>
           </div>
 
           <div>
-            <label className="mb-2 block text-sm text-ink/70">忙碌程度</label>
+            <label className="nb-label">忙碌程度</label>
             <select
               data-testid="inspection-busyness-select"
               value={form.busynessLevel}
@@ -775,7 +775,7 @@ export function InspectionForm({
                   busynessLevel: event.target.value as InspectionFormDraftState["busynessLevel"],
                 }))
               }
-              className="w-full rounded-2xl border border-ink/10 bg-white px-4 py-3"
+              className="nb-select"
             >
               <option value="low">較空</option>
               <option value="medium">一般</option>
@@ -785,38 +785,40 @@ export function InspectionForm({
         </div>
 
         {isEditMode ? (
-          <div className="mt-4 rounded-2xl border border-ink/10 bg-soft/50 px-4 py-3 text-sm text-ink/65">
+          <div className="nb-card-flat bg-nb-bg2 mt-4 px-4 py-3 text-sm font-bold text-nb-ink/70">
             目前為編輯模式，店別與日期會維持原本紀錄，避免誤把既有巡店改到其他店或其他日期。
           </div>
         ) : null}
 
         {!isEditMode && seed.duplicateInspectionWarning ? (
-          <div className="mt-4 rounded-2xl border border-danger/20 bg-danger/5 px-4 py-3 text-sm text-danger">
+          <div className="nb-card-flat border-nb-red bg-nb-red/10 mt-4 px-4 py-3 text-sm font-bold text-nb-red">
             這個店別在同一天已經有巡店紀錄，送出前請再次確認是否需要重複建立。
           </div>
         ) : null}
 
         <div className="mt-4 grid gap-3 lg:grid-cols-[1.2fr_0.8fr]">
-          <div className="rounded-2xl border border-ink/10 bg-soft/35 px-4 py-4">
-            <p className="text-sm font-medium text-ink">填寫進度</p>
-            <div className="mt-2 flex flex-wrap gap-3 text-sm text-ink/70">
+          <div className="nb-card-flat bg-nb-bg2 px-4 py-4">
+            <p className="nb-eyebrow">Progress</p>
+            <p className="mt-1 font-nbSerif text-base font-black text-nb-ink">填寫進度</p>
+            <div className="mt-2 flex flex-wrap gap-3 text-sm font-bold text-nb-ink/70 font-nbMono">
               <span>已完成 {completedCategoryCount} / {seed.groupedItems.length} 個分類</span>
               <span>已填 {scoredItemCount} / {totalItemCount} 題</span>
               <span>未填標籤題目 {missingFocusCount} 題</span>
             </div>
-            <div className="mt-3 h-2 rounded-full bg-cream">
+            <div className="mt-3 h-3 border-[2.5px] border-nb-ink bg-nb-paper">
               <div
-                className="h-full rounded-full bg-warm transition-all"
+                className="h-full bg-nb-ink transition-all"
                 style={{ width: `${Math.max((scoredItemCount / Math.max(totalItemCount, 1)) * 100, 4)}%` }}
               />
             </div>
           </div>
-          <div className="rounded-2xl border border-ink/10 bg-soft/35 px-4 py-4">
-            <p className="text-sm font-medium text-ink">草稿狀態</p>
-            <p className="mt-2 text-sm text-ink/70" data-testid="inspection-draft-status">
+          <div className="nb-card-flat bg-nb-bg2 px-4 py-4">
+            <p className="nb-eyebrow">Draft</p>
+            <p className="mt-1 font-nbSerif text-base font-black text-nb-ink">草稿狀態</p>
+            <p className="mt-2 text-sm font-bold text-nb-ink/70" data-testid="inspection-draft-status">
               {draftStatusLabel}
             </p>
-            <p className="mt-2 text-xs leading-5 text-ink/55">
+            <p className="mt-2 text-xs leading-5 text-nb-ink/55">
               {isEditMode
                 ? "編輯既有巡店時不會覆蓋瀏覽器裡的草稿。"
                 : "草稿只會保存在目前這台裝置；照片不會保存在瀏覽器草稿中。"}
@@ -825,13 +827,14 @@ export function InspectionForm({
         </div>
       </section>
 
-      <section className="rounded-[28px] border border-ink/10 bg-white p-5 shadow-card">
+      <section className="nb-card p-5">
         <div className="flex items-center justify-between gap-3">
           <div>
-            <h2 className="font-serifTc text-2xl font-semibold">當班人員</h2>
-            <p className="mt-2 text-sm text-ink/70">勾選這次巡店時段實際在場的組員，並指定本次工作站。</p>
+            <p className="nb-eyebrow">On-shift</p>
+            <h2 className="nb-h2 mt-1">當班人員</h2>
+            <p className="mt-2 text-sm text-nb-ink/70">勾選這次巡店時段實際在場的組員，並指定本次工作站。</p>
           </div>
-          <div className="rounded-full bg-soft px-4 py-2 text-sm text-ink/70">已選 {Object.keys(form.selectedStaff).length} 人</div>
+          <div className="nb-chip-yellow">已選 {Object.keys(form.selectedStaff).length} 人</div>
         </div>
 
         <div className="mt-5 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
@@ -844,11 +847,11 @@ export function InspectionForm({
             const selectedWorkstation = selectedWorkstationId ? workstationsById[selectedWorkstationId] : undefined;
 
             return (
-              <div key={staff.id} className="rounded-2xl border border-ink/10 bg-soft/30 px-4 py-3">
+              <div key={staff.id} className="nb-card-flat bg-nb-bg2 px-4 py-3">
                 <div className="flex items-start justify-between gap-4">
                   <div>
-                    <p className="font-medium text-ink">{staff.name}</p>
-                    <p className="text-sm text-ink/60">
+                    <p className="font-nbSerif text-base font-black text-nb-ink">{staff.name}</p>
+                    <p className="text-xs font-bold text-nb-ink/60 font-nbMono mt-1">
                       常用工作站：
                       {staff.defaultWorkstationId ? getWorkstationLabel(workstationsById[staff.defaultWorkstationId]) : "尚未指定"}
                     </p>
@@ -858,16 +861,16 @@ export function InspectionForm({
                     checked={checked}
                     onChange={(event) => assignStaff(staff.id, defaultWorkstation?.id ?? "", event.target.checked)}
                     disabled={!defaultWorkstation}
-                    className="mt-1 h-5 w-5 rounded border-ink/30 text-warm focus:ring-warm"
+                    className="nb-check mt-1"
                   />
                 </div>
                 {checked ? (
                   <label className="mt-3 grid gap-2 text-sm">
-                    <span className="text-ink/65">本次巡店工作站</span>
+                    <span className="nb-label !mb-0">本次巡店工作站</span>
                     <select
                       value={selectedWorkstationId}
                       onChange={(event) => setStaffWorkstation(staff.id, event.target.value)}
-                      className="rounded-2xl border border-ink/10 bg-white px-4 py-3"
+                      className="nb-select"
                     >
                       {seed.workstations.map((workstation) => (
                         <option key={workstation.id} value={workstation.id}>
@@ -875,7 +878,7 @@ export function InspectionForm({
                         </option>
                       ))}
                     </select>
-                    <span className="text-xs text-ink/55">
+                    <span className="nb-help">
                       目前記錄為：{selectedWorkstation ? getWorkstationLabel(selectedWorkstation) : "尚未選擇工作站"}
                     </span>
                   </label>
@@ -885,25 +888,26 @@ export function InspectionForm({
           })}
 
           {seed.activeStaff.length === 0 ? (
-            <div className="rounded-2xl border border-dashed border-ink/15 px-4 py-6 text-sm text-ink/60">
+            <div className="nb-empty col-span-full">
               目前這家店沒有可選的在職組員。
             </div>
           ) : null}
         </div>
       </section>
 
-      <section className="sticky top-2 z-10 rounded-[20px] border border-ink/10 bg-cream/95 px-3 py-3 shadow-card backdrop-blur sm:top-4 sm:rounded-[28px] sm:px-5 sm:py-5">
+      <section className="sticky top-2 z-10 nb-card bg-nb-bg2/95 backdrop-blur px-3 py-3 sm:top-4 sm:px-5 sm:py-5">
         <div className="flex flex-col gap-2 lg:flex-row lg:items-center lg:justify-between">
           <div>
-            <h2 className="font-serifTc text-lg font-semibold sm:text-2xl">分類導航</h2>
-            <p className="mt-2 hidden text-sm text-ink/70 sm:block">先快速把整體評分完成，再回頭調整個別題目的 B / C 與備註會更快。</p>
+            <p className="nb-eyebrow">Quick Nav</p>
+            <h2 className="nb-h2 mt-1 text-lg sm:text-2xl">分類導航</h2>
+            <p className="mt-2 hidden text-sm text-nb-ink/70 sm:block">先快速把整體評分完成，再回頭調整個別題目的 B / C 與備註會更快。</p>
           </div>
           <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">
             <button
               type="button"
               data-testid="inspection-bulk-score-3"
               onClick={() => applyBulkScore(3)}
-              className="rounded-full bg-warm px-3 py-2 text-xs text-white sm:px-4 sm:text-sm"
+              className="nb-btn-green text-xs sm:text-sm"
             >
               全部設為 A
             </button>
@@ -911,7 +915,7 @@ export function InspectionForm({
               type="button"
               data-testid="inspection-reset-scores"
               onClick={resetScoresToDefault}
-              className="rounded-full bg-soft px-3 py-2 text-xs text-ink/75 sm:px-4 sm:text-sm"
+              className="nb-btn text-xs sm:text-sm"
             >
               重設為預設值
             </button>
@@ -933,9 +937,7 @@ export function InspectionForm({
                     [group.categoryId]: false,
                   }))
                 }
-                className={`whitespace-nowrap rounded-full px-3 py-1.5 text-xs transition sm:px-4 sm:py-2 sm:text-sm ${
-                  isCompleted ? "bg-white text-ink shadow-sm" : "bg-soft text-ink/75 hover:bg-white"
-                }`}
+                className={`whitespace-nowrap ${isCompleted ? "nb-tab-active" : "nb-tab"}`}
               >
                 {index + 1}. {group.categoryName} ({answeredCount}/{group.items.length})
               </a>
@@ -953,22 +955,22 @@ export function InspectionForm({
           <section
             key={group.categoryId}
             id={`category-${group.categoryId}`}
-            className="scroll-mt-32 rounded-[24px] border border-ink/10 bg-white p-4 shadow-card sm:scroll-mt-36 sm:rounded-[28px] sm:p-5"
+            className="scroll-mt-32 nb-card p-4 sm:scroll-mt-36 sm:p-5"
           >
             <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
               <div>
-                <p className="font-lora text-sm uppercase tracking-[0.25em] text-warm">分類 {index + 1}</p>
-                <h2 className="mt-2 font-serifTc text-xl font-semibold sm:text-2xl">{group.categoryName}</h2>
-                <p className="mt-2 text-sm text-ink/70">已填 {answeredCount} / {group.items.length} 題</p>
+                <p className="nb-eyebrow">Category {index + 1}</p>
+                <h2 className="nb-h2 mt-1 text-xl sm:text-2xl">{group.categoryName}</h2>
+                <p className="mt-2 text-sm font-bold font-nbMono text-nb-ink/70">已填 {answeredCount} / {group.items.length} 題</p>
               </div>
               <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">
-                <span className="rounded-full bg-soft px-4 py-2 text-sm text-ink/70">
+                <span className={answeredCount === group.items.length ? "nb-chip-green" : "nb-chip"}>
                   {answeredCount === group.items.length ? "已完成" : "填寫中"}
                 </span>
                 <button
                   type="button"
                   onClick={() => toggleCategory(group.categoryId)}
-                  className="rounded-full bg-soft px-4 py-2 text-sm text-ink/75"
+                  className="nb-btn text-xs"
                 >
                   {collapsed ? "展開分類" : "收合分類"}
                 </button>
@@ -996,82 +998,87 @@ export function InspectionForm({
                       key={item.id}
                       data-testid={`inspection-item-${item.id}`}
                       data-item-id={item.id}
-                      className="rounded-[20px] border border-ink/10 bg-soft/25 p-3 sm:rounded-[24px] sm:p-4"
+                      className="nb-card-flat bg-nb-bg2 p-3 sm:p-4"
                     >
                       <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
                         <div className="max-w-2xl">
                           <div className="flex flex-wrap items-center gap-2">
-                            <h3 className="text-base font-medium text-ink sm:text-lg">{item.name}</h3>
+                            <h3 className="font-nbSerif text-base font-black text-nb-ink sm:text-lg">{item.name}</h3>
                             {value.tagTypes.map((tagType) => (
                               <span
                                 key={tagType}
-                                className={`rounded-full px-3 py-1 text-xs font-medium ${
+                                className={
                                   tagType === "critical"
-                                    ? "bg-danger text-white"
+                                    ? "nb-chip-red"
                                     : tagType === "monthly_attention"
-                                      ? "bg-warm px-3 py-1 text-white"
-                                      : "bg-ink text-white"
-                                }`}
+                                      ? "nb-chip-yellow"
+                                      : "nb-chip-ink"
+                                }
                               >
                                 {getInspectionTagLabel(tagType)}
                               </span>
                             ))}
                             {value.hasPrevIssue ? (
-                              <span className="rounded-full bg-danger/10 px-3 py-1 text-xs font-medium text-danger">
+                              <span className="nb-chip-red">
                                 連續低分 {value.consecutiveWeeks} 週
                               </span>
                             ) : null}
                           </div>
-                          <p className="mt-2 text-xs leading-5 text-ink/65 sm:text-sm">
+                          <p className="mt-2 text-xs leading-5 text-nb-ink/65 sm:text-sm">
                             這題請以 A / B / C 評分：A 代表良好、B 代表待加強、C 代表異常。
                           </p>
                         </div>
 
                         <div className="grid grid-cols-3 gap-2 sm:flex">
-                          {SCORE_OPTIONS.map((option) => (
-                            <button
-                              key={option.score}
-                              type="button"
-                              data-testid={`inspection-score-${item.id}-${option.score}`}
-                              data-score={option.score}
-                              onClick={() => setScore(item.id, option.score)}
-                              className={`flex min-w-0 flex-col items-center rounded-2xl px-3 py-2 text-sm font-medium transition sm:min-w-[72px] sm:px-4 ${
-                                value.score === option.score
-                                  ? "bg-warm text-white"
-                                  : "border border-ink/10 bg-white text-ink/70 hover:bg-cream"
-                              }`}
-                            >
-                              <span className="text-base">{option.grade}</span>
-                              <span className={`text-[11px] ${value.score === option.score ? "text-white/85" : "text-ink/55"}`}>
-                                {option.label}
-                              </span>
-                            </button>
-                          ))}
+                          {SCORE_OPTIONS.map((option) => {
+                            const isSelected = value.score === option.score;
+                            const selectedBg =
+                              option.score === 3
+                                ? "bg-nb-green text-nb-ink"
+                                : option.score === 2
+                                  ? "bg-nb-yellow text-nb-ink"
+                                  : "bg-nb-red text-white";
+                            return (
+                              <button
+                                key={option.score}
+                                type="button"
+                                data-testid={`inspection-score-${item.id}-${option.score}`}
+                                data-score={option.score}
+                                onClick={() => setScore(item.id, option.score)}
+                                className={`flex min-w-[72px] flex-col items-center justify-center px-3 py-2 border-[2.5px] border-nb-ink font-bold transition-all duration-100 hover:-translate-y-0.5 hover:shadow-nb-sm active:translate-x-0.5 active:translate-y-0.5 active:shadow-none sm:px-4 ${
+                                  isSelected ? `${selectedBg} shadow-nb-sm` : "bg-nb-paper text-nb-ink/70"
+                                }`}
+                              >
+                                <span className="font-nbSerif text-base font-black">{option.grade}</span>
+                                <span className="text-[11px] font-nbMono">{option.label}</span>
+                              </button>
+                            );
+                          })}
                         </div>
                       </div>
 
                       {showFollowup ? (
                         <div className="mt-4 grid gap-4 lg:grid-cols-[minmax(0,1fr)_280px]">
                           <div>
-                            <label className="mb-2 block text-sm text-ink/70">備註</label>
+                            <label className="nb-label">備註</label>
                             <textarea
                               data-testid={`inspection-note-${item.id}`}
                               value={value.note}
                               onChange={(event) => setNote(item.id, event.target.value)}
                               placeholder="若為 B 或 C，請補充異常原因、現場觀察或後續處理方式。"
-                              className="min-h-28 w-full rounded-2xl border border-ink/10 bg-white px-4 py-3"
+                              className="nb-textarea min-h-28"
                             />
                           </div>
 
-                          <div className="rounded-2xl border border-ink/10 bg-white p-4">
+                          <div className="nb-card-flat p-4">
                             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                               <div>
-                                <p className="text-sm font-medium text-ink">巡店照片</p>
-                                <p className="mt-1 text-xs leading-5 text-ink/60">
+                                <p className="font-nbSerif text-sm font-black text-nb-ink">巡店照片</p>
+                                <p className="mt-1 text-xs leading-5 text-nb-ink/60">
                                   每題最多可附 3 張照片。上傳前會自動壓縮，避免檔案過大。
                                 </p>
                               </div>
-                              <label className="inline-flex w-full items-center justify-center rounded-full bg-soft px-4 py-2 text-sm text-ink sm:w-auto">
+                              <label className="nb-btn w-full justify-center sm:w-auto cursor-pointer">
                                 選擇照片
                                 <input
                                   ref={(node) => {
@@ -1088,24 +1095,22 @@ export function InspectionForm({
 
                             <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
                               {itemPhotos.map((photo) => (
-                                <div key={`${photo.fileName}_${photo.previewUrl}`} className="overflow-hidden rounded-2xl border border-ink/10 bg-soft/20">
-                                  <div className="relative aspect-square w-full">
+                                <div key={`${photo.fileName}_${photo.previewUrl}`} className="nb-card-flat overflow-hidden">
+                                  <div className="relative aspect-square w-full border-b-[2.5px] border-nb-ink">
                                     <Image src={photo.previewUrl} alt={photo.fileName} fill unoptimized className="object-cover" />
                                   </div>
                                   <div className="grid gap-2 p-3">
                                     <button
                                       type="button"
                                       onClick={() => toggleStandardPhoto(item.id, photo.fileName)}
-                                      className={`rounded-full px-3 py-2 text-xs ${
-                                        photo.isStandard ? "bg-warm text-white" : "bg-soft text-ink/70"
-                                      }`}
+                                      className={photo.isStandard ? "nb-btn-xs bg-nb-yellow" : "nb-btn-xs"}
                                     >
                                       {photo.isStandard ? "標準照片" : "設成標準照"}
                                     </button>
                                     <button
                                       type="button"
                                       onClick={() => removePhoto(item.id, photo.fileName)}
-                                      className="rounded-full bg-danger/10 px-3 py-2 text-xs text-danger"
+                                      className="nb-btn-xs bg-nb-red text-white"
                                     >
                                       刪除
                                     </button>
@@ -1114,7 +1119,7 @@ export function InspectionForm({
                               ))}
 
                               {itemPhotos.length === 0 ? (
-                                <div className="col-span-2 rounded-2xl border border-dashed border-ink/15 px-4 py-6 text-sm text-ink/55">
+                                <div className="col-span-2 nb-empty">
                                   目前尚未上傳照片。
                                 </div>
                               ) : null}
@@ -1122,7 +1127,7 @@ export function InspectionForm({
                           </div>
                         </div>
                       ) : (
-                        <div className="mt-4 rounded-2xl border border-dashed border-ink/10 bg-white/70 px-4 py-3 text-sm text-ink/55">
+                        <div className="nb-empty mt-4 bg-nb-paper/70">
                           {value.score === 3
                             ? "這題目前評為 A，暫時不需要補充備註與照片。"
                             : "若選 B 或 C，系統會自動展開備註與照片欄位。"}
@@ -1137,39 +1142,40 @@ export function InspectionForm({
         );
       })}
 
-      <section className="rounded-[28px] border border-ink/10 bg-white p-5 shadow-card">
+      <section className="nb-card p-5">
         <div className="grid gap-5 lg:grid-cols-2">
-          <div className="rounded-[24px] border border-ink/10 bg-soft/25 p-4">
-            <h2 className="font-serifTc text-2xl font-semibold">餐點品質抽查記錄</h2>
-            <p className="mt-2 text-sm text-ink/70">巡店時可同步記錄內用與外帶餐點，並各自附上一張壓縮後的照片。</p>
+          <div className="nb-card-flat bg-nb-bg2 p-4">
+            <p className="nb-eyebrow">Menu QA</p>
+            <h2 className="nb-h2 mt-1">餐點品質抽查記錄</h2>
+            <p className="mt-2 text-sm text-nb-ink/70">巡店時可同步記錄內用與外帶餐點，並各自附上一張壓縮後的照片。</p>
 
             <div className="mt-5 grid gap-4">
-              <div className="rounded-[20px] border border-ink/10 bg-white p-4">
+              <div className="nb-card-flat p-4">
                 <div className="grid gap-3 sm:grid-cols-2">
                   <div>
-                    <label className="mb-2 block text-sm text-ink/70">內用餐點名稱</label>
+                    <label className="nb-label">內用餐點名稱</label>
                     <input
                       value={form.menuItems.dineInDishName}
                       onChange={(event) => setMenuField("dineInDishName", event.target.value)}
-                      className="w-full rounded-2xl border border-ink/10 bg-white px-4 py-3"
+                      className="nb-input"
                     />
                   </div>
                   <div>
-                    <label className="mb-2 block text-sm text-ink/70">內用重量 / 克數</label>
+                    <label className="nb-label">內用重量 / 克數</label>
                     <input
                       value={form.menuItems.dineInPortionWeight}
                       onChange={(event) => setMenuField("dineInPortionWeight", event.target.value)}
                       placeholder="例如 285g"
-                      className="w-full rounded-2xl border border-ink/10 bg-white px-4 py-3"
+                      className="nb-input"
                     />
                   </div>
                 </div>
 
-                <div className="mt-4 rounded-2xl border border-dashed border-ink/15 bg-soft/20 p-4">
+                <div className="mt-4 nb-card-flat border-dashed bg-nb-bg2 p-4">
                   <div className="flex flex-wrap items-center justify-between gap-3">
                     <div>
-                      <p className="font-medium text-ink">內用餐點照片</p>
-                      <p className="text-xs text-ink/60">上傳前會自動壓縮，只保留一張目前照片。</p>
+                      <p className="font-nbSerif text-sm font-black text-nb-ink">內用餐點照片</p>
+                      <p className="mt-1 text-xs text-nb-ink/60">上傳前會自動壓縮，只保留一張目前照片。</p>
                     </div>
                     <div className="flex gap-2">
                       <input
@@ -1184,7 +1190,7 @@ export function InspectionForm({
                       <button
                         type="button"
                         onClick={() => menuPhotoInputRefs.current.dine_in?.click()}
-                        className="rounded-full border border-ink/10 px-4 py-2 text-sm text-ink transition hover:bg-white"
+                        className="nb-btn text-xs"
                       >
                         上傳照片
                       </button>
@@ -1192,7 +1198,7 @@ export function InspectionForm({
                         <button
                           type="button"
                           onClick={() => removeMenuPhoto("dine_in")}
-                          className="rounded-full border border-danger/20 px-4 py-2 text-sm text-danger transition hover:bg-danger/5"
+                          className="nb-btn-red text-xs"
                         >
                           移除照片
                         </button>
@@ -1202,10 +1208,10 @@ export function InspectionForm({
 
                   {dineInPhotoPreview ? (
                     <div className="mt-4 flex items-start gap-4">
-                      <div className="relative h-24 w-24 overflow-hidden rounded-2xl border border-ink/10 bg-white">
+                      <div className="relative h-24 w-24 overflow-hidden border-[2.5px] border-nb-ink bg-nb-paper">
                         <Image src={dineInPhotoPreview} alt="內用餐點照片預覽" fill unoptimized className="object-cover" />
                       </div>
-                      <div className="text-sm text-ink/65">
+                      <div className="text-sm text-nb-ink/65">
                         <p>{menuPhotos.dine_in ? "新照片已壓縮完成，送出後會一併上傳。" : "目前已附上餐點抽查照片。"}</p>
                       </div>
                     </div>
@@ -1213,32 +1219,32 @@ export function InspectionForm({
                 </div>
               </div>
 
-              <div className="rounded-[20px] border border-ink/10 bg-white p-4">
+              <div className="nb-card-flat p-4">
                 <div className="grid gap-3 sm:grid-cols-2">
                   <div>
-                    <label className="mb-2 block text-sm text-ink/70">外帶餐點名稱</label>
+                    <label className="nb-label">外帶餐點名稱</label>
                     <input
                       value={form.menuItems.takeoutDishName}
                       onChange={(event) => setMenuField("takeoutDishName", event.target.value)}
-                      className="w-full rounded-2xl border border-ink/10 bg-white px-4 py-3"
+                      className="nb-input"
                     />
                   </div>
                   <div>
-                    <label className="mb-2 block text-sm text-ink/70">外帶重量 / 克數</label>
+                    <label className="nb-label">外帶重量 / 克數</label>
                     <input
                       value={form.menuItems.takeoutPortionWeight}
                       onChange={(event) => setMenuField("takeoutPortionWeight", event.target.value)}
                       placeholder="例如 260g"
-                      className="w-full rounded-2xl border border-ink/10 bg-white px-4 py-3"
+                      className="nb-input"
                     />
                   </div>
                 </div>
 
-                <div className="mt-4 rounded-2xl border border-dashed border-ink/15 bg-soft/20 p-4">
+                <div className="mt-4 nb-card-flat border-dashed bg-nb-bg2 p-4">
                   <div className="flex flex-wrap items-center justify-between gap-3">
                     <div>
-                      <p className="font-medium text-ink">外帶餐點照片</p>
-                      <p className="text-xs text-ink/60">上傳前會自動壓縮，只保留一張目前照片。</p>
+                      <p className="font-nbSerif text-sm font-black text-nb-ink">外帶餐點照片</p>
+                      <p className="mt-1 text-xs text-nb-ink/60">上傳前會自動壓縮，只保留一張目前照片。</p>
                     </div>
                     <div className="flex gap-2">
                       <input
@@ -1253,7 +1259,7 @@ export function InspectionForm({
                       <button
                         type="button"
                         onClick={() => menuPhotoInputRefs.current.takeout?.click()}
-                        className="rounded-full border border-ink/10 px-4 py-2 text-sm text-ink transition hover:bg-white"
+                        className="nb-btn text-xs"
                       >
                         上傳照片
                       </button>
@@ -1261,7 +1267,7 @@ export function InspectionForm({
                         <button
                           type="button"
                           onClick={() => removeMenuPhoto("takeout")}
-                          className="rounded-full border border-danger/20 px-4 py-2 text-sm text-danger transition hover:bg-danger/5"
+                          className="nb-btn-red text-xs"
                         >
                           移除照片
                         </button>
@@ -1271,10 +1277,10 @@ export function InspectionForm({
 
                   {takeoutPhotoPreview ? (
                     <div className="mt-4 flex items-start gap-4">
-                      <div className="relative h-24 w-24 overflow-hidden rounded-2xl border border-ink/10 bg-white">
+                      <div className="relative h-24 w-24 overflow-hidden border-[2.5px] border-nb-ink bg-nb-paper">
                         <Image src={takeoutPhotoPreview} alt="外帶餐點照片預覽" fill unoptimized className="object-cover" />
                       </div>
-                      <div className="text-sm text-ink/65">
+                      <div className="text-sm text-nb-ink/65">
                         <p>{menuPhotos.takeout ? "新照片已壓縮完成，送出後會一併上傳。" : "目前已附上餐點抽查照片。"}</p>
                       </div>
                     </div>
@@ -1284,31 +1290,34 @@ export function InspectionForm({
             </div>
           </div>
 
-          <div className="rounded-[24px] border border-ink/10 bg-soft/25 p-4">
-            <h2 className="font-serifTc text-2xl font-semibold">巡店補充記錄</h2>
-            <p className="mt-2 text-sm text-ink/70">補充這次巡店需要追蹤的背景資訊、異常脈絡或後續提醒。</p>
+          <div className="nb-card-flat bg-nb-bg2 p-4">
+            <p className="nb-eyebrow">Field Notes</p>
+            <h2 className="nb-h2 mt-1">巡店補充記錄</h2>
+            <p className="mt-2 text-sm text-nb-ink/70">補充這次巡店需要追蹤的背景資訊、異常脈絡或後續提醒。</p>
 
             <textarea
               value={form.legacyNote}
               onChange={(event) => setForm((current) => ({ ...current, legacyNote: event.target.value }))}
               placeholder="例如：內用出餐速度偏慢、外帶包裝封口需再確認，或記錄現場特殊情況。"
-              className="mt-4 min-h-48 w-full rounded-2xl border border-ink/10 bg-white px-4 py-3"
+              className="nb-textarea mt-4 min-h-48"
             />
           </div>
         </div>
       </section>
-      {error ? <div className="rounded-2xl border border-danger/20 bg-danger/5 px-4 py-3 text-sm text-danger">{error}</div> : null}
+      {error ? (
+        <div className="nb-card-flat border-nb-red bg-nb-red/10 px-4 py-3 text-sm font-bold text-nb-red">{error}</div>
+      ) : null}
 
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <p className="text-sm text-ink/65">
-          目前還有 <span className="font-medium text-danger">{missingFocusCount}</span> 題標籤項目尚未評分。
+        <p className="text-sm font-bold text-nb-ink/65">
+          目前還有 <span className="text-nb-red">{missingFocusCount}</span> 題標籤項目尚未評分。
         </p>
         <button
           type="button"
           onClick={handleSubmit}
           data-testid="inspection-submit-button"
           disabled={isSaving || requiresStoreSelection}
-          className="rounded-full bg-warm px-6 py-3 text-sm font-medium text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+          className="nb-btn-primary px-6 py-3 disabled:opacity-50"
         >
           {isSaving ? "送出中..." : submitLabel}
         </button>
