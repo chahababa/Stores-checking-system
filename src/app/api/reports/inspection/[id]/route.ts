@@ -49,10 +49,10 @@ export async function GET(_: Request, context: { params: RouteParams }) {
     ),
     "",
     "餐點抽查",
-    "類型,品項,重量",
+    "類型,品項,重量（克）,觀察 / 製餐備註",
     ...detail.menuItems.map(
       (item) =>
-        `${csvEscape(item.type === "dine_in" ? "內用" : "外帶")},${csvEscape(item.dishName ?? "")},${csvEscape(item.portionWeight ?? "")}`,
+        `${csvEscape(item.type === "dine_in" ? "內用" : "外帶")},${csvEscape(item.dishName ?? "")},${csvEscape(item.portionWeight ?? "")},${csvEscape(item.observationNote ?? "")}`,
     ),
     "",
     "備註紀錄",

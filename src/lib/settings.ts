@@ -461,12 +461,40 @@ async function validateDefaultWorkstation(
   return data;
 }
 
+async function assertLeaderCanManageStaffMember(
+  admin: ReturnType<typeof createAdminClient>,
+  profile: Awaited<ReturnType<typeof requireRole>>,
+  staffId: string,
+) {
+  if (profile.role !== "leader") {
+    return;
+  }
+
+  const { data, error } = await admin.from("staff_members").select("id, store_id").eq("id", staffId).maybeSingle();
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  if (!data) {
+    throw new Error("找不到指定的組員資料。");
+  }
+
+  if (data.store_id !== profile.store_id) {
+    throw new Error("店長只能管理自己店別的組員");
+  }
+}
+
 export async function createStaffMember(input: {
   storeId: string;
   name: string;
   defaultWorkstationId?: string | null;
 }) {
-  const profile = await requireRole("owner", "manager");
+  const profile = await requireRole("owner", "manager", "leader");
+  if (profile.role === "leader" && profile.store_id !== input.storeId) {
+    throw new Error("店長只能新增自己店別的組員");
+  }
+
   const admin = createAdminClient();
   const defaultWorkstation = await validateDefaultWorkstation(admin, input.storeId, input.defaultWorkstationId);
   const { data, error } = await admin
@@ -502,8 +530,9 @@ export async function createStaffMember(input: {
 }
 
 export async function archiveStaffMember(id: string) {
-  const profile = await requireRole("owner", "manager");
+  const profile = await requireRole("owner", "manager", "leader");
   const admin = createAdminClient();
+  await assertLeaderCanManageStaffMember(admin, profile, id);
   const { error } = await admin
     .from("staff_members")
     .update({
@@ -528,8 +557,9 @@ export async function archiveStaffMember(id: string) {
 }
 
 export async function restoreStaffMember(id: string) {
-  const profile = await requireRole("owner", "manager");
+  const profile = await requireRole("owner", "manager", "leader");
   const admin = createAdminClient();
+  await assertLeaderCanManageStaffMember(admin, profile, id);
   const { error } = await admin
     .from("staff_members")
     .update({

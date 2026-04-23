@@ -67,9 +67,11 @@ export type InspectionFormDraftState = {
   menuItems: {
     dineInDishName: string;
     dineInPortionWeight: string;
+    dineInObservationNote: string;
     dineInPhotoUrl: string;
     takeoutDishName: string;
     takeoutPortionWeight: string;
+    takeoutObservationNote: string;
     takeoutPhotoUrl: string;
   };
   legacyNote: string;
@@ -100,9 +102,11 @@ function createInitialState(seed: InspectionFormSeed): InspectionFormDraftState 
     menuItems: {
       dineInDishName: "",
       dineInPortionWeight: "",
+      dineInObservationNote: "",
       dineInPhotoUrl: "",
       takeoutDishName: "",
       takeoutPortionWeight: "",
+      takeoutObservationNote: "",
       takeoutPhotoUrl: "",
     },
     legacyNote: "",
@@ -193,6 +197,10 @@ function normalizeDraftState(raw: unknown, seed: InspectionFormSeed): Inspection
         typeof draft.menuItems?.dineInPortionWeight === "string"
           ? draft.menuItems.dineInPortionWeight
           : fallback.menuItems.dineInPortionWeight,
+      dineInObservationNote:
+        typeof draft.menuItems?.dineInObservationNote === "string"
+          ? draft.menuItems.dineInObservationNote
+          : fallback.menuItems.dineInObservationNote,
       dineInPhotoUrl:
         typeof draft.menuItems?.dineInPhotoUrl === "string"
           ? draft.menuItems.dineInPhotoUrl
@@ -205,6 +213,10 @@ function normalizeDraftState(raw: unknown, seed: InspectionFormSeed): Inspection
         typeof draft.menuItems?.takeoutPortionWeight === "string"
           ? draft.menuItems.takeoutPortionWeight
           : fallback.menuItems.takeoutPortionWeight,
+      takeoutObservationNote:
+        typeof draft.menuItems?.takeoutObservationNote === "string"
+          ? draft.menuItems.takeoutObservationNote
+          : fallback.menuItems.takeoutObservationNote,
       takeoutPhotoUrl:
         typeof draft.menuItems?.takeoutPhotoUrl === "string"
           ? draft.menuItems.takeoutPhotoUrl
@@ -281,6 +293,7 @@ export function InspectionForm({
       type: "dine_in" | "takeout";
       dishName?: string;
       portionWeight?: string;
+      observationNote?: string;
       photoUrl?: string;
       photo?: {
         base64: string;
@@ -637,6 +650,7 @@ export function InspectionForm({
             type: "dine_in",
             dishName: form.menuItems.dineInDishName,
             portionWeight: form.menuItems.dineInPortionWeight,
+            observationNote: form.menuItems.dineInObservationNote,
             photoUrl: form.menuItems.dineInPhotoUrl || undefined,
             photo: menuPhotos.dine_in
               ? {
@@ -650,6 +664,7 @@ export function InspectionForm({
             type: "takeout",
             dishName: form.menuItems.takeoutDishName,
             portionWeight: form.menuItems.takeoutPortionWeight,
+            observationNote: form.menuItems.takeoutObservationNote,
             photoUrl: form.menuItems.takeoutPhotoUrl || undefined,
             photo: menuPhotos.takeout
               ? {
@@ -1161,14 +1176,28 @@ export function InspectionForm({
                     />
                   </div>
                   <div>
-                    <label className="nb-label">內用重量 / 克數</label>
+                    <label className="nb-label">內用重量（克）</label>
                     <input
+                      type="number"
+                      inputMode="decimal"
+                      min={0}
+                      step="0.01"
                       value={form.menuItems.dineInPortionWeight}
                       onChange={(event) => setMenuField("dineInPortionWeight", event.target.value)}
-                      placeholder="例如 285g"
+                      placeholder="例如 285（只填數字）"
                       className="nb-input"
                     />
                   </div>
+                </div>
+
+                <div className="mt-4">
+                  <label className="nb-label">內用餐點觀察 / 製餐過程備註</label>
+                  <textarea
+                    value={form.menuItems.dineInObservationNote}
+                    onChange={(event) => setMenuField("dineInObservationNote", event.target.value)}
+                    placeholder="例如：外觀偏乾、色澤不均、製餐時湯匙落地。"
+                    className="nb-textarea min-h-24"
+                  />
                 </div>
 
                 <div className="mt-4 nb-card-flat border-dashed bg-nb-bg2 p-4">
@@ -1230,14 +1259,28 @@ export function InspectionForm({
                     />
                   </div>
                   <div>
-                    <label className="nb-label">外帶重量 / 克數</label>
+                    <label className="nb-label">外帶重量（克）</label>
                     <input
+                      type="number"
+                      inputMode="decimal"
+                      min={0}
+                      step="0.01"
                       value={form.menuItems.takeoutPortionWeight}
                       onChange={(event) => setMenuField("takeoutPortionWeight", event.target.value)}
-                      placeholder="例如 260g"
+                      placeholder="例如 260（只填數字）"
                       className="nb-input"
                     />
                   </div>
+                </div>
+
+                <div className="mt-4">
+                  <label className="nb-label">外帶餐點觀察 / 製餐過程備註</label>
+                  <textarea
+                    value={form.menuItems.takeoutObservationNote}
+                    onChange={(event) => setMenuField("takeoutObservationNote", event.target.value)}
+                    placeholder="例如：包裝封口未貼穩、湯汁外漏、外觀偏油。"
+                    className="nb-textarea min-h-24"
+                  />
                 </div>
 
                 <div className="mt-4 nb-card-flat border-dashed bg-nb-bg2 p-4">
