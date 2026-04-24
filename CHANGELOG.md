@@ -1,5 +1,34 @@
 # Changelog
 
+## 2026-04-24 Latest
+
+### 系統擁有者可在 App 內切換「主管／店長」視角
+- `a3f34cc` `feat(auth): owner can impersonate manager / leader views`
+  - 新功能：系統擁有者在右上角「登出」按鈕旁會看到 **模擬視角 ▾** 下拉。
+  - 可切換到：主管視角 / 店長 @ 1 店 / 店長 @ 2 店 / 店長 @ 3 店 / 店長 @ 4 店。
+  - 切換後整個介面依該角色權限顯示：導覽列瘦身、資料範圍縮到該店、只顯示該角色能看到的頁面。
+  - 切換中時最頂端會壓一條紅色 sticky banner：「🔄 正在模擬【XXX】視角」+「結束模擬」按鈕，避免忘記自己在模擬中。
+  - **只有真正的系統擁有者**能看到這個下拉（非擁有者看不到，也擋掉任何啟動模擬的 API 呼叫）。
+  - 使用 `nb_impersonation` httpOnly cookie 儲存模擬狀態，1 小時自動過期。
+  - 登出時 cookie 一併清掉。
+  - 模擬狀態下的寫入操作會使用模擬角色的權限，但 audit log 仍記錄本人 email（以便追查）。
+
+### 實作檔案
+- 新增：`src/lib/impersonation.ts`（cookie 讀寫）、`src/app/actions/impersonation.ts`（server actions）、`src/components/impersonation-menu.tsx`、`src/components/impersonation-banner.tsx`。
+- 修改：`src/lib/auth.ts`（在 `getCurrentUserProfile()` 裡依 cookie 回傳模擬 profile）、`src/app/(protected)/layout.tsx`、`src/components/app-shell.tsx`、`src/app/page.tsx`（都補上 stores / impersonationStoreName props）。
+
+### 驗證
+- `npm run typecheck`
+- `npm run lint`
+- `npm run build`（23 個路由全過）
+- 正式站實測：`owner → 模擬視角 → 店長 @ 1 店 → banner 出現 → 結束模擬 → 回 owner`。
+
+### 部署注意
+- 無 migration 需要。直接 push 到 `main` 後 Zeabur 自動 build + deploy（約 100 秒）。
+- 若模擬中使用者進行了寫入操作，資料會真的進 DB。測試完請務必手動清除（或用 `/settings/qa-cleanup`）。
+
+---
+
 ## 2026-04-23 Latest
 
 ### 修正新經理巡店送出卡在 Server Components render 錯誤
