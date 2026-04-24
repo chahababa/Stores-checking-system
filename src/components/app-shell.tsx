@@ -1,10 +1,14 @@
 import Link from "next/link";
 import { PropsWithChildren } from "react";
 
+import { ImpersonationBanner } from "@/components/impersonation-banner";
+import { ImpersonationMenu } from "@/components/impersonation-menu";
 import { SignOutButton } from "@/components/sign-out-button";
 import { UserProfile } from "@/lib/auth";
 import { getRoleLabel } from "@/lib/ui-labels";
 import { cn } from "@/lib/utils";
+
+type StoreOption = { id: string; name: string };
 
 type NavigationLink = {
   href: string;
@@ -83,14 +87,26 @@ function NavigationGroup({
 export function AppShell({
   profile,
   pathname,
+  stores,
+  impersonationStoreName,
   children,
-}: PropsWithChildren<{ profile: UserProfile; pathname: string }>) {
+}: PropsWithChildren<{
+  profile: UserProfile;
+  pathname: string;
+  stores: StoreOption[];
+  impersonationStoreName: string | null;
+}>) {
   const visibleInspectionLinks = inspectionLinks.filter((link) => link.roles.includes(profile.role));
   const visiblePeopleAndItemLinks = peopleAndItemLinks.filter((link) => link.roles.includes(profile.role));
   const visibleOtherSettingsLinks = otherSettingsLinks.filter((link) => link.roles.includes(profile.role));
+  const isImpersonating = Boolean(profile.impersonating);
+  const isRealOwner = (profile.impersonating?.realRole ?? profile.role) === "owner";
 
   return (
     <div className="min-h-screen">
+      {isImpersonating ? (
+        <ImpersonationBanner role={profile.role} storeName={impersonationStoreName} />
+      ) : null}
       <header className="border-b-[3px] border-nb-ink bg-nb-bg">
         <div className="mx-auto flex max-w-6xl flex-col gap-4 px-4 py-5 md:flex-row md:items-center md:justify-between">
           <div className="flex items-center gap-3">
@@ -111,6 +127,7 @@ export function AppShell({
                 {getRoleLabel(profile.role)}
               </p>
             </div>
+            {isRealOwner && !isImpersonating ? <ImpersonationMenu stores={stores} /> : null}
             <SignOutButton />
           </div>
         </div>

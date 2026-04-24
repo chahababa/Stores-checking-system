@@ -301,8 +301,25 @@ export default async function HomePage() {
     pendingTasks,
   });
 
+  const isRealOwner = (profile.impersonating?.realRole ?? profile.role) === "owner";
+  const shellStoresQuery = isRealOwner
+    ? await admin.from("stores").select("id, name").order("name")
+    : null;
+  const shellStores = shellStoresQuery?.data ?? [];
+  const impersonationStoreName =
+    profile.impersonating && profile.store_id
+      ? shellStores.find((store) => store.id === profile.store_id)?.name ??
+        (await admin.from("stores").select("name").eq("id", profile.store_id).maybeSingle()).data?.name ??
+        null
+      : null;
+
   return (
-    <AppShell profile={profile} pathname="/">
+    <AppShell
+      profile={profile}
+      pathname="/"
+      stores={shellStores}
+      impersonationStoreName={impersonationStoreName}
+    >
       <div className="grid gap-6">
         {/* ===== Hero 區 ===== */}
         <section className="nb-card p-0 overflow-hidden relative">

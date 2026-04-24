@@ -2,6 +2,7 @@ import "server-only";
 
 import { redirect } from "next/navigation";
 
+import { readImpersonation } from "@/lib/impersonation";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 
@@ -15,6 +16,10 @@ export type UserProfile = {
   store_id: string | null;
   is_active: boolean;
   line_user_id: string | null;
+  impersonating?: {
+    realRole: UserRole;
+    realStoreId: string | null;
+  };
 };
 
 export async function getCurrentUserProfile(): Promise<UserProfile | null> {
@@ -38,7 +43,25 @@ export async function getCurrentUserProfile(): Promise<UserProfile | null> {
     return null;
   }
 
-  return data as UserProfile;
+  const profile = data as UserProfile;
+
+  // Only real owners can impersonate. Apply impersonation cookie if present.
+  if (profile.role === "owner") {
+    const impersonation = await readImpersonation();
+    if (impersonation && impersonation.role !== "owner") {
+      return {
+        ...profile,
+        role: impersonation.role,
+        store_id: impersonation.role === "leader" ? impersonation.storeId : null,
+        impersonating: {
+          realRole: profile.role,
+          realStoreId: profile.store_id,
+        },
+      };
+    }
+  }
+
+  return profile;
 }
 
 export async function requireUser() {
