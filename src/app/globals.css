@@ -128,7 +128,7 @@ button:disabled {
 
   /* ---- Table ---- */
   .nb-table-wrap {
-    @apply overflow-hidden border-[3px] border-nb-ink bg-nb-paper shadow-nb;
+    @apply overflow-x-auto border-[3px] border-nb-ink bg-nb-paper shadow-nb;
   }
   .nb-table {
     @apply min-w-full text-left text-sm;
