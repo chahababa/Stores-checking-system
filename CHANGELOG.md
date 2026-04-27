@@ -86,6 +86,57 @@
 
 ## 2026-04-27
 
+### 巡店送出完成後，自動寄信通知相關人員
+
+- `feat(email): notify store leader, managers, owners on new inspection`
+  - 每筆「新增巡店」送出成功後，系統會自動寄一封 email 給：
+    - 該店的店長（`role = leader AND store_id = <該店>`）
+    - 全部主管 / 區經理（`role = manager`）
+    - 全部系統擁有者（`role = owner`）
+    - 條件：`is_active = true`。重複 email 會去重。
+  - 編輯巡店（`updateInspection`）**不會**重寄，避免打擾。
+  - 信件主旨：`[巡店通知] {店別} {日期} {時段} — 總評 {A/B/C}`。
+  - 信件內容：店別 / 日期 / 時段 / 提交者 / 總評 / 平均分 / B/C 題數，加上**所有 B/C 題目清單（含分類、題目名、評分、備註）**，以及一顆「查看完整報告」按鈕直接連到該筆巡店。
+  - 全部 BCC 寄出，收件者看不到彼此的 email。
+  - 寄信動作 fire-and-forget：失敗（API key 無效、Resend 服務當機、收件者解析失敗等）**絕對不會回滾巡店紀錄**，但會寫進 audit log（`action: "send_inspection_email_failed"`），事後可以追。
+  - 若 production 沒設 Resend env vars，整個寄信流程會 silently no-op（不寫 audit log），舊行為照常運作。
+
+### 實作
+
+- 新檔：`src/lib/email.ts`
+  - `sendInspectionCompletedEmail(inspectionId)`：自己撈 inspection / store / inspector / scores / recipients、用 `buildOverallInspectionGrade` 算總評、組 HTML + plain text、丟給 Resend。
+  - 設計成永遠不 throw —— 回傳 `{ ok: true | false, reason }`，呼叫端只看回傳值決定要不要寫 audit log。
+- 修改：`src/lib/inspection.ts` 的 `createInspection`，在 audit log 後呼叫上面那個 function，包在 try / catch 裡確保不影響主流程。
+- 修改：`src/lib/supabase/env.ts` 新增 `getResendApiKey()` / `getResendFromEmail()` helper。
+- 修改：`.env.example` 新增兩個 env var 的占位（皆可留白 = 停用通知）。
+- 新增 dependency：`resend@^6.12.2`。
+
+### 部署注意（重要）
+
+需要在 Resend + DNS + Zeabur 三邊都設定好後通知功能才會上線。**只要其中一個 env var 沒設，整個通知就會 silently 不發**（程式不會壞，但也不會寄信）。
+
+1. **Resend 後台**（[resend.com](https://resend.com/)）：
+   - 註冊帳號（如果還沒）。
+   - 進入 `Domains` → `Add Domain` → 輸入 `hoochuu.com.tw`（或想用來寄信的 domain）。
+   - Resend 會給你 3 條 TXT record（SPF / DKIM × 2）。
+   - **DNS 設定**：到你的 domain registrar（看 hoochuu.com.tw 在哪邊管理）把那 3 條 TXT record 加上去。等 Resend 後台顯示 `Verified`（通常 5–30 分鐘）。
+   - 進入 `API Keys` → `Create API Key`（權限選 `Sending access`） → 複製 key（只會顯示一次）。
+
+2. **Zeabur 後台**（[stores-checking-system service](https://zeabur.com/projects/69d6eb3686ea5714a4e49e39/services/69d6ecbc86ea5714a4e4a02a)）：
+   - `Variable` 分頁新增兩條 env var：
+     - `RESEND_API_KEY=re_xxxxxxxxxxxx`
+     - `RESEND_FROM_EMAIL=no-reply@hoochuu.com.tw`（任你 verified domain 下的 mailbox 都可以）
+   - 儲存後 Zeabur 會自動 redeploy。
+
+3. **驗證**：登入 production 隨手送一筆巡店 → 應該幾秒內所有 owner / manager + 該店店長都收到一封信。看不到信先到 audit log 看有沒有 `send_inspection_email_failed`。
+
+### 驗證
+
+- `npm run typecheck`、`npm run lint`、`npm run test`（26 unit tests 全過）。
+- 還沒做 production 實測（需要 Resend + DNS 設定，請依上面三步搞定後再驗）。
+
+---
+
 ### 主管（區經理）也可以授權店長帳號了
 
 - `feat(auth): allow managers to create and toggle leader accounts`

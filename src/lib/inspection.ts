@@ -1704,6 +1704,37 @@ export async function createInspection(input: InspectionMutationInput) {
     },
   });
 
+  // Notify the store leader, all managers, and all owners. Failure here must
+  // never roll back the inspection — log the outcome and move on.
+  try {
+    const { sendInspectionCompletedEmail } = await import("@/lib/email");
+    const result = await sendInspectionCompletedEmail(inspection.id);
+    if (!result.ok && result.reason !== "config_missing") {
+      await createAuditLog({
+        actorId: profile.id,
+        actorEmail: profile.email,
+        action: "send_inspection_email_failed",
+        entityType: "inspection",
+        entityId: inspection.id,
+        details: { reason: result.reason, error: result.error ?? null },
+      });
+    }
+  } catch (emailError) {
+    await createAuditLog({
+      actorId: profile.id,
+      actorEmail: profile.email,
+      action: "send_inspection_email_failed",
+      entityType: "inspection",
+      entityId: inspection.id,
+      details: {
+        reason: "exception",
+        error: emailError instanceof Error ? emailError.message : String(emailError),
+      },
+    }).catch(() => {
+      // Audit log failure is non-fatal — never throw from this branch.
+    });
+  }
+
   return { success: true as const, inspectionId: inspection.id };
 }
 

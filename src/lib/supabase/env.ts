@@ -37,3 +37,11 @@ export function getSiteUrl() {
 
   return value;
 }
+
+export function getResendApiKey() {
+  return process.env.RESEND_API_KEY ?? null;
+}
+
+export function getResendFromEmail() {
+  return process.env.RESEND_FROM_EMAIL ?? null;
+}
