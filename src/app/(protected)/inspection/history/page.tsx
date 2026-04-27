@@ -197,8 +197,8 @@ export default async function InspectionHistoryPage({
         </div>
       </div>
 
-      {/* Table */}
-      <div className="nb-table-wrap">
+      {/* Table (desktop) */}
+      <div className="nb-table-wrap hidden md:block">
         <table className="nb-table">
           <thead>
             <tr>
@@ -262,6 +262,62 @@ export default async function InspectionHistoryPage({
             ) : null}
           </tbody>
         </table>
+      </div>
+
+      {/* Card list (mobile) */}
+      <div className="grid gap-3 md:hidden">
+        {enrichedInspections.map((inspection) => {
+          const store = getSingleRelation(inspection.stores) as { name?: string } | null;
+          const inspector = getSingleRelation(inspection.users) as { name?: string; email?: string } | null;
+
+          return (
+            <div
+              key={inspection.id}
+              data-testid={`inspection-history-row-${inspection.id}`}
+              className="nb-row flex flex-col gap-3"
+            >
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="font-nbMono text-sm font-bold">{inspection.date}</p>
+                  <p className="mt-1 font-nbSerif text-base font-black truncate">
+                    {store?.name ?? "-"}
+                  </p>
+                  <p className="mt-0.5 text-xs text-nb-ink/65">{inspection.time_slot}</p>
+                </div>
+                <div className="flex flex-col items-end gap-1.5 shrink-0">
+                  <span className={getGradeChipClass(inspection.grade.finalGrade)}>
+                    總評 {inspection.grade.finalGrade}
+                  </span>
+                  <span className="text-xs text-nb-ink/60 font-nbMono">
+                    平均 {Number(inspection.total_score ?? 0).toFixed(2)}
+                  </span>
+                </div>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-2 text-xs text-nb-ink/65">
+                <span
+                  className={
+                    inspection.is_editable ? "nb-chip-yellow" : "nb-chip bg-nb-ink/10 text-nb-ink/70"
+                  }
+                >
+                  {inspection.is_editable ? "可編輯" : "已鎖定"}
+                </span>
+                <span className="truncate">巡店人：{inspector?.name || inspector?.email || "-"}</span>
+              </div>
+
+              <Link
+                href={`/inspection/history/${inspection.id}`}
+                data-testid={`inspection-history-view-${inspection.id}`}
+                className="nb-btn w-full text-center"
+              >
+                查看巡店紀錄 →
+              </Link>
+            </div>
+          );
+        })}
+        {!enrichedInspections.length ? (
+          <div className="nb-empty">這個月份還沒有巡店紀錄，先從新增巡店開始。</div>
+        ) : null}
       </div>
     </div>
   );
