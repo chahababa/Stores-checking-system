@@ -1,6 +1,39 @@
 # Changelog
 
-## 2026-04-24 Latest
+## 2026-04-27 Latest
+
+### 修正巡店送出再次卡在 Server Components render 錯誤（這次是 `photo_url` 缺欄位）
+
+- `77a5969` `fix(inspection): expire negative photo-column cache after 60s`
+  - 使用者在 production 送出含照片的巡店時，又看到一次 `An error occurred in the Server Components render. The specific message is omitted in production builds...`，狀況跟 04-23 那次很像但根因不同。
+  - 04-23 那次是 `observation_note` 欄位沒套；這次是 **`photo_url` 欄位**（migration `20260412_000009_menu_item_photos.sql`）也從來沒在 production DB 套上。`supportsMenuItemPhotos()` 在 `inspection_menu_items` 找不到 `photo_url` → 直接 throw 中文訊息「餐點抽查照片功能需要先套用最新的資料庫 migration。」→ Next.js 在 production 把它遮成通用文字。
+  - 在 production Supabase SQL Editor 直接補上：`alter table public.inspection_menu_items add column if not exists photo_url text;`（idempotent）。
+  - 但補完欄位後立刻踩到第二顆雷：`supportsMenuItemPhotos()` 用 module-level `let` 把「欄位不存在」的判斷 cache 在 Node process 裡，process 不重啟永遠不會重查。所以即使 DB 已經修好、第一個 instance 仍會繼續 throw。手動 Restart 過 Zeabur service 才解。
+  - 這個 commit 把負向 cache 加上 **60 秒 TTL**：日後再有「migration 在 production 補完但 instance 沒重啟」情境，最多卡 1 分鐘自我修復、不必人工 restart。正向 cache 仍永久（欄位不會自己消失）。
+
+### 修正手機上「巡店紀錄」最右邊「查看」按鈕點不到
+
+- `2271e8d` `ui(history): card layout for inspection history on mobile`
+  - `/inspection/history` 列表桌機版用 7 欄 table，手機螢幕擠不下，最右邊的「查看 →」直接被外層 `overflow-hidden` 裁掉、也滑不到 → 手機根本進不去單筆巡店明細頁。
+  - 桌機保留原本的 table（`hidden md:block`）；手機新增 stacked card 排版（`md:hidden`），每張卡片底部有一顆**全寬「查看巡店紀錄 →」**按鈕，整片可點。
+  - `data-testid` 在兩種排版上都保留，e2e 測試不受影響。
+- `1d3b4c0` `fix(ui): allow horizontal scroll on tables that overflow`
+  - 順手把 `.nb-table-wrap` 的 `overflow-hidden` 改成 `overflow-x-auto`。同樣的裁切問題在 `/settings/users`、`/audit` 兩張表也存在；手機現在可以橫滑找到溢出的內容。桌機表格沒有溢出時 `auto` 不會跳 scrollbar，無感。
+
+### 部署注意
+
+- **這次需要先在 production Supabase 執行**：`alter table public.inspection_menu_items add column if not exists photo_url text;`（已於 04-27 執行完畢，再次部署無副作用，因為 `if not exists`）。
+- 不需要新 migration 檔案 —— 既有的 `20260412_000009_menu_item_photos.sql` 內容跟我們補的這行 SQL 完全相同，只是 production DB 之前沒跑過。
+- 程式 push 到 `main` 後 Zeabur 自動 build + deploy（約 100 秒）。
+
+### 驗證
+
+- `npm run typecheck`、`npm run lint`：兩台都過。
+- production 實測：在 5F Chrome 上以 owner 身分送出兩筆 `[claude測試]` 巡店（一筆無照片、一筆含照片，含照片那筆兩張圖都成功上傳到 Supabase Storage 並在 history 頁顯示）。兩筆 inspection id 留在「測試資料清理」頁待清。
+
+---
+
+## 2026-04-24
 
 ### 系統擁有者可在 App 內切換「主管／店長」視角
 - `a3f34cc` `feat(auth): owner can impersonate manager / leader views`
