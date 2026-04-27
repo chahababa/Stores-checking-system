@@ -267,7 +267,9 @@ export type AuditLogListItem = {
 };
 
 const ONE_WEEK_MS = 1000 * 60 * 60 * 24 * 7;
+const MENU_ITEM_PHOTO_NEGATIVE_CACHE_TTL_MS = 60 * 1000;
 let menuItemPhotoSupportCache: boolean | null = null;
+let menuItemPhotoSupportNegativeCachedAt = 0;
 const LEGACY_WORKSTATIONS: WorkstationSummary[] = [
   { id: "legacy-kitchen", code: "kitchen", name: "內場", area: "kitchen", storeId: null },
   { id: "legacy-floor", code: "floor", name: "外場", area: "floor", storeId: null },
@@ -348,14 +350,21 @@ function isMenuItemPhotoSchemaError(message?: string | null) {
 }
 
 async function supportsMenuItemPhotos(admin: ReturnType<typeof createAdminClient>) {
-  if (menuItemPhotoSupportCache !== null) {
-    return menuItemPhotoSupportCache;
+  if (menuItemPhotoSupportCache === true) {
+    return true;
+  }
+  if (
+    menuItemPhotoSupportCache === false &&
+    Date.now() - menuItemPhotoSupportNegativeCachedAt < MENU_ITEM_PHOTO_NEGATIVE_CACHE_TTL_MS
+  ) {
+    return false;
   }
 
   const { error } = await admin.from("inspection_menu_items").select("photo_url").limit(1);
   if (error) {
     if (isMenuItemPhotoSchemaError(error.message)) {
       menuItemPhotoSupportCache = false;
+      menuItemPhotoSupportNegativeCachedAt = Date.now();
       return false;
     }
 
