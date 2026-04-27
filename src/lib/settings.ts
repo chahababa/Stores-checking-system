@@ -379,12 +379,39 @@ export async function updateWorkstation(input: {
 }
 
 export async function createAuthorizedUser(input: AuthorizedUserInput) {
-  const profile = await requireRole("owner");
+  const profile = await requireRole("owner", "manager");
   const admin = createAdminClient();
+
+  // Managers can only create leaders. Force the role on the server side
+  // so that crafted form payloads can't elevate to manager/owner.
+  const role = profile.role === "manager" ? "leader" : input.role;
+
+  if (role === "leader" && !input.storeId) {
+    throw new Error("店長必須指定所屬店別。");
+  }
+
+  const email = input.email.trim().toLowerCase();
+
+  // Prevent a manager from clobbering an existing owner/manager record by
+  // re-using their email. Owners can still re-assign roles freely.
+  if (profile.role === "manager") {
+    const { data: existing, error: existingError } = await admin
+      .from("users")
+      .select("id, role")
+      .eq("email", email)
+      .maybeSingle();
+    if (existingError) {
+      throw new Error(existingError.message);
+    }
+    if (existing && existing.role !== "leader") {
+      throw new Error("這個 Email 已綁定為主管或系統擁有者帳號，主管無法覆蓋。");
+    }
+  }
+
   const payload = {
-    email: input.email.trim().toLowerCase(),
-    role: input.role,
-    store_id: input.role === "leader" ? input.storeId ?? null : null,
+    email,
+    role,
+    store_id: role === "leader" ? input.storeId ?? null : null,
     name: input.name?.trim() || null,
     is_active: true,
   };
@@ -407,6 +434,7 @@ export async function createAuthorizedUser(input: AuthorizedUserInput) {
       role: payload.role,
       store_id: payload.store_id,
       is_active: payload.is_active,
+      actor_role: profile.role,
     },
   });
 
@@ -414,8 +442,27 @@ export async function createAuthorizedUser(input: AuthorizedUserInput) {
 }
 
 export async function updateAuthorizedUserStatus(id: string, isActive: boolean) {
-  const profile = await requireRole("owner");
+  const profile = await requireRole("owner", "manager");
   const admin = createAdminClient();
+
+  // Managers can only toggle leader accounts.
+  if (profile.role === "manager") {
+    const { data: target, error: targetError } = await admin
+      .from("users")
+      .select("id, role")
+      .eq("id", id)
+      .maybeSingle();
+    if (targetError) {
+      throw new Error(targetError.message);
+    }
+    if (!target) {
+      throw new Error("找不到指定帳號。");
+    }
+    if (target.role !== "leader") {
+      throw new Error("主管只能停用或啟用店長帳號。");
+    }
+  }
+
   const { error } = await admin.from("users").update({ is_active: isActive }).eq("id", id);
   if (error) {
     throw new Error(error.message);
@@ -429,6 +476,7 @@ export async function updateAuthorizedUserStatus(id: string, isActive: boolean) 
     entityId: id,
     details: {
       is_active: isActive,
+      actor_role: profile.role,
     },
   });
   revalidatePath("/settings/users");

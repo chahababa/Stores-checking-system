@@ -33,7 +33,7 @@ const peopleAndItemLinks: NavigationLink[] = [
 ];
 
 const otherSettingsLinks: NavigationLink[] = [
-  { href: "/settings/users", label: "帳號管理", roles: ["owner"] },
+  { href: "/settings/users", label: "帳號管理", roles: ["owner", "manager"] },
   { href: "/settings/stores", label: "店別管理", roles: ["owner"] },
   { href: "/settings/qa-cleanup", label: "測試資料清理", roles: ["owner"] },
   { href: "/audit", label: "操作紀錄", roles: ["owner", "manager"] },

@@ -2,6 +2,31 @@
 
 ## 2026-04-27 Latest
 
+### 主管（區經理）也可以授權店長帳號了
+
+- `feat(auth): allow managers to create and toggle leader accounts`
+  - 之前**只有系統擁有者**能進「帳號管理」新增 / 停用帳號，區經理每次要新增店長都得回頭找 owner。
+  - 開放後：主管在自己的後台就能建立 / 啟用 / 停用**店長**帳號（manager / owner 仍是 owner 限定）。
+  - 安全邊界（三層都擋）：
+    - UI 導覽列：`帳號管理` 連結 `roles` 從 `["owner"]` → `["owner", "manager"]`。
+    - 頁面 ([src/app/(protected)/settings/users/page.tsx](src/app/(protected)/settings/users/page.tsx))：`requireRole("owner", "manager")`。主管視角自動隱藏「角色」下拉（hidden `value="leader"`）、「所屬店別」變必選；列表只列出 `role === "leader"` 的帳號（看不到其他 manager / owner 的 email）。
+    - Server actions ([src/lib/settings.ts](src/lib/settings.ts))：
+      - `createAuthorizedUser`：主管即使送出 `role=manager` / `role=owner` 也會被強制改成 `leader`；如果目標 email 已綁在 manager / owner 帳號上，主管的覆蓋會被拒絕（`這個 Email 已綁定為主管或系統擁有者帳號，主管無法覆蓋。`）。
+      - `updateAuthorizedUserStatus`：主管要停用 / 啟用前會先撈目標 user，如果不是 `leader` 直接拒絕（`主管只能停用或啟用店長帳號。`）。
+  - 順手做的硬擋：建立 `leader` 帳號時必選 `store_id`，`owner` 視角也擋（之前 UI 允許「不指定店別」會留下空轉的店長帳號）。
+  - audit log 兩條 action 都補上 `actor_role` 欄位，事後可以區分是 owner 直接做的還是 manager 代做的。
+
+### 部署注意
+
+- 不需要 migration、不需要新增 env。直接 push 到 `main` 後 Zeabur 自動 build + deploy。
+- 既有的店長 / 主管 / 擁有者帳號都不受影響。
+
+### 驗證
+
+- `npm run typecheck`、`npm run lint`、`npm run test`（26 個 unit test 全過）。
+
+---
+
 ### 修正巡店送出再次卡在 Server Components render 錯誤（這次是 `photo_url` 缺欄位）
 
 - `77a5969` `fix(inspection): expire negative photo-column cache after 60s`
