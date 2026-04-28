@@ -1,6 +1,46 @@
 # Changelog
 
-## 2026-04-27 Latest
+## 2026-04-28 Latest
+
+### 修正巡店照片上傳、照片顯示、刪除權限與登入頁新版 UI
+
+- `940d4ba` `fix: reduce inspection photo upload failures (#3)`
+  - 降低巡店照片送出失敗機率：調整 Next.js Server Actions body limit 到 `8mb`。
+  - 前端壓縮單張照片目標改為 350KB，並限制每個巡檢項目最多 3 張、單次巡店最多 10 張。
+  - 表單選照片時會即時提示超量，避免送出後才失敗。
+  - 新增照片上傳限制與 Next config regression tests。
+- `afbf99d` `fix: render inspection photos reliably`
+  - 修正巡店紀錄明細頁照片無法顯示的問題。
+  - 新增 `normalizePhotoDisplayUrl()`，處理 Supabase public URL path encoding，避免中文、空白或特殊字元造成顯示失敗。
+  - 巡店明細頁 score photos 改用 Next `<Image unoptimized fill>` 呈現，取代較脆弱的 CSS `background-image`。
+  - 新增照片顯示 URL regression tests。
+- `fb08862` `fix: keep inspection report deletion owner-only`
+  - 調整巡店報告管理權限：`manager` 可管理/查看管理操作，但不可刪除巡店報告。
+  - 只有 `owner` 可以刪除巡店報告；`leader` 不能管理也不能刪除。
+  - 系統擁有者模擬店長視角時，依模擬角色權限判斷，不顯示刪除權限。
+  - 新增 `inspection-permissions` 權限函式與單元測試。
+- `50d0dea` `fix: refresh login page neo brutalism UI`
+  - 修正最初 `/login` 登入頁仍停留在舊版 warm rounded card UI 的問題。
+  - 登入頁改用目前系統一致的 Neo Brutalism 視覺：`nb-card`、`nb-h1`、`nb-stamp`、粗黑框、硬陰影與 `nb-*` 色彩。
+  - Google 登入按鈕改用 `nb-btn-primary`，錯誤提示改為新版紅色粗框警示。
+  - 新增登入頁 UI source-level regression test，防止未來退回 `shadow-card` / `rounded-[32px]` / `bg-warm` 舊樣式。
+
+### 部署注意
+
+- 不需要新增 Supabase migration。
+- 合併到 `main` 後 Zeabur 會自動 build + deploy。
+- 登入頁 UI 更新後，建議用無痕視窗打開 `/login` 確認未登入首頁已切換到新版視覺。
+
+### 驗證
+
+- PR #3：照片上傳限制相關 targeted tests、`npm run typecheck`、`npm test`、`npm run lint`、`npm run build`、`git diff --check` 全部通過。
+- PR #4：照片顯示 URL tests、`npm run typecheck`、`npm test`、`npm run lint`、`npm run build`、`git diff --check` 全部通過。
+- PR #5：權限 tests、`npm run typecheck`、`npm test`、`npm run lint`、`npm run build`、`git diff --check` 全部通過。
+- PR #6：登入頁 UI test、`npm run typecheck`、`npm test`、`npm run lint`、`npm run build`、`git diff --check` 全部通過。
+
+---
+
+## 2026-04-27
 
 ### 主管（區經理）也可以授權店長帳號了
 
