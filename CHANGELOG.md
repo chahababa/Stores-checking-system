@@ -2,6 +2,27 @@
 
 ## 2026-04-28 Latest
 
+### 改善追蹤改為依店別分組收合
+
+- `feat: group improvement tasks by store`
+  - `/inspection/improvements` 改善追蹤不再把所有任務混在同一串清單。
+  - 依店別分成可收合區塊，每個店別標題列顯示總項目數、待處理、已改善、已確認數量。
+  - 有待處理任務的店別預設展開，沒有待處理的店別可保持收合，主管/owner 跨店查看時更容易聚焦。
+  - 未指定店別的任務會集中到「未指定店別」群組並排在最後。
+  - 新增 `groupImprovementTasksByStore()` 與 regression tests，確保分組排序與各狀態統計正確。
+
+### 部署注意
+
+- 不需要新增 Supabase migration 或 env。
+- 合併到 `main` 後 Zeabur 會自動 build + deploy。
+
+### 驗證
+
+- `npm test -- --run src/lib/improvement-task-groups.test.ts`
+- `npm run typecheck`
+
+---
+
 ### 修正巡店照片上傳、照片顯示、刪除權限與登入頁新版 UI
 
 - `940d4ba` `fix: reduce inspection photo upload failures (#3)`
