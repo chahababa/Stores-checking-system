@@ -436,10 +436,15 @@ export default async function InspectionDetailPage({
                           {row.photos.map((photo) => (
                             <div key={photo.id} className="nb-card-flat overflow-hidden">
                               <a href={photo.photoUrl} target="_blank" rel="noreferrer" className="group block">
-                                <div
-                                  className="aspect-square w-full bg-cover bg-center border-b-[2.5px] border-nb-ink transition group-hover:scale-[1.02]"
-                                  style={{ backgroundImage: `url(${photo.photoUrl})` }}
-                                />
+                                <div className="relative aspect-square w-full overflow-hidden border-b-[2.5px] border-nb-ink bg-nb-paper">
+                                  <Image
+                                    src={photo.photoUrl}
+                                    alt={`${row.itemName} 巡店照片`}
+                                    fill
+                                    unoptimized
+                                    className="object-cover transition duration-200 group-hover:scale-[1.03]"
+                                  />
+                                </div>
                               </a>
                               <div className="grid gap-2 px-3 py-3">
                                 <div className="nb-eyebrow">{photo.isStandard ? "標準照片" : "巡店照片"}</div>
