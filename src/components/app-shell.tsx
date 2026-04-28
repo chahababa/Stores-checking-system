@@ -1,20 +1,14 @@
 import Link from "next/link";
 import { PropsWithChildren } from "react";
 
+import { NavigationGroup, type NavigationLink } from "@/components/app-navigation";
 import { ImpersonationBanner } from "@/components/impersonation-banner";
 import { ImpersonationMenu } from "@/components/impersonation-menu";
 import { SignOutButton } from "@/components/sign-out-button";
 import { UserProfile } from "@/lib/auth";
 import { getRoleLabel } from "@/lib/ui-labels";
-import { cn } from "@/lib/utils";
 
 type StoreOption = { id: string; name: string };
-
-type NavigationLink = {
-  href: string;
-  label: string;
-  roles: Array<UserProfile["role"]>;
-};
 
 const inspectionLinks: NavigationLink[] = [
   { href: "/", label: "首頁", roles: ["owner", "manager", "leader"] },
@@ -38,51 +32,6 @@ const otherSettingsLinks: NavigationLink[] = [
   { href: "/settings/qa-cleanup", label: "測試資料清理", roles: ["owner"] },
   { href: "/audit", label: "操作紀錄", roles: ["owner", "manager"] },
 ];
-
-function NavigationPill({ href, label, pathname }: { href: string; label: string; pathname: string }) {
-  const active = pathname === href || (href !== "/" && pathname.startsWith(href));
-  return (
-    <Link
-      href={href}
-      className={cn(
-        "inline-flex items-center px-3 py-1.5 border-[2.5px] border-nb-ink text-sm font-bold transition-all duration-100",
-        active
-          ? "bg-nb-ink text-white shadow-none translate-x-[2px] translate-y-[2px]"
-          : "bg-nb-paper text-nb-ink shadow-nb-sm hover:-translate-y-0.5 hover:shadow-nb",
-      )}
-    >
-      {label}
-    </Link>
-  );
-}
-
-function NavigationGroup({
-  title,
-  eyebrow,
-  links,
-  pathname,
-}: {
-  title: string;
-  eyebrow: string;
-  links: NavigationLink[];
-  pathname: string;
-}) {
-  if (links.length === 0) {
-    return null;
-  }
-
-  return (
-    <div className="flex flex-wrap items-center gap-2">
-      <span className="inline-flex items-center gap-2 pr-2">
-        <span className="nb-eyebrow">{eyebrow}</span>
-        <span className="font-nbSerif text-[13px] font-black text-nb-ink/80 hidden md:inline">{title}</span>
-      </span>
-      {links.map((link) => (
-        <NavigationPill key={link.href} href={link.href} label={link.label} pathname={pathname} />
-      ))}
-    </div>
-  );
-}
 
 export function AppShell({
   profile,
@@ -132,15 +81,15 @@ export function AppShell({
           </div>
         </div>
         <nav className="mx-auto flex max-w-6xl flex-col gap-3 px-4 pb-4">
-          <NavigationGroup title="巡檢業務" eyebrow="Inspection" links={visibleInspectionLinks} pathname={pathname} />
+          <NavigationGroup title="巡檢業務" eyebrow="Inspection" links={visibleInspectionLinks} initialPathname={pathname} />
           {visiblePeopleAndItemLinks.length > 0 ? (
             <div className="h-[2px] w-full bg-nb-ink/20" aria-hidden="true" />
           ) : null}
-          <NavigationGroup title="組員與題目" eyebrow="People & Items" links={visiblePeopleAndItemLinks} pathname={pathname} />
+          <NavigationGroup title="組員與題目" eyebrow="People & Items" links={visiblePeopleAndItemLinks} initialPathname={pathname} />
           {visibleOtherSettingsLinks.length > 0 ? (
             <div className="h-[2px] w-full bg-nb-ink/20" aria-hidden="true" />
           ) : null}
-          <NavigationGroup title="其他設定" eyebrow="Other Settings" links={visibleOtherSettingsLinks} pathname={pathname} />
+          <NavigationGroup title="其他設定" eyebrow="Other Settings" links={visibleOtherSettingsLinks} initialPathname={pathname} />
         </nav>
       </header>
       <main className="mx-auto max-w-6xl px-4 py-8">{children}</main>

@@ -2,6 +2,29 @@
 
 ## 2026-04-28 Latest
 
+### 修正導覽列 active 標籤在前端切頁後停留在上一頁
+
+- `fix: keep navigation active state in sync`
+  - 導覽列改用 client-side `usePathname()` 判斷目前頁面，避免 Next.js protected layout 在前端切頁時重用舊的 server header pathname。
+  - 修正從「巡店紀錄」切到「改善追蹤」後，黑底 active 標籤仍停在「巡店紀錄」的問題。
+  - active 判斷改成 exact match 或子路由 segment match，避免 sibling prefix 誤判，例如 `/settings/staffing` 不會誤亮 `/settings/staff`。
+  - 新增 `isNavigationLinkActive()` regression tests，涵蓋改善追蹤、巡店紀錄明細、首頁 exact-only 與 trailing slash。
+
+### 部署注意
+
+- 不需要新增 Supabase migration 或 env。
+- 合併到 `main` 後 Zeabur 會自動 build + deploy。
+
+### 驗證
+
+- `npm test -- --run src/lib/navigation.test.ts`
+- `npm run typecheck`
+- `npm test`
+- `npm run lint`
+- `npm run build`
+
+---
+
 ### 改善追蹤改為依店別分組收合
 
 - `feat: group improvement tasks by store`
