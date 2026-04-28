@@ -45,12 +45,14 @@ export function LoginButton() {
       <button
         onClick={handleLogin}
         disabled={loading}
-        className="w-full rounded-full bg-warm px-6 py-3 text-base font-medium text-white transition hover:brightness-105 disabled:cursor-not-allowed disabled:opacity-80"
+        className="nb-btn-primary w-full justify-center border-[2.5px] border-nb-ink px-6 py-3 text-base disabled:cursor-not-allowed disabled:opacity-80"
         type="button"
       >
-        {loading ? "跳轉中..." : "使用 Google 帳號登入"}
+        {loading ? "跳轉中..." : "使用 Google 帳號登入 →"}
       </button>
-      {errorMessage ? <p className="text-sm text-red-700">{errorMessage}</p> : null}
+      {errorMessage ? (
+        <p className="border-[2px] border-nb-ink bg-nb-red px-3 py-2 text-sm font-bold text-white">{errorMessage}</p>
+      ) : null}
     </div>
   );
 }
