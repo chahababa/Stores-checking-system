@@ -6,6 +6,12 @@ import { useRouter } from "next/navigation";
 
 import { compressImage } from "@/lib/image";
 import type { InspectionFormSeed } from "@/lib/inspection";
+import {
+  canAddInspectionPhotos,
+  getPhotoLimitMessage,
+  MAX_PHOTOS_PER_INSPECTION,
+  MAX_PHOTOS_PER_ITEM,
+} from "@/lib/photo-upload-limits";
 import { getInspectionTagLabel, type InspectionTagType } from "@/lib/ui-labels";
 
 type ScoreValue = 1 | 2 | 3;
@@ -553,6 +559,25 @@ export function InspectionForm({
 
     setError("");
 
+    const incomingPhotoCount = fileList.length;
+    const existingItemPhotoCount = photos[itemId]?.length ?? 0;
+    const existingInspectionPhotoCount = Object.values(photos).reduce((sum, itemPhotos) => sum + itemPhotos.length, 0);
+
+    if (
+      !canAddInspectionPhotos({
+        existingItemPhotoCount,
+        existingInspectionPhotoCount,
+        incomingPhotoCount,
+      })
+    ) {
+      setError(getPhotoLimitMessage());
+      const input = fileInputRefs.current[itemId];
+      if (input) {
+        input.value = "";
+      }
+      return;
+    }
+
     try {
       const compressed = await Promise.all(
         Array.from(fileList).map(async (file) => {
@@ -1090,7 +1115,7 @@ export function InspectionForm({
                               <div>
                                 <p className="font-nbSerif text-sm font-black text-nb-ink">巡店照片</p>
                                 <p className="mt-1 text-xs leading-5 text-nb-ink/60">
-                                  每題最多可附 3 張照片。上傳前會自動壓縮，避免檔案過大。
+                                  每題最多可附 {MAX_PHOTOS_PER_ITEM} 張照片，單次巡店最多 {MAX_PHOTOS_PER_INSPECTION} 張。上傳前會自動壓縮，避免檔案過大。
                                 </p>
                               </div>
                               <label className="nb-btn w-full justify-center sm:w-auto cursor-pointer">
