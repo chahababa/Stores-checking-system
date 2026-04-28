@@ -6,6 +6,7 @@ import { createAuditLog } from "@/lib/audit";
 import { requireRole } from "@/lib/auth";
 import { buildMonthlyInspectionReportStats, getMonthRange } from "@/lib/reporting";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { normalizePhotoDisplayUrl } from "@/lib/photo-display-url";
 
 type ShiftRole = "kitchen" | "floor" | "counter";
 type InspectionTagType = "critical" | "monthly_attention" | "complaint_watch";
@@ -740,7 +741,7 @@ async function uploadInspectionPhotos(params: {
     const { data: publicUrlData } = admin.storage.from("inspection-photos").getPublicUrl(objectPath);
     photoRows.push({
       score_id: scoreId,
-      photo_url: publicUrlData.publicUrl,
+      photo_url: normalizePhotoDisplayUrl(publicUrlData.publicUrl),
       is_standard: photo.isStandard,
     });
   }
@@ -790,7 +791,7 @@ async function uploadInspectionMenuItemPhotos(params: {
     const { data: publicUrlData } = admin.storage.from("inspection-photos").getPublicUrl(objectPath);
     const { error: updateError } = await admin
       .from("inspection_menu_items")
-      .update({ photo_url: publicUrlData.publicUrl })
+      .update({ photo_url: normalizePhotoDisplayUrl(publicUrlData.publicUrl) })
       .eq("id", row.id);
 
     if (updateError) {
@@ -1042,7 +1043,7 @@ export async function getInspectionDetail(inspectionId: string): Promise<Inspect
     const entry = photosByScoreId.get(photo.score_id) ?? [];
     entry.push({
       id: photo.id,
-      photoUrl: photo.photo_url,
+      photoUrl: normalizePhotoDisplayUrl(photo.photo_url),
       isStandard: photo.is_standard,
     });
     photosByScoreId.set(photo.score_id, entry);
@@ -1093,7 +1094,7 @@ export async function getInspectionDetail(inspectionId: string): Promise<Inspect
       portionWeight: row.portion_weight,
       observationNote:
         "observation_note" in row && typeof row.observation_note === "string" ? row.observation_note : null,
-      photoUrl: "photo_url" in row && typeof row.photo_url === "string" ? row.photo_url : null,
+      photoUrl: "photo_url" in row && typeof row.photo_url === "string" ? normalizePhotoDisplayUrl(row.photo_url) : null,
     })),
     legacyNotes: (legacyRows ?? []).map((row) => ({
       id: row.id,
@@ -1844,7 +1845,7 @@ export async function updateInspection(inspectionId: string, input: InspectionMu
   const existingMenuRows = (existingMenuResult.data ?? []).map((row) => ({
     id: row.id as string,
     type: row.type as "dine_in" | "takeout",
-    photoUrl: "photo_url" in row && typeof row.photo_url === "string" ? row.photo_url : null,
+    photoUrl: "photo_url" in row && typeof row.photo_url === "string" ? normalizePhotoDisplayUrl(row.photo_url) : null,
   }));
 
   const { error: menuDeleteError } = await admin.from("inspection_menu_items").delete().eq("inspection_id", inspectionId);
