@@ -17,6 +17,7 @@ import {
   setInspectionEditable,
   setInspectionPhotoStandard,
 } from "@/lib/inspection";
+import { canDeleteInspectionReport, canManageInspectionReport } from "@/lib/inspection-permissions";
 import {
   getBusynessLabel,
   getImprovementStatusLabel,
@@ -80,8 +81,8 @@ export default async function InspectionDetailPage({
   const profile = await getCurrentUserProfile();
   const detail = await getInspectionDetail(id);
   const canManagePhotos = profile?.role === "owner" || profile?.role === "manager";
-  const canManageInspection = profile?.role === "owner" || profile?.role === "manager";
-  const canDeleteInspection = profile?.role === "owner";
+  const canManageInspection = canManageInspectionReport(profile);
+  const canDeleteInspection = canDeleteInspectionReport(profile);
 
   async function toggleStandardAction(formData: FormData) {
     "use server";
