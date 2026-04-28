@@ -1,10 +1,12 @@
+import { MAX_COMPRESSED_IMAGE_BYTES } from "@/lib/photo-upload-limits";
+
 export type CompressedImage = {
   base64: string;
   contentType: string;
   fileName: string;
 };
 
-const MAX_BYTES = 500 * 1024;
+const MAX_BYTES = MAX_COMPRESSED_IMAGE_BYTES;
 const MAX_DIMENSION = 1920;
 
 export async function compressImage(file: File): Promise<CompressedImage> {
