@@ -12,7 +12,7 @@ Set these variables in the deployment platform:
 `NEXT_PUBLIC_SITE_URL` must match the real public domain, for example:
 
 ```env
-NEXT_PUBLIC_SITE_URL=https://stores-checking.example.com
+NEXT_PUBLIC_SITE_URL=https://stores-checking-system.zeabur.app
 ```
 
 ## 2. Supabase
@@ -24,7 +24,12 @@ Apply SQL files in this order:
 3. `supabase/migrations/20260408_000003_inspection_photos.sql`
 4. `supabase/migrations/20260408_000004_audit_logs.sql`
 5. `supabase/migrations/20260410_000005_localize_seed_content.sql`
-5. `supabase/seed.sql`
+6. `supabase/migrations/20260410_000006_fix_store_names.sql`
+7. `supabase/migrations/20260411_000007_expand_focus_items_to_tags.sql`
+8. `supabase/migrations/20260411_000008_workstations_and_shift_assignment.sql`
+9. `supabase/migrations/20260412_000009_menu_item_photos.sql`
+10. `supabase/migrations/20260423_000010_add_menu_observation_note.sql`
+11. `supabase/seed.sql`
 
 Before production:
 
@@ -32,6 +37,7 @@ Before production:
 - confirm Google OAuth is enabled
 - add production callback URL: `<SITE_URL>/api/auth/callback`
 - verify `inspection-photos` bucket exists
+- if email notifications should be enabled, finish `TODO_RESEND_SETUP.md` and set `RESEND_API_KEY` / `RESEND_FROM_EMAIL` in Zeabur
 
 ## 3. Pre-Deploy Checks
 
@@ -59,6 +65,7 @@ Verify:
    - `/api/reports/inspection`
    - `/api/reports/inspection/[id]`
 9. Audit log entries appear in `/audit`.
+10. If Resend env vars are configured, a completed inspection sends email to the store leader, managers, and owners.
 
 ## 5. Recommended First Production Pass
 
