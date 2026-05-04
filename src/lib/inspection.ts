@@ -7,6 +7,7 @@ import { requireRole } from "@/lib/auth";
 import { buildMonthlyInspectionReportStats, getMonthRange } from "@/lib/reporting";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { normalizePhotoDisplayUrl } from "@/lib/photo-display-url";
+import { buildPreviousIssueMap, type PriorInspectionRow } from "@/lib/previous-issue-tags";
 
 type ShiftRole = "kitchen" | "floor" | "counter";
 type InspectionTagType = "critical" | "monthly_attention" | "complaint_watch";
@@ -23,12 +24,6 @@ type ActiveStaffSummary = {
   name: string;
   store_id: string;
   defaultWorkstationId: string | null;
-};
-
-type PriorInspectionRow = {
-  id: string;
-  date: string;
-  inspection_scores?: Array<{ item_id: string; score: number | null }> | null;
 };
 
 export type InspectionPhotoInput = {
@@ -267,7 +262,6 @@ export type AuditLogListItem = {
   createdAt: string;
 };
 
-const ONE_WEEK_MS = 1000 * 60 * 60 * 24 * 7;
 const MENU_ITEM_PHOTO_NEGATIVE_CACHE_TTL_MS = 60 * 1000;
 let menuItemPhotoSupportCache: boolean | null = null;
 let menuItemPhotoSupportNegativeCachedAt = 0;
@@ -276,51 +270,6 @@ const LEGACY_WORKSTATIONS: WorkstationSummary[] = [
   { id: "legacy-floor", code: "floor", name: "外場", area: "floor", storeId: null },
   { id: "legacy-counter", code: "counter", name: "櫃台", area: "counter", storeId: null },
 ];
-
-function normalizeDate(value: string) {
-  return new Date(`${value}T00:00:00`);
-}
-
-function calculateWeekSpan(fromDate: string, toDate: string) {
-  const diffMs = normalizeDate(toDate).getTime() - normalizeDate(fromDate).getTime();
-  return Math.max(1, Math.ceil(diffMs / ONE_WEEK_MS));
-}
-
-function buildPreviousIssueMap(inspections: PriorInspectionRow[], selectedDate: string) {
-  const previousIssues = new Map<string, { consecutiveWeeks: number }>();
-  if (inspections.length === 0) {
-    return previousIssues;
-  }
-
-  const latestInspection = inspections[0];
-  const latestLowScores = (latestInspection.inspection_scores ?? []).filter((row) => (row.score ?? 3) <= 2);
-
-  for (const latestRow of latestLowScores) {
-    let firstLowDate = latestInspection.date;
-
-    for (let index = 1; index < inspections.length; index += 1) {
-      const inspection = inspections[index];
-      const matchingScore = (inspection.inspection_scores ?? []).find((score) => score.item_id === latestRow.item_id);
-
-      if (!matchingScore) {
-        break;
-      }
-
-      if ((matchingScore.score ?? 3) <= 2) {
-        firstLowDate = inspection.date;
-        continue;
-      }
-
-      break;
-    }
-
-    previousIssues.set(latestRow.item_id, {
-      consecutiveWeeks: calculateWeekSpan(firstLowDate, selectedDate),
-    });
-  }
-
-  return previousIssues;
-}
 
 function mapSingleRelation<T extends Record<string, unknown>>(value: T | T[] | null | undefined) {
   if (Array.isArray(value)) {

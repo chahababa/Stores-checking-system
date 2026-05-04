@@ -13,6 +13,7 @@ import {
   MAX_PHOTOS_PER_ITEM,
 } from "@/lib/photo-upload-limits";
 import { getInspectionTagLabel, type InspectionTagType } from "@/lib/ui-labels";
+import { getPreviousIssueLabel } from "@/lib/previous-issue-tags";
 
 type ScoreValue = 1 | 2 | 3;
 type DraftSaveState = "idle" | "saving" | "saved" | "error";
@@ -1060,7 +1061,7 @@ export function InspectionForm({
                             ))}
                             {value.hasPrevIssue ? (
                               <span className="nb-chip-red">
-                                連續低分 {value.consecutiveWeeks} 週
+                                {getPreviousIssueLabel(value.consecutiveWeeks)}
                               </span>
                             ) : null}
                           </div>

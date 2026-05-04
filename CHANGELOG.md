@@ -1,5 +1,25 @@
 # Changelog
 
+## 2026-05-04
+
+### 新增「上週未通過」巡店項目標籤
+
+- `feat: flag items that failed the previous inspection`
+  - 巡店表單會把同店別上一筆巡店中評為 B / C 的項目標註為「上週未通過」。
+  - 若該項目已連續多週低分，標籤會補充連續週數，例如「上週未通過 · 連續低分 3 週」。
+  - 把前次低分判斷與標籤文案抽成可測試 helper，避免後續 UI 調整破壞提醒邏輯。
+
+### 部署注意
+
+- 不需要新增 Supabase migration 或 env。
+- 這是 UI / helper 邏輯更新，沿用既有 `inspection_scores.has_prev_issue` 與 `consecutive_weeks` 欄位。
+
+### 驗證
+
+- `npm test -- --run src/lib/previous-issue-tags.test.ts`
+
+---
+
 ## 2026-04-28 Latest
 
 ### 修正導覽列 active 標籤在前端切頁後停留在上一頁
