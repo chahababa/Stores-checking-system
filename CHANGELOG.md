@@ -1,5 +1,24 @@
 # Changelog
 
+## 2026-05-04
+
+### 更新專案文件中的過時狀態
+
+- `docs: refresh project status and deployment docs`
+  - 更新 README / deployment / production handoff / open items / notification spec，讓文件反映目前 repo 已在 GitHub、production 已部署到 Zeabur、email 通知已實作但需 Resend env vars 啟用。
+  - 補齊目前 10 個 Supabase migration 檔案清單，移除只列到 `20260410_000005_localize_seed_content.sql` 的舊資訊。
+  - 移除「GitHub CLI token invalid、尚未 push repo」作為當前 blocker 的過時描述；保留為歷史狀態。
+
+### 部署注意
+
+- 文件更新，不需要 migration。
+- 不需要新增 env；若要正式啟用 email 通知，仍需依 `TODO_RESEND_SETUP.md` 設定 Resend。
+
+### 驗證
+
+- `git diff --check`
+
+---
 ## 2026-04-28 Latest
 
 ### 修正導覽列 active 標籤在前端切頁後停留在上一頁

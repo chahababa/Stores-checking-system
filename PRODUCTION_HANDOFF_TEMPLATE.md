@@ -23,6 +23,10 @@ Fill this before final production rollout.
   - `____________________________`
 - `NEXT_PUBLIC_SITE_URL`
   - `____________________________`
+- `RESEND_API_KEY`
+  - `Set / Not set / N/A`
+- `RESEND_FROM_EMAIL`
+  - `____________________________ / N/A`
 
 ## OAuth
 
@@ -39,6 +43,11 @@ Fill this before final production rollout.
   - `20260408_000003_inspection_photos.sql`
   - `20260408_000004_audit_logs.sql`
   - `20260410_000005_localize_seed_content.sql`
+  - `20260410_000006_fix_store_names.sql`
+  - `20260411_000007_expand_focus_items_to_tags.sql`
+  - `20260411_000008_workstations_and_shift_assignment.sql`
+  - `20260412_000009_menu_item_photos.sql`
+  - `20260423_000010_add_menu_observation_note.sql`
 - Seed applied:
   - `Yes / No`
 - Placeholder owner removed:
@@ -68,6 +77,8 @@ Fill this before final production rollout.
   - `Pass / Fail`
 - Export audit CSV:
   - `Pass / Fail`
+- Inspection completion email, if enabled:
+  - `Pass / Fail / N/A`
 
 ## Final Notes
 
