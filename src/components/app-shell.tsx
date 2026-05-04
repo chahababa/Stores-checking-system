@@ -24,6 +24,7 @@ const peopleAndItemLinks: NavigationLink[] = [
   { href: "/settings/workstations", label: "工作站設定", roles: ["owner", "manager"] },
   { href: "/settings/items", label: "題目管理", roles: ["owner"] },
   { href: "/settings/focus-items", label: "標籤管理", roles: ["owner", "manager"] },
+  { href: "/settings/release-announcements", label: "更新通知", roles: ["owner", "manager"] },
 ];
 
 const otherSettingsLinks: NavigationLink[] = [
