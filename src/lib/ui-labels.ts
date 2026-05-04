@@ -32,8 +32,8 @@ export function getBusynessLabel(level: "low" | "medium" | "high") {
 export function getImprovementStatusLabel(
   status: "pending" | "resolved" | "verified" | "superseded",
 ) {
-  if (status === "pending") return "待處理";
-  if (status === "resolved") return "已改善";
+  if (status === "pending") return "待改善";
+  if (status === "resolved") return "待區經理確認";
   if (status === "verified") return "已確認";
   return "已替代";
 }

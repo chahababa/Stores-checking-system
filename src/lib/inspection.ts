@@ -4,6 +4,12 @@ import { revalidatePath } from "next/cache";
 
 import { createAuditLog } from "@/lib/audit";
 import { requireRole } from "@/lib/auth";
+import {
+  buildNotionImprovementTaskSyncInput,
+  canTransitionImprovementTaskStatus,
+  type ImprovementStatus,
+} from "@/lib/improvement-workflow";
+import { upsertNotionImprovementTask } from "@/lib/notion-improvement-sync";
 import { buildMonthlyInspectionReportStats, getMonthRange } from "@/lib/reporting";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { normalizePhotoDisplayUrl } from "@/lib/photo-display-url";
@@ -671,16 +677,22 @@ async function syncImprovementTaskForScore(params: {
       if (error) {
         throw new Error(error.message);
       }
+      await syncNotionImprovementTaskById(admin, existingTask.id);
     } else {
-      const { error } = await admin.from("improvement_tasks").insert({
-        score_id: scoreId,
-        store_id: storeId,
-        item_id: itemId,
-        status: "pending",
-      });
-      if (error) {
-        throw new Error(error.message);
+      const { data: insertedTask, error } = await admin
+        .from("improvement_tasks")
+        .insert({
+          score_id: scoreId,
+          store_id: storeId,
+          item_id: itemId,
+          status: "pending",
+        })
+        .select("id")
+        .single();
+      if (error || !insertedTask) {
+        throw new Error(error?.message || "建立改善任務失敗。");
       }
+      await syncNotionImprovementTaskById(admin, insertedTask.id);
     }
 
     return;
@@ -700,6 +712,58 @@ async function syncImprovementTaskForScore(params: {
 
     if (error) {
       throw new Error(error.message);
+    }
+
+    await syncNotionImprovementTaskById(admin, existingTask.id);
+  }
+}
+
+async function syncNotionImprovementTaskById(admin: ReturnType<typeof createAdminClient>, taskId: string) {
+  const { data: row, error } = await admin
+    .from("improvement_tasks")
+    .select(
+      "id, status, notion_page_id, stores(name), inspection_items(name), inspection_scores(score, note, inspections(date))",
+    )
+    .eq("id", taskId)
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(error.message);
+  }
+  if (!row) {
+    return;
+  }
+
+  const store = mapSingleRelation(row.stores) as { name?: string } | null;
+  const item = mapSingleRelation(row.inspection_items) as { name?: string } | null;
+  const score = mapSingleRelation(row.inspection_scores) as
+    | { score?: 1 | 2 | 3; note?: string | null; inspections?: unknown }
+    | null;
+  const inspection = (score ? mapSingleRelation(score.inspections as never) : null) as { date?: string } | null;
+
+  if (!store?.name || !item?.name || !score?.score || !inspection?.date) {
+    return;
+  }
+
+  const result = await upsertNotionImprovementTask({
+    notionPageId: (row.notion_page_id as string | null | undefined) ?? null,
+    task: buildNotionImprovementTaskSyncInput({
+      status: row.status as ImprovementStatus,
+      storeName: store.name,
+      itemName: item.name,
+      scoreValue: score.score,
+      scoreNote: score.note ?? null,
+      inspectionDate: inspection.date,
+    }),
+  });
+
+  if (result.status === "synced") {
+    const { error: updateError } = await admin
+      .from("improvement_tasks")
+      .update({ notion_page_id: result.pageId, notion_synced_at: new Date().toISOString() })
+      .eq("id", taskId);
+    if (updateError) {
+      throw new Error(updateError.message);
     }
   }
 }
@@ -1235,13 +1299,38 @@ export async function getImprovementTasks(): Promise<ImprovementTaskListItem[]> 
 
 export async function updateImprovementTaskStatus(input: {
   id: string;
-  status: "pending" | "resolved" | "verified" | "superseded";
+  status: ImprovementStatus;
 }) {
-  const profile = await requireRole("owner", "manager");
+  const profile = await requireRole("owner", "manager", "leader");
   const admin = createAdminClient();
 
+  const { data: existingTask, error: taskError } = await admin
+    .from("improvement_tasks")
+    .select("id, status, store_id")
+    .eq("id", input.id)
+    .maybeSingle();
+
+  if (taskError) {
+    throw new Error(taskError.message);
+  }
+  if (!existingTask) {
+    throw new Error("找不到改善任務。");
+  }
+
+  if (
+    !canTransitionImprovementTaskStatus({
+      role: profile.role,
+      profileStoreId: profile.store_id,
+      taskStoreId: existingTask.store_id,
+      currentStatus: existingTask.status as ImprovementStatus,
+      nextStatus: input.status,
+    })
+  ) {
+    throw new Error("你沒有權限更新此改善任務狀態。");
+  }
+
   const payload: {
-    status: "pending" | "resolved" | "verified" | "superseded";
+    status: ImprovementStatus;
     resolved_at?: string | null;
     resolved_by?: string | null;
     verified_at?: string | null;
@@ -1265,6 +1354,8 @@ export async function updateImprovementTaskStatus(input: {
   if (error) {
     throw new Error(error.message);
   }
+
+  await syncNotionImprovementTaskById(admin, input.id);
 
   await createAuditLog({
     actorId: profile.id,
@@ -1612,17 +1703,24 @@ export async function createInspection(input: InspectionMutationInput) {
   const lowScoreRows = (scoreRows ?? []).filter((entry) => entry.score <= 2);
 
   if (lowScoreRows.length > 0) {
-    const { error } = await admin.from("improvement_tasks").insert(
-      lowScoreRows.map((entry) => ({
-        score_id: entry.id,
-        store_id: input.storeId,
-        item_id: entry.item_id,
-        status: "pending" as const,
-      })),
-    );
+    const { data: insertedTasks, error } = await admin
+      .from("improvement_tasks")
+      .insert(
+        lowScoreRows.map((entry) => ({
+          score_id: entry.id,
+          store_id: input.storeId,
+          item_id: entry.item_id,
+          status: "pending" as const,
+        })),
+      )
+      .select("id");
 
     if (error) {
       throw new Error(error.message);
+    }
+
+    for (const task of insertedTasks ?? []) {
+      await syncNotionImprovementTaskById(admin, task.id);
     }
   }
 
