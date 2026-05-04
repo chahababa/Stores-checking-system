@@ -10,7 +10,7 @@ import {
   type InspectionGrade,
   type InspectionTagType,
 } from "@/lib/grading";
-import { buildNotificationFeed, getNotificationLevelLabel } from "@/lib/notification-rules";
+import { buildNotificationFeed, getNotificationLevelLabel, type ReleaseAnnouncement } from "@/lib/notification-rules";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getInspectionTagLabel } from "@/lib/ui-labels";
 
@@ -83,25 +83,49 @@ export default async function HomePage() {
     .order("created_at", { ascending: false });
   let storesQuery = admin.from("stores").select("id, name").order("name");
   let staffQuery = admin.from("staff_members").select("id, store_id, status").order("created_at", { ascending: false });
+  let releaseAnnouncementsQuery = admin
+    .from("release_announcements")
+    .select("id, title, summary, audience, published_on, is_active")
+    .lte("published_on", end)
+    .order("published_on", { ascending: false })
+    .limit(12);
 
   if (profile.role === "leader" && profile.store_id) {
     inspectionsQuery = inspectionsQuery.eq("store_id", profile.store_id);
     tasksQuery = tasksQuery.eq("store_id", profile.store_id);
     storesQuery = storesQuery.eq("id", profile.store_id);
     staffQuery = staffQuery.eq("store_id", profile.store_id);
+    releaseAnnouncementsQuery = releaseAnnouncementsQuery.in("audience", ["all", "leader"]);
+  } else {
+    releaseAnnouncementsQuery = releaseAnnouncementsQuery.in("audience", ["all", "owner_manager"]);
   }
 
-  const [{ data: inspections }, { data: tasks }, { data: stores }, { data: staffMembers }] = await Promise.all([
+  const [
+    { data: inspections },
+    { data: tasks },
+    { data: stores },
+    { data: staffMembers },
+    { data: releaseAnnouncements },
+  ] = await Promise.all([
     inspectionsQuery,
     tasksQuery,
     storesQuery,
     staffQuery,
+    releaseAnnouncementsQuery,
   ]);
 
   const inspectionRows = inspections ?? [];
   const taskRows = tasks ?? [];
   const storeRows = stores ?? [];
   const staffRows = staffMembers ?? [];
+  const releaseAnnouncementRows: ReleaseAnnouncement[] = (releaseAnnouncements ?? []).map((announcement) => ({
+    id: announcement.id,
+    title: announcement.title,
+    summary: announcement.summary,
+    audience: announcement.audience,
+    publishedOn: announcement.published_on,
+    isActive: announcement.is_active,
+  }));
   const allScores = inspectionRows.flatMap((inspection) =>
     (inspection.inspection_scores ?? []).map((row) => {
       const item = getSingleRelation(row.inspection_items) as { categories?: unknown } | null;
@@ -299,6 +323,7 @@ export default async function HomePage() {
       };
     }),
     pendingTasks,
+    releaseAnnouncements: releaseAnnouncementRows,
   });
 
   const isRealOwner = (profile.impersonating?.realRole ?? profile.role) === "owner";

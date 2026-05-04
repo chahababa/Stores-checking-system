@@ -36,7 +36,7 @@ export default async function NotificationsPage() {
             <p className="nb-eyebrow">Notifications</p>
             <h1 className="mt-2 font-nbSerif text-4xl font-black text-nb-ink">通知中心</h1>
             <p className="mt-3 max-w-3xl text-sm leading-7 text-nb-ink/75 font-bold">
-              先集中看高風險事件，再往下處理本月加強、連續低分與提醒型通知。這一版先提供站內通知，
+              先集中看高風險事件，再往下處理本月加強、連續低分、系統更新與提醒型通知。這一版先提供站內通知，
               後續再接 Email / LINE。
             </p>
           </div>
@@ -144,7 +144,7 @@ function NotificationCard({
   item: Awaited<ReturnType<typeof getNotificationFeed>>["items"][number];
 }) {
   return (
-    <div className={`${levelCardClass(item.level)} p-4`}>
+    <div id={item.id} className={`${levelCardClass(item.level)} scroll-mt-24 p-4`}>
       <div className="flex flex-col gap-3">
         <div className="flex flex-wrap items-center gap-2">
           <span className={levelChipClass(item.level)}>{getNotificationLevelLabel(item.level)}</span>

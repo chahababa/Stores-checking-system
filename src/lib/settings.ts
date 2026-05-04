@@ -12,6 +12,20 @@ import {
 } from "@/lib/qa-cleanup";
 import { createAdminClient } from "@/lib/supabase/admin";
 
+export type ReleaseAnnouncementAudience = "all" | "owner_manager" | "leader";
+
+export type ReleaseAnnouncementInput = {
+  title: string;
+  summary: string;
+  audience: ReleaseAnnouncementAudience;
+  publishedOn: string;
+  isActive?: boolean;
+};
+
+export type ReleaseAnnouncementUpdateInput = ReleaseAnnouncementInput & {
+  id: string;
+};
+
 export type AuthorizedUserInput = {
   email: string;
   role: "owner" | "manager" | "leader";
@@ -102,6 +116,38 @@ function revalidateStoreDependentPaths() {
   revalidatePath("/inspection/new");
   revalidatePath("/inspection/history");
   revalidatePath("/inspection/reports");
+}
+
+function revalidateReleaseAnnouncementPaths() {
+  revalidatePath("/");
+  revalidatePath("/notifications");
+  revalidatePath("/settings/release-announcements");
+}
+
+function normalizeReleaseAnnouncementInput(input: ReleaseAnnouncementInput) {
+  const title = input.title.trim();
+  const summary = input.summary.trim();
+  const publishedOn = input.publishedOn.trim();
+
+  if (!title) {
+    throw new Error("請輸入更新標題。");
+  }
+
+  if (!summary) {
+    throw new Error("請輸入更新內容摘要。");
+  }
+
+  if (!publishedOn || !/^\d{4}-\d{2}-\d{2}$/.test(publishedOn)) {
+    throw new Error("請選擇公告日期。");
+  }
+
+  return {
+    title,
+    summary,
+    audience: input.audience,
+    published_on: publishedOn,
+    is_active: input.isActive ?? true,
+  };
 }
 
 function getPublicObjectPath(photoUrl: string) {
@@ -1205,4 +1251,73 @@ export async function cleanupQaTestData() {
   });
 
   revalidateStoreDependentPaths();
+}
+
+export async function createReleaseAnnouncement(input: ReleaseAnnouncementInput) {
+  const profile = await requireRole("owner", "manager");
+  const admin = createAdminClient();
+  const payload = normalizeReleaseAnnouncementInput(input);
+
+  const { data, error } = await admin
+    .from("release_announcements")
+    .insert({
+      ...payload,
+      created_by: profile.id,
+    })
+    .select("id")
+    .single();
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  await createAuditLog({
+    actorId: profile.id,
+    actorEmail: profile.email,
+    action: "create_release_announcement",
+    entityType: "release_announcement",
+    entityId: data?.id ?? payload.title,
+    details: {
+      title: payload.title,
+      audience: payload.audience,
+      published_on: payload.published_on,
+      is_active: payload.is_active,
+    },
+  });
+
+  revalidateReleaseAnnouncementPaths();
+}
+
+export async function updateReleaseAnnouncement(input: ReleaseAnnouncementUpdateInput) {
+  const profile = await requireRole("owner", "manager");
+  const admin = createAdminClient();
+  const payload = normalizeReleaseAnnouncementInput(input);
+
+  const { error } = await admin
+    .from("release_announcements")
+    .update({
+      ...payload,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", input.id);
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  await createAuditLog({
+    actorId: profile.id,
+    actorEmail: profile.email,
+    action: "update_release_announcement",
+    entityType: "release_announcement",
+    entityId: input.id,
+    details: {
+      title: payload.title,
+      audience: payload.audience,
+      published_on: payload.published_on,
+      is_active: payload.is_active,
+    },
+  });
+
+  revalidateReleaseAnnouncementPaths();
 }

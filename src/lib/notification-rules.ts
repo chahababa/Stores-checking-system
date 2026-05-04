@@ -28,6 +28,17 @@ export type NotificationInspection = {
   scores: NotificationInspectionScore[];
 };
 
+export type ReleaseAnnouncementAudience = "all" | "owner_manager" | "leader";
+
+export type ReleaseAnnouncement = {
+  id: string;
+  title: string;
+  summary: string;
+  publishedOn: string;
+  audience: ReleaseAnnouncementAudience;
+  isActive: boolean;
+};
+
 function compareLevel(left: NotificationLevel, right: NotificationLevel) {
   const priority: Record<NotificationLevel, number> = {
     high: 0,
@@ -53,9 +64,23 @@ export function getNotificationTone(level: NotificationLevel) {
 export function buildNotificationFeed(input: {
   inspections: NotificationInspection[];
   pendingTasks: number;
+  releaseAnnouncements?: ReleaseAnnouncement[];
 }) {
   const notifications: NotificationItem[] = [];
   const announcedStores = new Set<string>();
+
+  for (const announcement of input.releaseAnnouncements ?? []) {
+    if (!announcement.isActive) continue;
+
+    notifications.push({
+      id: `release-${announcement.id}`,
+      level: "low",
+      title: `系統更新：${announcement.title}`,
+      description: announcement.summary,
+      href: `/notifications#release-${announcement.id}`,
+      date: announcement.publishedOn,
+    });
+  }
 
   for (const inspection of input.inspections) {
     const overallGrade = buildOverallInspectionGrade(

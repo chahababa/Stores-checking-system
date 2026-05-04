@@ -2,6 +2,32 @@
 
 ## 2026-05-04 Latest
 
+### 新增系統更新通知
+
+- `feat: add release update notifications`
+  - 新增 `/settings/release-announcements`「更新通知」管理頁，owner / manager 可新增或編輯系統介面更新公告。
+  - 公告可設定發布日期、通知對象（所有人、老闆/區經理、店長）與草稿/發布狀態。
+  - 已發布的更新公告會出現在首頁「通知摘要」與 `/notifications` 通知中心，讓店長與主管知道今天或近期巡檢系統更新了哪些功能。
+  - Supabase 新增 `release_announcements` table 與 RLS policies。
+
+### 部署注意
+
+- 需要套用 Supabase migration：`20260504_000012_release_announcements.sql`。
+- 不需要新增 Zeabur env。
+
+### 驗證
+
+- `npm test -- --run src/lib/notifications.test.ts`
+- `npm run typecheck`
+- `npm test`
+- `npm run lint`
+- `npm run build`
+- `git diff --check`
+
+---
+
+## 2026-05-04 Latest
+
 ### 改善任務支援店長回報與 Notion 單向同步
 
 - `feat: sync improvement tasks to Notion`

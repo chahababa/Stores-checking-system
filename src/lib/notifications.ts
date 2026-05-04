@@ -1,5 +1,5 @@
 import { requireRole } from "@/lib/auth";
-import { buildNotificationFeed, type NotificationInspection } from "@/lib/notification-rules";
+import { buildNotificationFeed, type NotificationInspection, type ReleaseAnnouncement } from "@/lib/notification-rules";
 import { createAdminClient } from "@/lib/supabase/admin";
 export { buildNotificationFeed, getNotificationLevelLabel, getNotificationTone } from "@/lib/notification-rules";
 
@@ -31,19 +31,31 @@ export async function getNotificationFeed() {
     .order("date", { ascending: false })
     .order("created_at", { ascending: false });
   let tasksQuery = admin.from("improvement_tasks").select("id, status");
+  let releaseAnnouncementsQuery = admin
+    .from("release_announcements")
+    .select("id, title, summary, audience, published_on, is_active")
+    .lte("published_on", end)
+    .order("published_on", { ascending: false })
+    .limit(12);
 
   if (profile.role === "leader" && profile.store_id) {
     inspectionsQuery = inspectionsQuery.eq("store_id", profile.store_id);
     tasksQuery = tasksQuery.eq("store_id", profile.store_id);
+    releaseAnnouncementsQuery = releaseAnnouncementsQuery.in("audience", ["all", "leader"]);
+  } else {
+    releaseAnnouncementsQuery = releaseAnnouncementsQuery.in("audience", ["all", "owner_manager"]);
   }
 
-  const [{ data: inspections, error: inspectionsError }, { data: tasks, error: tasksError }] = await Promise.all([
-    inspectionsQuery,
-    tasksQuery,
-  ]);
+  const [
+    { data: inspections, error: inspectionsError },
+    { data: tasks, error: tasksError },
+    { data: releaseAnnouncements, error: releaseAnnouncementsError },
+  ] = await Promise.all([inspectionsQuery, tasksQuery, releaseAnnouncementsQuery]);
 
-  if (inspectionsError || tasksError) {
-    throw new Error(inspectionsError?.message || tasksError?.message || "載入通知失敗。");
+  if (inspectionsError || tasksError || releaseAnnouncementsError) {
+    throw new Error(
+      inspectionsError?.message || tasksError?.message || releaseAnnouncementsError?.message || "載入通知失敗。",
+    );
   }
 
   const mappedInspections: NotificationInspection[] = (inspections ?? []).map((inspection) => {
@@ -69,8 +81,18 @@ export async function getNotificationFeed() {
     };
   });
 
+  const mappedReleaseAnnouncements: ReleaseAnnouncement[] = (releaseAnnouncements ?? []).map((announcement) => ({
+    id: announcement.id,
+    title: announcement.title,
+    summary: announcement.summary,
+    audience: announcement.audience,
+    publishedOn: announcement.published_on,
+    isActive: announcement.is_active,
+  }));
+
   return buildNotificationFeed({
     inspections: mappedInspections,
     pendingTasks: (tasks ?? []).filter((task) => task.status === "pending").length,
+    releaseAnnouncements: mappedReleaseAnnouncements,
   });
 }
