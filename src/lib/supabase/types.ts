@@ -372,6 +372,8 @@ export type Database = {
           resolved_at: string | null;
           resolved_by: string | null;
           verified_at: string | null;
+          notion_page_id: string | null;
+          notion_synced_at: string | null;
           created_at: string;
         };
         Insert: {
@@ -383,6 +385,8 @@ export type Database = {
           resolved_at?: string | null;
           resolved_by?: string | null;
           verified_at?: string | null;
+          notion_page_id?: string | null;
+          notion_synced_at?: string | null;
           created_at?: string;
         };
         Update: {
@@ -394,6 +398,8 @@ export type Database = {
           resolved_at?: string | null;
           resolved_by?: string | null;
           verified_at?: string | null;
+          notion_page_id?: string | null;
+          notion_synced_at?: string | null;
           created_at?: string;
         };
       };

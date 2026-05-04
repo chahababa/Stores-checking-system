@@ -1,5 +1,33 @@
 # Changelog
 
+## 2026-05-04 Latest
+
+### 改善任務支援店長回報與 Notion 單向同步
+
+- `feat: sync improvement tasks to Notion`
+  - 店長現在可在 `/inspection/improvements` 對本店 `待改善` 任務按「回報已改善」，狀態會變成 `待區經理確認`。
+  - 區經理/owner 可把任務退回 `待改善`、確認為 `已確認`，或標記 `已替代`。
+  - 新增 Notion 單向同步：低分建立/更新改善任務、店長回報、主管確認/退回時，會建立或更新 Notion `各店待辦事項檢核(DB)` 頁面。
+  - Notion 欄位對應：`項目`、`狀態`、`店別`、`類型`、`deadline`、`備註`、`已勾選`。
+  - Supabase `improvement_tasks` 新增 `notion_page_id` 與 `notion_synced_at`，避免重複建立 Notion 頁面。
+
+### 部署注意
+
+- 需要套用 Supabase migration：`20260504_000011_improvement_task_notion_sync.sql`。
+- Zeabur/production 需設定 `NOTION_API_KEY`；`NOTION_IMPROVEMENT_TASKS_DATABASE_ID` 可選，未設定時預設使用既有 `各店待辦事項檢核(DB)` database id。
+- 若未設定 `NOTION_API_KEY`，系統仍可更新改善任務，但會略過 Notion 同步。
+
+### 驗證
+
+- `npm test -- --run src/lib/improvement-workflow.test.ts`
+- `npm run typecheck`
+- `npm test`
+- `npm run lint`
+- `npm run build`
+- `git diff --check`
+
+---
+
 ## 2026-04-28 Latest
 
 ### 修正導覽列 active 標籤在前端切頁後停留在上一頁

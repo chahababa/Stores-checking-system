@@ -4,7 +4,8 @@ import { SectionCard } from "@/components/section-card";
 import { requireRole } from "@/lib/auth";
 import { getImprovementTasks, updateImprovementTaskStatus } from "@/lib/inspection";
 import { groupImprovementTasksByStore } from "@/lib/improvement-task-groups";
-import { getImprovementStatusLabel, getInspectionTagLabel } from "@/lib/ui-labels";
+import { getImprovementStatusLabel } from "@/lib/improvement-workflow";
+import { getInspectionTagLabel } from "@/lib/ui-labels";
 
 type Status = "pending" | "resolved" | "verified" | "superseded";
 
@@ -25,6 +26,7 @@ export default async function ImprovementTasksPage() {
   const profile = await requireRole("owner", "manager", "leader");
   const tasks = await getImprovementTasks();
   const canManageStatus = profile.role === "owner" || profile.role === "manager";
+  const canReportResolved = profile.role === "leader";
 
   async function updateStatusAction(formData: FormData) {
     "use server";
@@ -87,7 +89,7 @@ export default async function ImprovementTasksPage() {
         description={
           canManageStatus
             ? "你可依改善進度推進任務狀態，並從明細頁回看原始巡店內容。"
-            : "可查看本店待改善任務與原始巡店內容；若需更新狀態，請由主管或系統擁有者操作。"
+            : "可查看本店待改善任務與原始巡店內容；完成改善後可回報已改善，等待主管確認。"
         }
       >
         <div className="grid gap-4">
@@ -184,9 +186,22 @@ export default async function ImprovementTasksPage() {
                             已替代
                           </button>
                         </form>
+                      ) : canReportResolved && task.status === "pending" ? (
+                        <form action={updateStatusAction} className="flex flex-wrap gap-2 md:max-w-[240px] md:justify-end">
+                          <input type="hidden" name="id" value={task.id} />
+                          <button
+                            type="submit"
+                            name="status"
+                            value="resolved"
+                            data-testid={`improvement-task-report-resolved-${task.id}`}
+                            className="nb-btn-xs bg-nb-yellow"
+                          >
+                            回報已改善
+                          </button>
+                        </form>
                       ) : (
                         <div className="nb-card-flat px-4 py-3 text-xs leading-5 text-nb-ink/60 font-bold md:max-w-[240px]">
-                          此角色僅可查看，無法直接更新狀態。
+                          {task.status === "resolved" ? "已回報改善，等待主管確認。" : "此任務目前不需店長操作。"}
                         </div>
                       )}
                     </div>
