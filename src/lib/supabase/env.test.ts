@@ -22,6 +22,7 @@ describe("supabase env helpers", () => {
     expect(mod.getSupabaseAnonKey()).toBe("anon-key");
     expect(mod.getSupabaseServiceRoleKey()).toBe("service-role-key");
     expect(mod.getSiteUrl()).toBe("https://app.example.com");
+    expect(mod.getReleaseAnnouncementWebhookSecret()).toBeNull();
   });
 
   it("throws clear error when env is missing", async () => {

@@ -1,0 +1,51 @@
+name: Publish release announcement
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  publish-release-announcement:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Wait for production deployment to pick up the merged commit
+        run: sleep 180
+
+      - name: Publish system update announcement
+        env:
+          RELEASE_ANNOUNCEMENT_ENDPOINT: ${{ vars.RELEASE_ANNOUNCEMENT_ENDPOINT || 'https://stores-checking-system.zeabur.app/api/release-announcements/auto' }}
+          RELEASE_ANNOUNCEMENT_WEBHOOK_SECRET: ${{ secrets.RELEASE_ANNOUNCEMENT_WEBHOOK_SECRET }}
+          COMMIT_SHA: ${{ github.sha }}
+          COMMIT_MESSAGE: ${{ github.event.head_commit.message }}
+          REPOSITORY: ${{ github.repository }}
+          COMMIT_URL: ${{ github.event.head_commit.url }}
+        run: |
+          set -euo pipefail
+
+          if [ -z "${RELEASE_ANNOUNCEMENT_WEBHOOK_SECRET:-}" ]; then
+            echo "Missing RELEASE_ANNOUNCEMENT_WEBHOOK_SECRET repository secret" >&2
+            exit 1
+          fi
+
+          subject="$(printf '%s' "$COMMIT_MESSAGE" | sed -n '1p')"
+          body="$(printf '%s' "$COMMIT_MESSAGE" | sed '1d')"
+          today="$(date -u +%F)"
+
+          payload="$(jq -n \
+            --arg commitSha "$COMMIT_SHA" \
+            --arg commitSubject "$subject" \
+            --arg commitBody "$body" \
+            --arg repository "$REPOSITORY" \
+            --arg commitUrl "$COMMIT_URL" \
+            --arg publishedOn "$today" \
+            '{commitSha: $commitSha, commitSubject: $commitSubject, commitBody: $commitBody, repository: $repository, commitUrl: $commitUrl, publishedOn: $publishedOn}')"
+
+          curl --fail-with-body --show-error --silent \
+            --request POST "$RELEASE_ANNOUNCEMENT_ENDPOINT" \
+            --header "Authorization: Bearer $RELEASE_ANNOUNCEMENT_WEBHOOK_SECRET" \
+            --header "Content-Type: application/json" \
+            --data "$payload"

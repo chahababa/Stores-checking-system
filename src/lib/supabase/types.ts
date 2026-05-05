@@ -458,6 +458,47 @@ export type Database = {
           created_at?: string;
         };
       };
+      release_announcements: {
+        Row: {
+          id: string;
+          title: string;
+          summary: string;
+          audience: "all" | "owner_manager" | "leader";
+          published_on: string;
+          is_active: boolean;
+          created_by: string | null;
+          created_at: string;
+          updated_at: string;
+          source_type: string | null;
+          source_ref: string | null;
+        };
+        Insert: {
+          id?: string;
+          title: string;
+          summary: string;
+          audience?: "all" | "owner_manager" | "leader";
+          published_on?: string;
+          is_active?: boolean;
+          created_by?: string | null;
+          created_at?: string;
+          updated_at?: string;
+          source_type?: string | null;
+          source_ref?: string | null;
+        };
+        Update: {
+          id?: string;
+          title?: string;
+          summary?: string;
+          audience?: "all" | "owner_manager" | "leader";
+          published_on?: string;
+          is_active?: boolean;
+          created_by?: string | null;
+          created_at?: string;
+          updated_at?: string;
+          source_type?: string | null;
+          source_ref?: string | null;
+        };
+      };
     };
     Views: Record<string, never>;
     Functions: {
@@ -490,6 +531,7 @@ export type Database = {
       busyness_level: "low" | "medium" | "high";
       menu_item_type: "dine_in" | "takeout";
       improvement_status: "pending" | "resolved" | "verified" | "superseded";
+      release_announcement_audience: "all" | "owner_manager" | "leader";
     };
     CompositeTypes: Record<string, never>;
   };
