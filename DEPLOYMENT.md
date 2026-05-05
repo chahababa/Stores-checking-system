@@ -8,7 +8,7 @@ Set these variables in the deployment platform:
 - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
 - `SUPABASE_SERVICE_ROLE_KEY`
 - `NEXT_PUBLIC_SITE_URL`
-- `RELEASE_ANNOUNCEMENT_WEBHOOK_SECRET` — required only when GitHub Actions should automatically publish system update notifications after `main` changes.
+- `RELEASE_ANNOUNCEMENT_WEBHOOK_SECRET` — optional fallback for manual smoke tests. GitHub Actions uses GitHub OIDC, so no GitHub repository secret is required.
 
 `NEXT_PUBLIC_SITE_URL` must match the real public domain, for example:
 

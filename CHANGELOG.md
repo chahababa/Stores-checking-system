@@ -6,20 +6,20 @@
 
 - `feat: automate release announcements from main updates`
   - 新增 GitHub Actions workflow：每次 `main` 有新 commit 時，會呼叫正式站的自動公告 API。
-  - 新增 `/api/release-announcements/auto` endpoint，使用 `RELEASE_ANNOUNCEMENT_WEBHOOK_SECRET` 驗證來源後，自動建立「所有人」可見的系統更新公告。
+  - 新增 `/api/release-announcements/auto` endpoint，使用 GitHub Actions OIDC 或 fallback `RELEASE_ANNOUNCEMENT_WEBHOOK_SECRET` 驗證來源後，自動建立「所有人」可見的系統更新公告。
   - 自動公告會從 squash merge commit / PR commit message 擷取標題與 bullet 摘要，並寫入 `release_announcements`，出現在首頁通知摘要與 `/notifications` 通知中心。
   - 自動公告使用 `source_type` / `source_ref` 去重，GitHub Action 重新執行時會更新同一筆公告，不會重複洗版。
 
 ### 部署注意
 
 - 需要套用 Supabase migration：`20260504_000013_release_announcement_sources.sql`。
-- 需要新增 Zeabur env：`RELEASE_ANNOUNCEMENT_WEBHOOK_SECRET`。
-- 需要新增 GitHub Actions repository secret：`RELEASE_ANNOUNCEMENT_WEBHOOK_SECRET`，值需與 Zeabur env 相同。
+- 需要新增 Zeabur env：`RELEASE_ANNOUNCEMENT_WEBHOOK_SECRET`（只作為手動 smoke test / fallback 使用）。
+- GitHub Actions 使用 OIDC 驗證，不需要新增 GitHub repository secret。
 - 可選 GitHub Actions repository variable：`RELEASE_ANNOUNCEMENT_ENDPOINT`；未設定時預設呼叫 `https://stores-checking-system.zeabur.app/api/release-announcements/auto`。
 
 ### 驗證
 
-- `npm test -- --run src/lib/auto-release-announcement.test.ts src/lib/supabase/env.test.ts`
+- `npm test -- --run src/lib/auto-release-announcement.test.ts src/lib/supabase/env.test.ts src/lib/github-actions-oidc.test.ts`
 - `npm run typecheck`
 - `npm test`
 - `npm run lint`

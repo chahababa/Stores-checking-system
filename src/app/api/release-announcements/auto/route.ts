@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { buildAutoReleaseAnnouncement } from "@/lib/auto-release-announcement";
+import { verifyGitHubActionsOidcToken } from "@/lib/github-actions-oidc";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getReleaseAnnouncementWebhookSecret } from "@/lib/supabase/env";
 
@@ -19,12 +20,27 @@ function getBearerToken(request: Request) {
   return match?.[1] ?? null;
 }
 
-function isAuthorized(request: Request) {
+function hasMatchingSharedSecret(request: Request) {
   const expectedSecret = getReleaseAnnouncementWebhookSecret();
   if (!expectedSecret) return false;
 
   const providedSecret = getBearerToken(request) ?? request.headers.get("x-release-announcement-secret");
   return providedSecret === expectedSecret;
+}
+
+async function isAuthorized(request: Request, payload: AutoReleasePayload) {
+  if (hasMatchingSharedSecret(request)) return true;
+
+  const token = getBearerToken(request);
+  if (!token) return false;
+
+  const result = await verifyGitHubActionsOidcToken(token, {
+    repository: "chahababa/Stores-checking-system",
+    ref: "refs/heads/main",
+    commitSha: payload.commitSha,
+  });
+
+  return result.valid;
 }
 
 function isPayload(payload: unknown): payload is AutoReleasePayload {
@@ -35,13 +51,13 @@ function isPayload(payload: unknown): payload is AutoReleasePayload {
 }
 
 export async function POST(request: Request) {
-  if (!isAuthorized(request)) {
-    return NextResponse.json({ error: "未授權" }, { status: 401 });
-  }
-
   const payload: unknown = await request.json().catch(() => null);
   if (!isPayload(payload)) {
     return NextResponse.json({ error: "缺少 commitSha 或 commitSubject" }, { status: 400 });
+  }
+
+  if (!(await isAuthorized(request, payload))) {
+    return NextResponse.json({ error: "未授權" }, { status: 401 });
   }
 
   const announcement = buildAutoReleaseAnnouncement({
