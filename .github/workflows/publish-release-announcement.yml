@@ -7,6 +7,7 @@ on:
 
 permissions:
   contents: read
+  id-token: write
 
 jobs:
   publish-release-announcement:
@@ -18,7 +19,6 @@ jobs:
       - name: Publish system update announcement
         env:
           RELEASE_ANNOUNCEMENT_ENDPOINT: ${{ vars.RELEASE_ANNOUNCEMENT_ENDPOINT || 'https://stores-checking-system.zeabur.app/api/release-announcements/auto' }}
-          RELEASE_ANNOUNCEMENT_WEBHOOK_SECRET: ${{ secrets.RELEASE_ANNOUNCEMENT_WEBHOOK_SECRET }}
           COMMIT_SHA: ${{ github.sha }}
           COMMIT_MESSAGE: ${{ github.event.head_commit.message }}
           REPOSITORY: ${{ github.repository }}
@@ -26,14 +26,14 @@ jobs:
         run: |
           set -euo pipefail
 
-          if [ -z "${RELEASE_ANNOUNCEMENT_WEBHOOK_SECRET:-}" ]; then
-            echo "Missing RELEASE_ANNOUNCEMENT_WEBHOOK_SECRET repository secret" >&2
-            exit 1
-          fi
-
           subject="$(printf '%s' "$COMMIT_MESSAGE" | sed -n '1p')"
           body="$(printf '%s' "$COMMIT_MESSAGE" | sed '1d')"
           today="$(date -u +%F)"
+
+          oidc_token="$(curl --fail-with-body --show-error --silent \
+            --header "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
+            "${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=stores-checking-system-release-announcement" \
+            | python3 -c "import json, sys; print(json.load(sys.stdin)['value'])")"
 
           payload="$(jq -n \
             --arg commitSha "$COMMIT_SHA" \
@@ -46,6 +46,6 @@ jobs:
 
           curl --fail-with-body --show-error --silent \
             --request POST "$RELEASE_ANNOUNCEMENT_ENDPOINT" \
-            --header "Authorization: Bearer $RELEASE_ANNOUNCEMENT_WEBHOOK_SECRET" \
+            --header "Authorization: Bearer $oidc_token" \
             --header "Content-Type: application/json" \
             --data "$payload"
