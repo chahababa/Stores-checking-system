@@ -1,5 +1,19 @@
 # Changelog
 
+## 2026-05-05 Latest
+
+### 修正通知中心右欄版面溢出
+
+- `fix: keep notification cards inside priority columns`
+  - 修正 `/notifications` 三欄通知列表在低優先欄位遇到較長的系統更新標題、commit hash 或 GitHub URL 時，卡片超出右側欄位的問題。
+  - 三欄 grid 改用 `minmax(0, 1fr)`，欄位與通知卡片補上 `min-w-0` / `overflow-hidden`，文字補上 `break-words`，讓長內容在卡片內換行。
+
+### 驗證
+
+- `npm test -- --run src/lib/notifications-page-layout.test.ts`
+
+---
+
 ## 2026-05-04 Latest
 
 ### 自動發布系統更新通知
