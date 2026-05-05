@@ -45,3 +45,7 @@ export function getResendApiKey() {
 export function getResendFromEmail() {
   return process.env.RESEND_FROM_EMAIL ?? null;
 }
+
+export function getReleaseAnnouncementWebhookSecret() {
+  return process.env.RELEASE_ANNOUNCEMENT_WEBHOOK_SECRET ?? null;
+}

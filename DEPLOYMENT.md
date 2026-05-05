@@ -8,6 +8,7 @@ Set these variables in the deployment platform:
 - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
 - `SUPABASE_SERVICE_ROLE_KEY`
 - `NEXT_PUBLIC_SITE_URL`
+- `RELEASE_ANNOUNCEMENT_WEBHOOK_SECRET` — required only when GitHub Actions should automatically publish system update notifications after `main` changes.
 
 `NEXT_PUBLIC_SITE_URL` must match the real public domain, for example:
 
@@ -24,7 +25,10 @@ Apply SQL files in this order:
 3. `supabase/migrations/20260408_000003_inspection_photos.sql`
 4. `supabase/migrations/20260408_000004_audit_logs.sql`
 5. `supabase/migrations/20260410_000005_localize_seed_content.sql`
-5. `supabase/seed.sql`
+6. Later feature migrations in filename order, including:
+   - `supabase/migrations/20260504_000012_release_announcements.sql`
+   - `supabase/migrations/20260504_000013_release_announcement_sources.sql`
+7. `supabase/seed.sql`
 
 Before production:
 
