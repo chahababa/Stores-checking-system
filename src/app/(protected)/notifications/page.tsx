@@ -91,48 +91,54 @@ export default async function NotificationsPage() {
         </SectionCard>
       ) : null}
 
-      <div className="grid gap-6 xl:grid-cols-3">
-        <SectionCard
-          title="高優先"
-          eyebrow="High"
-          description="通常代表必查項目、客訴項目或整體巡店結果已經落到需要立即處理的程度。"
-        >
-          <div data-testid="notifications-section-high" className="grid gap-3">
-            {grouped.high.length > 0 ? (
-              grouped.high.map((item) => <NotificationCard key={item.id} item={item} />)
-            ) : (
-              <EmptyState text="目前沒有高優先通知。" />
-            )}
-          </div>
-        </SectionCard>
+      <div className="grid gap-6 xl:grid-cols-[repeat(3,minmax(0,1fr))]">
+        <div className="min-w-0">
+          <SectionCard
+            title="高優先"
+            eyebrow="High"
+            description="通常代表必查項目、客訴項目或整體巡店結果已經落到需要立即處理的程度。"
+          >
+            <div data-testid="notifications-section-high" className="grid min-w-0 gap-3">
+              {grouped.high.length > 0 ? (
+                grouped.high.map((item) => <NotificationCard key={item.id} item={item} />)
+              ) : (
+                <EmptyState text="目前沒有高優先通知。" />
+              )}
+            </div>
+          </SectionCard>
+        </div>
 
-        <SectionCard
-          title="中優先"
-          eyebrow="Medium"
-          description="適合排進本週追蹤，例如本月加強項目、連續低分，或待改善任務開始累積。"
-        >
-          <div data-testid="notifications-section-medium" className="grid gap-3">
-            {grouped.medium.length > 0 ? (
-              grouped.medium.map((item) => <NotificationCard key={item.id} item={item} />)
-            ) : (
-              <EmptyState text="目前沒有中優先通知。" />
-            )}
-          </div>
-        </SectionCard>
+        <div className="min-w-0">
+          <SectionCard
+            title="中優先"
+            eyebrow="Medium"
+            description="適合排進本週追蹤，例如本月加強項目、連續低分，或待改善任務開始累積。"
+          >
+            <div data-testid="notifications-section-medium" className="grid min-w-0 gap-3">
+              {grouped.medium.length > 0 ? (
+                grouped.medium.map((item) => <NotificationCard key={item.id} item={item} />)
+              ) : (
+                <EmptyState text="目前沒有中優先通知。" />
+              )}
+            </div>
+          </SectionCard>
+        </div>
 
-        <SectionCard
-          title="提醒"
-          eyebrow="Low"
-          description="這些通知比較偏摘要與節奏提醒，幫助店長或主管掌握本月是否有正常巡店。"
-        >
-          <div data-testid="notifications-section-low" className="grid gap-3">
-            {grouped.low.length > 0 ? (
-              grouped.low.map((item) => <NotificationCard key={item.id} item={item} />)
-            ) : (
-              <EmptyState text="目前沒有提醒型通知。" />
-            )}
-          </div>
-        </SectionCard>
+        <div className="min-w-0">
+          <SectionCard
+            title="提醒"
+            eyebrow="Low"
+            description="這些通知比較偏摘要與節奏提醒，幫助店長或主管掌握本月是否有正常巡店。"
+          >
+            <div data-testid="notifications-section-low" className="grid min-w-0 gap-3">
+              {grouped.low.length > 0 ? (
+                grouped.low.map((item) => <NotificationCard key={item.id} item={item} />)
+              ) : (
+                <EmptyState text="目前沒有提醒型通知。" />
+              )}
+            </div>
+          </SectionCard>
+        </div>
       </div>
     </div>
   );
@@ -144,8 +150,8 @@ function NotificationCard({
   item: Awaited<ReturnType<typeof getNotificationFeed>>["items"][number];
 }) {
   return (
-    <div id={item.id} className={`${levelCardClass(item.level)} scroll-mt-24 p-4`}>
-      <div className="flex flex-col gap-3">
+    <div id={item.id} className={`${levelCardClass(item.level)} scroll-mt-24 overflow-hidden p-4`}>
+      <div className="flex min-w-0 flex-col gap-3">
         <div className="flex flex-wrap items-center gap-2">
           <span className={levelChipClass(item.level)}>{getNotificationLevelLabel(item.level)}</span>
           {item.storeName ? (
@@ -153,9 +159,9 @@ function NotificationCard({
           ) : null}
           {item.date ? <span className="text-xs font-bold font-nbMono opacity-85">{item.date}</span> : null}
         </div>
-        <div>
-          <p className="font-nbSerif text-lg font-black">{item.title}</p>
-          <p className="mt-2 text-sm leading-6 font-bold opacity-90">{item.description}</p>
+        <div className="min-w-0">
+          <p className="break-words font-nbSerif text-lg font-black">{item.title}</p>
+          <p className="mt-2 break-words text-sm leading-6 font-bold opacity-90">{item.description}</p>
         </div>
         {item.href ? (
           <div>
